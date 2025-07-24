@@ -1,0 +1,11 @@
+常见错误代码:
+- `INVALID_CREDENTIALS`: 认证失败
+- `GAME_NOT_FOUND`: 游戏不存在
+- `PLAYER_NOT_FOUND`: 玩家不存在
+- `ACTION_NOT_ALLOWED`: 当前状态下不允许执行该操作
+- `INSUFFICIENT_STRENGTH`: 体力不足
+- `INVALID_TARGET`: 无效目标
+- `SEARCH_COOLDOWN`: 搜索冷却中
+- `VOTE_NOT_AVAILABLE`: 当前阶段不能投票
+- `ALREADY_VOTED`: 已经投过票
+- `INTERNAL_ERROR`: 服务器内部错误
