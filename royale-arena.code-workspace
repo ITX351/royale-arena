@@ -1,0 +1,39 @@
+{
+  "folders": [
+    {
+      "name": "Royale Arena",
+      "path": "."
+    },
+    {
+      "name": "Frontend",
+      "path": "./frontend"
+    },
+    {
+      "name": "Backend",
+      "path": "./backend"
+    }
+  ],
+  "settings": {
+    // 全局设置
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.log": true
+    },
+    // Vue 相关设置
+    "emmet.includeLanguages": {
+      "vue-html": "html",
+      "vue": "html"
+    },
+    // TypeScript 设置
+    "typescript.preferences.includePackageJsonAutoImports": "on"
+  },
+  "extensions": {
+    "recommendations": [
+      "vue.volar",
+      "rust-lang.rust-analyzer",
+      "bradlc.vscode-tailwindcss",
+      "ms-azuretools.vscode-docker",
+      "editorconfig.editorconfig"
+    ]
+  }
+}
