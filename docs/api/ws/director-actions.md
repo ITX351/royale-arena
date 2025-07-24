@@ -1,113 +1,4 @@
-## WebSocket 接口
-
-### 连接参数
-连接时需要提供身份认证信息:
-- `game_id`: 游戏ID
-- `password`: 导演或玩家密码
-- `user_type`: "player" 或 "director"
-
-### 消息格式
-所有 WebSocket 消息都使用 JSON 格式:
-```json
-{
-  "type": "string",     // 消息类型
-  "data": "object"      // 消息数据
-}
-```
-
-### 客户端发送消息类型
-
-#### 1. 玩家行动指令
-```json
-{
-  "type": "player_action",
-  "data": {
-    "action": "born|move|search|pick|attack|equip|use|throw|deliver|send|rest",
-    "params": {}  // 行动参数，根据具体行动类型而定
-  }
-}
-```
-
-##### 行动参数说明:
-
-**出生 (born):**
-```json
-{
-  "place": "string"  // 出生地点
-}
-```
-
-**移动 (move):**
-```json
-{
-  "target": "string"  // 目标地点
-}
-```
-
-**搜索 (search):**
-```json
-{}  // 无需参数
-```
-
-**捡拾 (pick):**
-```json
-{}  // 无需参数
-```
-
-**攻击 (attack):**
-```json
-{
-  "target": "string"  // 攻击目标角色名
-}
-```
-
-**装备 (equip):**
-```json
-{
-  "item": "string"  // 要装备的道具名
-}
-```
-
-**使用道具 (use):**
-```json
-{
-  "item": "string",          // 要使用的道具名
-  "target_role": "string",   // 目标角色(可选)
-  "target_item": "string",   // 目标道具(可选)
-  "target_upgrade": "string" // 目标升级等级(可选)
-}
-```
-
-**丢弃道具 (throw):**
-```json
-{
-  "item": "string"  // 要丢弃的道具名
-}
-```
-
-**传音 (deliver):**
-```json
-{
-  "target": "string",  // 目标角色
-  "content": "string"  // 消息内容
-}
-```
-
-**对话导演 (send):**
-```json
-{
-  "content": "string"  // 对话内容
-}
-```
-
-**静养模式 (rest):**
-```json
-{
-  "enable": "boolean"  // 是否启用静养模式
-}
-```
-
-#### 2. 导演控制指令
+# 导演控制指令
 ```json
 {
   "type": "director_action",
@@ -118,7 +9,7 @@
 }
 ```
 
-##### 控制参数说明:
+## 控制参数说明:
 
 **开始行动 (start):**
 ```json
@@ -266,16 +157,4 @@
   "player": "string",      // 玩家名称 - 可选
   "limit": "integer"       // 返回记录数限制 - 可选，默认10
 }
-```
-
-**开始投票 (start_vote):**
-```json
-{
-  "duration": "integer"    // 投票时长(秒) - 可选，使用默认白天时长
-}
-```
-
-**结束投票 (end_vote):**
-```json
-{}  // 无需参数
 ```

@@ -1,6 +1,10 @@
-### 服务端推送消息类型
+# 数据模型
 
-#### 1. 游戏状态更新
+WebSocket 消息格式、数据结构和错误处理的完整定义。
+
+## 服务端推送消息类型
+
+### 1. 游戏状态更新
 ```json
 {
   "type": "game_state_update",
@@ -16,7 +20,7 @@
 }
 ```
 
-#### 2. 行动结果反馈
+### 2. 行动结果反馈
 ```json
 {
   "type": "action_result",
@@ -29,7 +33,7 @@
 }
 ```
 
-#### 3. 系统公告
+### 3. 系统公告
 ```json
 {
   "type": "announcement",
@@ -41,7 +45,7 @@
 }
 ```
 
-#### 4. 投票状态更新
+### 4. 投票状态更新
 ```json
 {
   "type": "vote_update",
@@ -53,7 +57,7 @@
 }
 ```
 
-#### 5. 游戏阶段变更
+### 5. 游戏阶段变更
 ```json
 {
   "type": "phase_change",
@@ -65,7 +69,7 @@
 }
 ```
 
-#### 6. 错误消息
+### 6. 错误消息
 ```json
 {
   "type": "error",
@@ -76,9 +80,9 @@
 }
 ```
 
-### 数据模型
+## 数据模型
 
-#### 管理员账户
+### 管理员账户
 ```json
 {
   "id": "string",
@@ -87,7 +91,7 @@
 }
 ```
 
-#### 演员账户
+### 演员账户
 ```json
 {
   "id": "string",
@@ -96,7 +100,7 @@
 }
 ```
 
-#### 玩家状态
+### 玩家状态
 ```json
 {
   "id": "string",
@@ -115,7 +119,7 @@
 }
 ```
 
-#### 地点状态
+### 地点状态
 ```json
 {
   "name": "string",
@@ -125,7 +129,7 @@
 }
 ```
 
-#### 游戏规则配置（可由导演设置的项）
+### 游戏规则配置（当前运行中的游戏）
 ```json
 {
   "game_flow": {
@@ -152,7 +156,38 @@
 }
 ```
 
-#### 游戏日志条目
+### 游戏规则模版配置（预设模版，可重用）
+```json
+{
+  "template_name": "string",      // 模版名称
+  "description": "string",        // 模版描述
+  "game_flow": {
+    "day_duration": "integer|null",    // 白天时长(秒)，null表示使用默认值
+    "night_duration": "integer|null"   // 夜晚时长(秒)，null表示使用默认值
+  },
+  "map": {
+    "places": ["string"]|null     // 地点列表，null表示使用默认地图
+  },
+  "player": {
+    "max_life": "integer|null",        // 最大生命值，null表示使用默认值
+    "max_strength": "integer|null",    // 最大体力值，null表示使用默认值
+    "daily_strength_recovery": "integer|null"  // 每日体力恢复值，null表示使用默认值
+  },
+  "action": {
+    "move_cost": "integer|null",       // 移动消耗体力，null表示使用默认值
+    "search_cost": "integer|null",     // 搜索消耗体力，null表示使用默认值
+    "search_cooldown": "integer|null"  // 搜索冷却时间(秒)，null表示使用默认值
+  },
+  "rest_mode": {
+    "life_recovery": "integer|null",   // 静养模式生命恢复值，null表示使用默认值
+    "max_moves": "integer|null"        // 静养模式最大移动次数，null表示使用默认值
+  },
+  "created_at": "ISO8601 datetime",    // 模版创建时间
+  "updated_at": "ISO8601 datetime"     // 模版更新时间
+}
+```
+
+### 游戏日志条目
 ```json
 {
   "timestamp": "ISO8601 datetime",
@@ -162,7 +197,7 @@
 }
 ```
 
-#### 游戏统计数据
+### 游戏统计数据
 ```json
 {
   "player_count": "integer",
@@ -175,7 +210,7 @@
 }
 ```
 
-#### 投票数据
+### 投票数据
 ```json
 {
   "voter": "string",      // 投票者
