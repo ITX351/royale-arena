@@ -35,34 +35,16 @@ pub async fn admin_login(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{test, web, App, http::StatusCode};
+    use actix_web::{test, web, http::StatusCode};
     use serde_json::Value;
-    use std::collections::HashMap;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-    use crate::{AppState, models::admin::AdminUser};
+    use crate::{models::admin::LoginRequest, test_utils::{create_test_app, create_test_app_state}};
 
     #[actix_web::test]
     async fn test_admin_login_success() {
-        // Create test app state with an admin user
-        let mut admin_users = HashMap::new();
-        admin_users.insert(
-            "admin".to_string(),
-            AdminUser {
-                username: "admin".to_string(),
-                password: "password123".to_string(),
-            },
-        );
-        
-        let app_state = Arc::new(Mutex::new(AppState {
-            games: HashMap::new(),
-            admin_users,
-        }));
-
-        // Create test app
+        // Create test app state and app
+        let app_state = create_test_app_state();
         let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(app_state.clone()))
+            create_test_app(app_state.clone())
                 .route("/admin/login", web::post().to(admin_login))
         ).await;
 
@@ -92,25 +74,10 @@ mod tests {
 
     #[actix_web::test]
     async fn test_admin_login_invalid_username() {
-        // Create test app state with an admin user
-        let mut admin_users = HashMap::new();
-        admin_users.insert(
-            "admin".to_string(),
-            AdminUser {
-                username: "admin".to_string(),
-                password: "password123".to_string(),
-            },
-        );
-        
-        let app_state = Arc::new(Mutex::new(AppState {
-            games: HashMap::new(),
-            admin_users,
-        }));
-
-        // Create test app
+        // Create test app state and app
+        let app_state = create_test_app_state();
         let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(app_state.clone()))
+            create_test_app(app_state.clone())
                 .route("/admin/login", web::post().to(admin_login))
         ).await;
 
@@ -140,25 +107,10 @@ mod tests {
 
     #[actix_web::test]
     async fn test_admin_login_invalid_password() {
-        // Create test app state with an admin user
-        let mut admin_users = HashMap::new();
-        admin_users.insert(
-            "admin".to_string(),
-            AdminUser {
-                username: "admin".to_string(),
-                password: "password123".to_string(),
-            },
-        );
-        
-        let app_state = Arc::new(Mutex::new(AppState {
-            games: HashMap::new(),
-            admin_users,
-        }));
-
-        // Create test app
+        // Create test app state and app
+        let app_state = create_test_app_state();
         let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(app_state.clone()))
+            create_test_app(app_state.clone())
                 .route("/admin/login", web::post().to(admin_login))
         ).await;
 

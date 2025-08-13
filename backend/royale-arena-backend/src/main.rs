@@ -9,6 +9,8 @@ mod models;
 mod handlers;
 mod routes;
 mod services;
+#[cfg(test)]
+mod test_utils;
 
 use models::game::Game;
 use models::admin::AdminUser;
