@@ -25,7 +25,14 @@
       "vue": "html"
     },
     // TypeScript 设置
-    "typescript.preferences.includePackageJsonAutoImports": "on"
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    // Rust 设置
+    "rust-analyzer.linkedProjects": [
+      "./backend/royale-arena-backend/Cargo.toml"
+    ],
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.checkOnSave.command": "clippy"
   },
   "extensions": {
     "recommendations": [

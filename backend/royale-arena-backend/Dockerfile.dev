@@ -1,0 +1,27 @@
+# Dockerfile for Royale Arena Backend Development
+FROM rust:1.89
+
+WORKDIR /app
+
+# Install cargo-watch for hot reloading
+RUN cargo install cargo-watch
+
+# Copy dependency files
+COPY Cargo.toml .
+COPY Cargo.lock .
+
+# Create a dummy src/lib.rs to satisfy cargo
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+
+# Build dependencies only (cached layer)
+RUN cargo build
+RUN rm -f src/main.rs
+
+# Copy source code
+COPY src ./src
+
+# Expose port
+EXPOSE 8080
+
+# Default command
+CMD ["cargo", "watch", "-x", "run"]
