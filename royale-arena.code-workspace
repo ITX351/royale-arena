@@ -1,16 +1,16 @@
 {
   "folders": [
     {
-      "name": "Royale Arena",
+      "name": "Root",
       "path": "."
     },
     {
-      "name": "Frontend",
-      "path": "./frontend"
+      "name": "Frontend App",
+      "path": "./frontend/royale-arena-frontend"
     },
     {
-      "name": "Backend",
-      "path": "./backend"
+      "name": "Backend Service",
+      "path": "./backend/royale-arena-backend"
     }
   ],
   "settings": {
@@ -32,7 +32,8 @@
     ],
     "rust-analyzer.cargo.buildScripts.enable": true,
     "rust-analyzer.procMacro.enable": true,
-    "rust-analyzer.checkOnSave.command": "clippy"
+    "rust-analyzer.files.watcher": "server",
+    "rust-analyzer.workspace.symbol.search.scope": "workspace_and_dependencies"
   },
   "extensions": {
     "recommendations": [
@@ -41,6 +42,49 @@
       "bradlc.vscode-tailwindcss",
       "ms-azuretools.vscode-docker",
       "editorconfig.editorconfig"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug Backend",
+        "cargo": {
+          "args": [
+            "build",
+            "--bin=royale-arena-backend"
+          ],
+          "filter": {
+            "name": "royale-arena-backend",
+            "kind": "bin"
+          },
+          "cwd": "${workspaceFolder}/backend/royale-arena-backend"
+        },
+        "args": [],
+        "sourceLanguages": [
+          "rust"
+        ]
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Run Frontend Dev Server",
+        "skipFiles": [
+          "<node_internals>/**"
+        ],
+        "program": "${workspaceFolder}/frontend/royale-arena-frontend/node_modules/vite/bin/vite.js",
+        "args": [
+          "--host",
+          "0.0.0.0"
+        ],
+        "cwd": "${workspaceFolder}/frontend/royale-arena-frontend",
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "console": "integratedTerminal"
+      }
     ]
   }
 }

@@ -27,6 +27,7 @@ build/
 
 # IDE files
 .vscode/
+.codebuddy/
 .idea/
 *.swp
 *.swo

@@ -1,27 +1,4 @@
 services:
-  nginx:
-    image: nginx:1.26
-    container_name: discuz_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./html:/var/www/html
-      - ./conf/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./conf/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./conf/env.conf:/etc/nginx/conf.d/env.conf:ro
-      - ./acme-certs:/etc/acme-certs:ro
-      - ./dummy-certs:/etc/nginx/ssl:ro
-    environment:
-      TZ: Asia/Shanghai
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/nginx_status"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    networks:
-      - discuz_net
-
   backend:
     container_name: royale-arena-backend
     build: 
