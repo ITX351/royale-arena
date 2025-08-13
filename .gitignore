@@ -67,6 +67,7 @@ game_saves/
 *.db
 *.sqlite
 *.sqlite3
+mysql/
 
 # Configuration files with sensitive data
 config/local.yml

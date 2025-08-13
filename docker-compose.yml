@@ -1,7 +1,7 @@
 services:
   backend:
     container_name: royale-arena-backend
-    build: 
+    build:
       context: ./backend/royale-arena-backend
       dockerfile: Dockerfile.dev
     ports:
@@ -9,9 +9,25 @@ services:
     volumes:
       - ./backend/royale-arena-backend:/app
       - /app/target
-    environment:
+    environment: 
       - RUST_LOG=debug
     command: cargo watch -x run
+    networks:
+      - discuz_net
+
+  mysql:
+    image: mysql:5.7
+    container_name: discuz_mysql
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ultrax
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    command: --character-set-server=gbk --collation-server=gbk_chinese_ci --sql-mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
     networks:
       - discuz_net
 

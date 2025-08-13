@@ -30,10 +30,30 @@
     "rust-analyzer.linkedProjects": [
       "./backend/royale-arena-backend/Cargo.toml"
     ],
+    "rust-analyzer.testExplorer": true,
     "rust-analyzer.cargo.buildScripts.enable": true,
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.files.watcher": "server",
     "rust-analyzer.workspace.symbol.search.scope": "workspace_and_dependencies"
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Cargo Test Backend",
+        "type": "shell",
+        "command": "cargo test",
+        "args": [],
+        "options": {
+          "cwd": "${workspaceFolder}/backend/royale-arena-backend"
+        },
+        "group": {
+          "kind": "test",
+          "isDefault": true
+        },
+        "problemMatcher": ["$rustc"]
+      }
+    ]
   },
   "extensions": {
     "recommendations": [
