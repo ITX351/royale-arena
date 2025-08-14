@@ -13,8 +13,8 @@
 - [x] 实现基础服务器框架并解决Docker访问问题
 - [x] 实现用户认证（管理员登录验证）
 - [x] 实现游戏状态及设置查询
-- [ ] 实现玩家信息获取
-- [ ] 实现游戏规则获取
+- [x] 实现玩家信息获取
+- [x] 实现游戏规则获取
 
 ### WebSocket服务器
 - [ ] 实现玩家行动指令接收
@@ -56,12 +56,12 @@
 #### 游戏管理接口
 - [x] 实现`GET /api/games` - 获取游戏列表
 - [x] 实现`GET /api/game/{game_id}` - 获取游戏基本信息
-- [ ] 实现`GET /api/game/{game_id}/rules` - 获取游戏规则
+- [x] 实现`GET /api/game/{game_id}/rules` - 获取游戏规则
 - [ ] 实现`GET /api/rule-templates` - 获取游戏规则模版列表
 - [ ] 实现`GET /api/rule-templates/{template_id}` - 获取游戏规则模版详情
 
 #### 玩家接口
-- [ ] 实现`GET /api/game/{game_id}/player/{player_id}` - 获取玩家详细信息
+- [x] 实现`GET /api/game/{game_id}/player/{player_id}` - 获取玩家详细信息
 - [ ] 实现`GET /api/game/{game_id}/places` - 获取地点状态
 - [ ] 实现`POST /api/game/{game_id}/vote` - 投票
 

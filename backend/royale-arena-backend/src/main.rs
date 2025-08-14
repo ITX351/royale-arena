@@ -5,18 +5,20 @@ use tokio::sync::Mutex;
 use tracing_subscriber;
 
 // Import modules
-mod models;
-mod handlers;
-mod routes;
+pub mod models;
+pub mod handlers;
+pub mod routes;
 mod services;
 #[cfg(test)]
 mod test_utils;
 
 use models::game::Game;
+use models::rules::GameRules;
 
 // AppState structure
 pub struct AppState {
     pub games: HashMap<String, Game>,
+    pub game_rules: HashMap<String, GameRules>,
 }
 
 #[actix_web::main]
@@ -32,6 +34,7 @@ async fn main() -> std::io::Result<()> {
     
     let app_state = Arc::new(Mutex::new(AppState {
         games: HashMap::new(),
+        game_rules: HashMap::new(),
     }));
     
     // Start HTTP server
