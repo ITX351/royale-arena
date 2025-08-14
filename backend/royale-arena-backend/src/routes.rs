@@ -23,5 +23,13 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("/rule-templates", web::get().to(crate::handlers::rule_templates::get_rule_templates))
             .route("/rule-templates/{template_id}", web::get().to(crate::handlers::rule_templates::get_rule_template))
             .route("/admin/login", web::post().to(crate::handlers::admin::admin_login))
+            // Admin game management routes
+            .route("/admin/games", web::post().to(crate::handlers::admin_game::create_game))
+            .route("/admin/game/{game_id}", web::put().to(crate::handlers::admin_game::update_game))
+            .route("/admin/game/{game_id}", web::delete().to(crate::handlers::admin_game::delete_game))
+            // Admin rule template management routes
+            .route("/admin/rule-templates", web::post().to(crate::handlers::admin_game::create_rule_template))
+            .route("/admin/rule-templates/{template_id}", web::put().to(crate::handlers::admin_game::update_rule_template))
+            .route("/admin/rule-templates/{template_id}", web::delete().to(crate::handlers::admin_game::delete_rule_template))
     );
 }

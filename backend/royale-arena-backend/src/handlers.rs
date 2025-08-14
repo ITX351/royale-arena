@@ -1,5 +1,6 @@
 pub mod game;
 pub mod admin;
+pub mod admin_game;
 pub mod rules;
 pub mod player;
 pub mod rule_templates;

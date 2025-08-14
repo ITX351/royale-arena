@@ -4,3 +4,4 @@ pub mod admin;
 pub mod rules;
 pub mod rule_template;
 pub mod place;
+pub mod admin_game;

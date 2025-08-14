@@ -79,12 +79,12 @@
 
 #### 管理员接口
 - [x] 实现`POST /api/admin/login` - 管理员登录验证
-- [ ] 实现`POST /api/admin/games` - 创建游戏
-- [ ] 实现`PUT /api/admin/game/{game_id}` - 修改游戏设置
-- [ ] 实现`DELETE /api/admin/game/{game_id}` - 删除游戏
-- [ ] 实现`POST /api/admin/rule-templates` - 创建游戏规则模版
-- [ ] 实现`PUT /api/admin/rule-templates/{template_id}` - 修改游戏规则模版
-- [ ] 实现`DELETE /api/admin/rule-templates/{template_id}` - 删除游戏规则模版
+- [x] 实现`POST /api/admin/games` - 创建游戏
+- [x] 实现`PUT /api/admin/game/{game_id}` - 修改游戏设置
+- [x] 实现`DELETE /api/admin/game/{game_id}` - 删除游戏
+- [x] 实现`POST /api/admin/rule-templates` - 创建游戏规则模版
+- [x] 实现`PUT /api/admin/rule-templates/{template_id}` - 修改游戏规则模版
+- [x] 实现`DELETE /api/admin/rule-templates/{template_id}` - 删除游戏规则模版
 
 ### WebSocket通信
 - [x] 实现连接时的身份验证
