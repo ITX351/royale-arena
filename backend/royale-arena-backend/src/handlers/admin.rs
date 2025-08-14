@@ -1,22 +1,13 @@
 use actix_web::{web, HttpResponse, Result};
 use crate::models::admin::{LoginRequest, LoginResponse};
-use crate::services::db::create_db_pool;
+use crate::services::db_helper::get_db_connection_from_pool;
 use mysql::prelude::*;
 
 pub async fn admin_login(
     login_request: web::Json<LoginRequest>,
 ) -> Result<HttpResponse> {
-    // Create database connection pool
-    let pool = create_db_pool().map_err(|e| {
-        tracing::error!("Failed to create database pool: {}", e);
-        actix_web::error::ErrorInternalServerError("Database connection error")
-    })?;
-    
-    // Get connection from pool
-    let mut conn = pool.get_conn().map_err(|e| {
-        tracing::error!("Failed to get database connection: {}", e);
-        actix_web::error::ErrorInternalServerError("Database connection error")
-    })?;
+    // Get database connection
+    let mut conn = get_db_connection_from_pool()?;
     
     // Query admin user from database
     let admin_user: Option<(String, String, bool)> = conn

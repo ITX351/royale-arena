@@ -31,6 +31,9 @@ npm run dev
 # 后端开发
 cd backend
 cargo run
+
+# 初始化管理员帐户脚本（硬编码用户名及密码）
+cargo run --bin init_admin_users
 ```
 
 ## 文档

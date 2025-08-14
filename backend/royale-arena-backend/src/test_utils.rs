@@ -4,7 +4,7 @@ use actix_web::{web, App};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::{AppState, models::game::Game};
+use crate::AppState;
 
 /// Creates a test application instance with the provided app state
 pub fn create_test_app(

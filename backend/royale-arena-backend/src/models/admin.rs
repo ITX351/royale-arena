@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AdminUser {
@@ -7,10 +6,6 @@ pub struct AdminUser {
     pub username: String,
     pub password: String, // Stored as hash in database
     pub is_super_admin: bool,
-    #[serde(skip)]
-    pub created_at: DateTime<Utc>,
-    #[serde(skip)]
-    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize)]
