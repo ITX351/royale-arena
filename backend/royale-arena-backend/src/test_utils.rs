@@ -4,7 +4,7 @@ use actix_web::{web, App};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::{AppState, models::admin::AdminUser};
+use crate::{AppState, models::game::Game};
 
 /// Creates a test application instance with the provided app state
 pub fn create_test_app(
@@ -24,19 +24,8 @@ pub fn create_test_app(
 
 /// Creates a test app state with sample data for testing
 pub fn create_test_app_state() -> Arc<Mutex<AppState>> {
-    // Create test admin users
-    let mut admin_users = HashMap::new();
-    admin_users.insert(
-        "admin".to_string(),
-        AdminUser {
-            username: "admin".to_string(),
-            password: "password123".to_string(),
-        },
-    );
-    
     // Create app state
     Arc::new(Mutex::new(AppState {
         games: HashMap::new(),
-        admin_users,
     }))
 }

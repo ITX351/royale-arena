@@ -248,3 +248,106 @@ DELETE /api/admin/rule-templates/{template_id}
   "message": "Rule template deleted successfully"
 }
 ```
+
+### 8. 获取管理员列表（仅超级管理员）
+```
+GET /api/admin/users
+```
+
+**查询参数:**
+- `Authorization`: Bearer token (超级管理员认证令牌)
+
+**响应:**
+```json
+{
+  "users": [
+    {
+      "id": "string",
+      "username": "string",
+      "is_super_admin": "boolean"
+    }
+  ]
+}
+```
+
+### 9. 创建管理员账户（仅超级管理员）
+```
+POST /api/admin/users
+```
+
+**查询参数:**
+- `Authorization`: Bearer token (超级管理员认证令牌)
+
+**请求参数:**
+```json
+{
+  "username": "string",
+  "password": "string",
+  "is_super_admin": "boolean"  // 可选，默认为false
+}
+```
+
+**响应:**
+```json
+{
+  "success": true,
+  "message": "Admin user created successfully",
+  "user": {
+    "id": "string",
+    "username": "string",
+    "is_super_admin": "boolean"
+  }
+}
+```
+
+### 10. 修改管理员账户（仅超级管理员）
+```
+PUT /api/admin/users/{user_id}
+```
+
+**路径参数:**
+- `user_id`: 管理员用户ID
+
+**查询参数:**
+- `Authorization`: Bearer token (超级管理员认证令牌)
+
+**请求参数:**
+```json
+{
+  "username": "string",        // 可选
+  "password": "string",        // 可选
+  "is_super_admin": "boolean"  // 可选
+}
+```
+
+**响应:**
+```json
+{
+  "success": true,
+  "message": "Admin user updated successfully",
+  "user": {
+    "id": "string",
+    "username": "string",
+    "is_super_admin": "boolean"
+  }
+}
+```
+
+### 11. 删除管理员账户（仅超级管理员）
+```
+DELETE /api/admin/users/{user_id}
+```
+
+**路径参数:**
+- `user_id`: 管理员用户ID
+
+**查询参数:**
+- `Authorization`: Bearer token (超级管理员认证令牌)
+
+**响应:**
+```json
+{
+  "success": true,
+  "message": "Admin user deleted successfully"
+}
+```

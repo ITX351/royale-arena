@@ -1,9 +1,16 @@
 use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AdminUser {
+    pub id: String,
     pub username: String,
-    pub password: String, // In production, this should be hashed
+    pub password: String, // Stored as hash in database
+    pub is_super_admin: bool,
+    #[serde(skip)]
+    pub created_at: DateTime<Utc>,
+    #[serde(skip)]
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -22,17 +29,6 @@ pub struct LoginResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_admin_user_creation() {
-        let admin = AdminUser {
-            username: "admin".to_string(),
-            password: "password123".to_string(),
-        };
-
-        assert_eq!(admin.username, "admin");
-        assert_eq!(admin.password, "password123");
-    }
 
     #[test]
     fn test_login_request_creation() {
@@ -69,20 +65,6 @@ mod tests {
         assert!(!response.success);
         assert_eq!(response.token, None);
         assert_eq!(response.expires_in, None);
-    }
-
-    #[test]
-    fn test_admin_user_serialization() {
-        let admin = AdminUser {
-            username: "admin".to_string(),
-            password: "password123".to_string(),
-        };
-
-        let serialized = serde_json::to_string(&admin).unwrap();
-        let deserialized: AdminUser = serde_json::from_str(&serialized).unwrap();
-
-        assert_eq!(admin.username, deserialized.username);
-        assert_eq!(admin.password, deserialized.password);
     }
 
     #[test]

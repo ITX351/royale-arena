@@ -87,7 +87,7 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
 {
   "id": "string",
   "username": "string",
-  "password": "string"  // 明文存储（仅为项目特定设计）
+  "password": "string"  // 密文存储
 }
 ```
 

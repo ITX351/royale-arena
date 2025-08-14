@@ -13,32 +13,25 @@ mod services;
 mod test_utils;
 
 use models::game::Game;
-use models::admin::AdminUser;
 
 // AppState structure
 pub struct AppState {
     pub games: HashMap<String, Game>,
-    pub admin_users: HashMap<String, AdminUser>,
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Load environment variables from .env.royale file
+    match dotenvy::from_filename(".env.royale") {
+        Ok(_) => println!("Successfully loaded .env.royale file"),
+        Err(e) => eprintln!("Warning: Failed to load .env.royale file: {}", e),
+    }
+    
     // Initialize logging
     tracing_subscriber::fmt::init();
     
-    // Initialize in-memory state with some test data
-    let mut admin_users = HashMap::new();
-    admin_users.insert(
-        "admin".to_string(),
-        AdminUser {
-            username: "admin".to_string(),
-            password: "password123".to_string(), // In production, this should be hashed
-        },
-    );
-    
     let app_state = Arc::new(Mutex::new(AppState {
         games: HashMap::new(),
-        admin_users,
     }));
     
     // Start HTTP server

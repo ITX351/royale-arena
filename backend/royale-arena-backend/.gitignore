@@ -9,3 +9,8 @@ Cargo.lock
 # IDE files
 *.swp
 *.swo
+
+# Environment files
+.env
+.env.*
+!*.example.*
