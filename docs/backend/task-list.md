@@ -3,7 +3,7 @@
 ## 1. 项目初始化
 - [x] 初始化Rust项目
 - [x] 集成Web框架（Actix-web）
-- [ ] 集成WebSocket库
+- [x] 集成WebSocket库
 - [x] 添加MySQL驱动依赖项（尚未实际集成使用）
 - [x] 集成serde用于JSON序列化
 - [x] 集成tracing用于日志记录
@@ -17,10 +17,10 @@
 - [x] 实现游戏规则获取
 
 ### WebSocket服务器
-- [ ] 实现玩家行动指令接收
-- [ ] 实现实时游戏状态推送
-- [ ] 实现导演操作指令处理
-- [ ] 实现行动结果反馈
+- [x] 实现玩家行动指令接收
+- [x] 实现实时游戏状态推送
+- [x] 实现导演操作指令处理
+- [x] 实现行动结果反馈
 
 ### 游戏逻辑引擎
 - [ ] 实现行动时间窗口管理
@@ -51,7 +51,7 @@
 
 #### 认证接口
 - [x] 实现`POST /api/admin/login` - 管理员登录验证
-- [ ] 实现`POST /api/game/{game_id}/ws-auth` - 验证WebSocket连接凭据
+- [x] 实现`POST /api/game/{game_id}/ws-auth` - 验证WebSocket连接凭据
 
 #### 游戏管理接口
 - [x] 实现`GET /api/games` - 获取游戏列表
@@ -66,16 +66,16 @@
 - [ ] 实现`POST /api/game/{game_id}/vote` - 投票
 
 #### 导演接口
-- [ ] 实现`POST /api/game/{game_id}/players` - 批量添加演员账户
-- [ ] 实现`GET /api/game/{game_id}/players` - 获取演员列表
-- [ ] 实现`DELETE /api/game/{game_id}/players` - 批量删除演员账户
-- [ ] 实现`PUT /api/game/{game_id}/rules` - 更新游戏规则配置
-- [ ] 实现`GET /api/game/{game_id}/logs` - 获取游戏日志
-- [ ] 实现`GET /api/game/{game_id}/stats` - 获取游戏统计
-- [ ] 实现`GET /api/game/{game_id}/snapshot` - 获取游戏完整状态快照
-- [ ] 实现`GET /api/game/{game_id}/votes` - 获取投票结果
-- [ ] 实现`POST /api/game/{game_id}/reset` - 重置游戏
-- [ ] 实现`GET /api/game/{game_id}/export` - 导出游戏数据
+- [x] 实现`POST /api/game/{game_id}/players` - 批量添加演员账户
+- [x] 实现`GET /api/game/{game_id}/players` - 获取演员列表
+- [x] 实现`DELETE /api/game/{game_id}/players` - 批量删除演员账户
+- [x] 实现`PUT /api/game/{game_id}/rules` - 更新游戏规则配置
+- [x] 实现`GET /api/game/{game_id}/logs` - 获取游戏日志
+- [x] 实现`GET /api/game/{game_id}/stats` - 获取游戏统计
+- [x] 实现`GET /api/game/{game_id}/snapshot` - 获取游戏完整状态快照
+- [x] 实现`GET /api/game/{game_id}/votes` - 获取投票结果
+- [x] 实现`POST /api/game/{game_id}/reset` - 重置游戏
+- [x] 实现`GET /api/game/{game_id}/export` - 导出游戏数据
 
 #### 管理员接口
 - [x] 实现`POST /api/admin/login` - 管理员登录验证
@@ -87,10 +87,10 @@
 - [ ] 实现`DELETE /api/admin/rule-templates/{template_id}` - 删除游戏规则模版
 
 ### WebSocket通信
-- [ ] 实现连接时的身份验证
-- [ ] 实现玩家行动指令处理（移动、搜索、攻击、使用道具）
-- [ ] 实现服务器实时状态推送
-- [ ] 实现导演控制指令处理（开始行动、结束行动、缩圈、空投等）
+- [x] 实现连接时的身份验证
+- [x] 实现玩家行动指令处理（移动、搜索、攻击、使用道具）
+- [x] 实现服务器实时状态推送
+- [x] 实现导演控制指令处理（开始行动、结束行动、缩圈、空投等）
 
 ## 5. 系统约束与性能
 - [ ] 确保不使用游戏引擎或第三方实时通信服务
