@@ -96,7 +96,8 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
 {
   "id": "string",
   "name": "string",
-  "password": "string"  // 6-8位字母数字，明文存储（仅为项目特定设计）
+  "password": "string",  // 6-8位字母数字，明文存储（仅为项目特定设计）
+  "team_id": "integer"  // 队伍ID，用于标识玩家所属队伍，0表示无队伍
 }
 ```
 
@@ -105,6 +106,7 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
 {
   "id": "string",
   "name": "string",
+  "team_id": "integer",  // 队伍ID，用于标识玩家所属队伍，0表示无队伍
   "life": "integer",      // 生命值 (0-100)
   "strength": "integer",  // 体力值 (0-100)
   "location": "string",   // 当前位置

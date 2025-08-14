@@ -16,6 +16,7 @@ pub async fn get_player_info(
         id: player_id.clone(),
         name: "Test Player".to_string(),
         password: "password123".to_string(),
+        team_id: 0,  // 默认无队伍
         life: 100,
         strength: 100,
         location: "起始位置".to_string(),

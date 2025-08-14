@@ -25,12 +25,12 @@ VALUES
 ('game-002', '测试游戏2', '用于测试的第二个游戏实例', 'director456', 100);
 
 -- 插入测试演员账户
-INSERT INTO actors (id, game_id, name, password) 
+INSERT INTO actors (id, game_id, name, password, team_id) 
 VALUES 
-('actor-001', 'game-001', '演员1', 'actor1'),
-('actor-002', 'game-001', '演员2', 'actor2'),
-('actor-003', 'game-002', '演员3', 'actor3'),
-('actor-004', 'game-002', '演员4', 'actor4');
+('actor-001', 'game-001', '演员1', 'actor1', 0),
+('actor-002', 'game-001', '演员2', 'actor2', 0),
+('actor-003', 'game-002', '演员3', 'actor3', 0),
+('actor-004', 'game-002', '演员4', 'actor4', 0);
 
 -- 插入初始游戏统计数据
 INSERT INTO game_stats (id, game_id, player_count, alive_players) 

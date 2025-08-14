@@ -5,6 +5,7 @@ pub struct Player {
     pub id: String,
     pub name: String,
     pub password: String, // 6-8位字母数字
+    pub team_id: u32,     // 队伍ID，用于标识玩家所属队伍，0表示无队伍
     pub life: u32,        // 生命值 (0-100)
     pub strength: u32,    // 体力值 (0-100)
     pub location: String, // 当前位置
@@ -28,6 +29,7 @@ mod tests {
             id: "player1".to_string(),
             name: "Test Player".to_string(),
             password: "pass123".to_string(),
+            team_id: 1,
             life: 100,
             strength: 100,
             location: "zone1".to_string(),
@@ -63,6 +65,7 @@ mod tests {
             id: "player1".to_string(),
             name: "Test Player".to_string(),
             password: "pass123".to_string(),
+            team_id: 1,
             life: 80,
             strength: 90,
             location: "zone2".to_string(),
@@ -82,6 +85,7 @@ mod tests {
         assert_eq!(player.id, deserialized.id);
         assert_eq!(player.name, deserialized.name);
         assert_eq!(player.password, deserialized.password);
+        assert_eq!(player.team_id, deserialized.team_id);
         assert_eq!(player.life, deserialized.life);
         assert_eq!(player.strength, deserialized.strength);
         assert_eq!(player.location, deserialized.location);
