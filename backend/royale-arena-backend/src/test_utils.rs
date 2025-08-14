@@ -28,5 +28,7 @@ pub fn create_test_app_state() -> Arc<Mutex<AppState>> {
     Arc::new(Mutex::new(AppState {
         games: HashMap::new(),
         game_rules: HashMap::new(),
+        rule_templates: HashMap::new(),
+        places: HashMap::new(),
     }))
 }

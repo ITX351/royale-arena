@@ -14,11 +14,15 @@ mod test_utils;
 
 use models::game::Game;
 use models::rules::GameRules;
+use models::rule_template::RuleTemplate;
+use models::place::Place;
 
 // AppState structure
 pub struct AppState {
     pub games: HashMap<String, Game>,
     pub game_rules: HashMap<String, GameRules>,
+    pub rule_templates: HashMap<String, RuleTemplate>,
+    pub places: HashMap<String, Vec<Place>>, // game_id -> places
 }
 
 #[actix_web::main]
@@ -35,6 +39,8 @@ async fn main() -> std::io::Result<()> {
     let app_state = Arc::new(Mutex::new(AppState {
         games: HashMap::new(),
         game_rules: HashMap::new(),
+        rule_templates: HashMap::new(),
+        places: HashMap::new(),
     }));
     
     // Start HTTP server
