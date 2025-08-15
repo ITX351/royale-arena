@@ -1,7 +1,7 @@
 use crate::models::admin_game::{
     CreateGameRequest, CreateRuleTemplateRequest, UpdateGameRequest, UpdateRuleTemplateRequest,
 };
-use crate::models::game::Game;
+
 use crate::models::rule_template::RuleTemplate;
 use crate::models::rules::GameRules;
 use mysql::Value;
@@ -9,9 +9,11 @@ use mysql::prelude::*;
 
 #[cfg(test)]
 use crate::test_data::TestDataManager;
+#[cfg(test)]
+use crate::models::game::Game;
 
 /// 验证游戏状态是否有效
-fn validate_game_status(status: &str) -> Result<(), String> {
+pub fn validate_game_status(status: &str) -> Result<(), String> {
     match status {
         "waiting" | "running" | "paused" | "ended" => Ok(()),
         _ => Err("无效的游戏状态".to_string()),
@@ -19,7 +21,7 @@ fn validate_game_status(status: &str) -> Result<(), String> {
 }
 
 /// 验证游戏阶段是否有效
-fn validate_game_phase(phase: &str) -> Result<(), String> {
+pub fn validate_game_phase(phase: &str) -> Result<(), String> {
     match phase {
         "day" | "night" => Ok(()),
         _ => Err("无效的游戏阶段".to_string()),
@@ -155,8 +157,9 @@ pub fn delete_game(
     Ok(())
 }
 
-/// 获取游戏信息
-pub fn get_game(
+/// 获取游戏信息（用于测试）
+#[cfg(test)]
+pub fn get_game_for_test(
     conn: &mut mysql::PooledConn,
     game_id: &str,
 ) -> Result<Option<Game>, Box<dyn std::error::Error>> {
@@ -199,6 +202,8 @@ pub fn get_game(
         None => Ok(None),
     }
 }
+
+
 
 /// 创建规则模板
 pub fn create_rule_template(
@@ -431,7 +436,7 @@ mod tests {
         test_data_manager.created_games.push(game_id.clone());
 
         // Get game to verify creation
-        let game = get_game(&mut conn, &game_id).expect("Failed to get game");
+        let game = get_game_for_test(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_some(), "Game should exist");
         let game = game.unwrap();
         // 验证默认的rule_template_id值
@@ -449,7 +454,7 @@ mod tests {
         assert!(result.is_ok(), "Failed to update game: {:?}", result.err());
 
         // Get game to verify update
-        let game = get_game(&mut conn, &game_id).expect("Failed to get game");
+        let game = get_game_for_test(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_some(), "Game should exist");
         let game = game.unwrap();
         assert_eq!(game.name, "Updated Test Game");
@@ -462,7 +467,7 @@ mod tests {
         assert!(result.is_ok(), "Failed to delete game: {:?}", result.err());
 
         // Verify game is deleted
-        let game = get_game(&mut conn, &game_id).expect("Failed to get game");
+        let game = get_game_for_test(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_none(), "Game should not exist after deletion");
 
         // Clean up test data

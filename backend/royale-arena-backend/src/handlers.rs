@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod admin_game;
+pub mod admin_user;
 pub mod director;
 pub mod export;
 pub mod game;

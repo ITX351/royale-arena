@@ -1,5 +1,6 @@
 use crate::models::game::Game;
 use crate::models::rules::GameRules;
+use crate::services::admin_game_service::{validate_game_status, validate_game_phase};
 use crate::services::db_helper::get_db_connection_from_pool;
 use actix_web::error::ErrorInternalServerError;
 use mysql::prelude::*;
@@ -123,6 +124,17 @@ pub async fn get_game_from_db(game_id: &str) -> Result<Option<Game>, actix_web::
             } else {
                 Vec::new()
             };
+
+            // 验证游戏状态和阶段
+            validate_game_status(&status).map_err(|e| {
+                tracing::error!("Invalid game status: {}", e);
+                ErrorInternalServerError("Invalid game status")
+            })?;
+            
+            validate_game_phase(&phase).map_err(|e| {
+                tracing::error!("Invalid game phase: {}", e);
+                ErrorInternalServerError("Invalid game phase")
+            })?;
 
             let game = Game {
                 id,

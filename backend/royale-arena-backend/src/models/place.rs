@@ -221,7 +221,7 @@ mod tests {
         assert!(place.validate().is_ok());
 
         // 测试空ID
-        let mut place = Place::new(
+        let place = Place::new(
             "".to_string(),
             "测试地点".to_string(),
             "这是一个测试地点".to_string(),

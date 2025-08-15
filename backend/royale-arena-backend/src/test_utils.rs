@@ -1,9 +1,7 @@
 // Common test utilities for the Royale Arena backend
 
 use crate::AppState;
-use crate::services::db::create_db_pool;
 use actix_web::{App, web};
-use mysql::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -32,34 +30,6 @@ pub fn create_test_app_state() -> Arc<Mutex<AppState>> {
         rule_templates: HashMap::new(),
         places: HashMap::new(),
     }))
-}
-
-/// 创建测试数据库连接
-pub fn create_test_db_connection() -> Result<mysql::PooledConn, mysql::Error> {
-    let pool = create_db_pool()?;
-    pool.get_conn()
-}
-
-/// 清理测试数据
-pub fn clean_test_data(
-    conn: &mut mysql::PooledConn,
-    table: &str,
-    condition: &str,
-) -> Result<(), mysql::Error> {
-    let query = format!("DELETE FROM {} WHERE {}", table, condition);
-    conn.query_drop(query)
-}
-
-/// 插入测试数据
-pub fn insert_test_data<T: serde::Serialize>(
-    conn: &mut mysql::PooledConn,
-    table: &str,
-    data: &T,
-) -> Result<(), mysql::Error> {
-    // 这里应该实现具体的插入逻辑，根据数据类型生成INSERT语句
-    // 由于实现复杂，暂时只打印日志
-    tracing::info!("Inserting test data into table: {}", table);
-    Ok(())
 }
 
 #[cfg(test)]

@@ -105,6 +105,11 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route(
                 "/admin/rule-templates/{template_id}",
                 web::delete().to(crate::handlers::admin_game::delete_rule_template),
+            )
+            // Admin user management routes
+            .route(
+                "/admin/users",
+                web::post().to(crate::handlers::admin_user::create_admin_user_handler),
             ),
     );
 }

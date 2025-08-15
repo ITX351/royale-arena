@@ -202,7 +202,7 @@ mod tests {
         assert!(game.validate().is_ok());
 
         // 测试无效的游戏ID
-        let mut game = Game::new(
+        let game = Game::new(
             "".to_string(),
             "Test Game".to_string(),
             "A test game".to_string(),
