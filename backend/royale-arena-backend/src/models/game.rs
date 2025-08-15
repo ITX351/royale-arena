@@ -6,6 +6,7 @@ pub struct Game {
     pub name: String,
     pub description: String,
     pub status: String, // waiting|running|paused|ended
+    pub rule_template_id: Option<String>, // 关联的规则模板ID
     pub phase: String,  // day|night
     pub player_count: u32,
     pub max_players: u32,
@@ -29,6 +30,7 @@ mod tests {
             name: "Test Game".to_string(),
             description: "A test game".to_string(),
             status: "waiting".to_string(),
+            rule_template_id: Some("template1".to_string()),
             phase: "day".to_string(),
             player_count: 0,
             max_players: 100,
@@ -44,6 +46,7 @@ mod tests {
         assert_eq!(game.id, "game1");
         assert_eq!(game.name, "Test Game");
         assert_eq!(game.status, "waiting");
+        assert_eq!(game.rule_template_id, Some("template1".to_string()));
         assert_eq!(game.phase, "day");
         assert_eq!(game.player_count, 0);
         assert_eq!(game.max_players, 100);
@@ -56,6 +59,7 @@ mod tests {
             name: "Test Game".to_string(),
             description: "A test game".to_string(),
             status: "running".to_string(),
+            rule_template_id: Some("template1".to_string()),
             phase: "night".to_string(),
             player_count: 50,
             max_players: 100,
@@ -74,6 +78,7 @@ mod tests {
         assert_eq!(game.id, deserialized.id);
         assert_eq!(game.name, deserialized.name);
         assert_eq!(game.status, deserialized.status);
+        assert_eq!(game.rule_template_id, deserialized.rule_template_id);
         assert_eq!(game.phase, deserialized.phase);
         assert_eq!(game.player_count, deserialized.player_count);
         assert_eq!(game.max_players, deserialized.max_players);

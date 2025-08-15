@@ -154,7 +154,8 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
   "rest_mode": {
     "life_recovery": "integer",   // 静养模式生命恢复值
     "max_moves": "integer"        // 静养模式最大移动次数
-  }
+  },
+  "teammate_behavior": "integer"  // 队友行为规则，位压缩存储
 }
 ```
 
@@ -184,6 +185,7 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
     "life_recovery": "integer|null",   // 静养模式生命恢复值，null表示使用默认值
     "max_moves": "integer|null"        // 静养模式最大移动次数，null表示使用默认值
   },
+  "teammate_behavior": "integer",      // 队友行为规则，位压缩存储
   "created_at": "ISO8601 datetime",    // 模版创建时间
   "updated_at": "ISO8601 datetime"     // 模版更新时间
 }

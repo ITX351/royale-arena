@@ -85,18 +85,19 @@ pub fn get_game(
     conn: &mut mysql::PooledConn,
     game_id: &str,
 ) -> Result<Option<Game>, Box<dyn std::error::Error>> {
-    let result: Option<(String, String, String, String, u32, String)> = conn.exec_first(
-        "SELECT id, name, description, director_password, max_players, status FROM games WHERE id = ?",
+    let result: Option<(String, String, String, String, u32, String, Option<String>)> = conn.exec_first(
+        "SELECT id, name, description, director_password, max_players, status, rule_template_id FROM games WHERE id = ?",
         (game_id,)
     )?;
     
     match result {
-        Some((id, name, description, _director_password, max_players, status)) => {
+        Some((id, name, description, _director_password, max_players, status, rule_template_id)) => {
             Ok(Some(Game {
                 id,
                 name,
                 description,
                 status,
+                rule_template_id,
                 phase: "day".to_string(), // Default value
                 player_count: 0, // Default value
                 max_players,
@@ -123,22 +124,26 @@ pub fn create_rule_template(
     // Convert places to JSON
     let places_json = serde_json::to_string(&request.rules.places)?;
     
+    // 使用Vec<Value>来避免参数数量限制
+    let params = vec![
+        template_id.clone().into(),
+        request.name.clone().into(),
+        request.description.clone().into(),
+        places_json.into(),
+        (request.rules.max_life as i32).into(),
+        (request.rules.max_strength as i32).into(),
+        (request.rules.day_recovery as i32).into(),
+        (request.rules.move_cost as i32).into(),
+        (request.rules.search_cost as i32).into(),
+        (request.rules.search_interval as i32).into(),
+        (request.rules.rest_recovery as i32).into(),
+        (request.rules.rest_move_limit as i32).into(),
+        (request.rules.teammate_behavior).into(),
+    ];
+    
     conn.exec_drop(
-        "INSERT INTO rule_templates (id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            &template_id,
-            &request.name,
-            &request.description,
-            &places_json,
-            request.rules.max_life as i32,
-            request.rules.max_strength as i32,
-            request.rules.day_recovery as i32,
-            request.rules.move_cost as i32,
-            request.rules.search_cost as i32,
-            request.rules.search_interval as i32,
-            request.rules.rest_recovery as i32,
-            request.rules.rest_move_limit as i32,
-        )
+        "INSERT INTO rule_templates (id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        mysql::Params::Positional(params)
     )?;
     
     Ok(template_id)
@@ -194,6 +199,9 @@ pub fn update_rule_template(
         
         updates.push("max_moves = ?".to_string());
         params.push((rules.rest_move_limit as i32).into());
+        
+        updates.push("teammate_behavior = ?".to_string());
+        params.push((rules.teammate_behavior).into());
     }
     
     if !updates.is_empty() {
@@ -225,15 +233,33 @@ pub fn get_rule_template(
     conn: &mut mysql::PooledConn,
     template_id: &str,
 ) -> Result<RuleTemplate, Box<dyn std::error::Error>> {
-    let result: Option<(String, String, String, String, i32, i32, i32, i32, i32, i32, i32, i32)> = conn.exec_first(
-        "SELECT id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves FROM rule_templates WHERE id = ?",
+    let result: Option<mysql::Row> = conn.exec_first(
+        "SELECT id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior FROM rule_templates WHERE id = ?",
         (template_id,)
     )?;
     
     match result {
-        Some((id, name, description, places_json, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves)) => {
+        Some(row) => {
+            let id: String = row.get(0).unwrap_or_default();
+            let name: String = row.get(1).unwrap_or_default();
+            let description: String = row.get(2).unwrap_or_default();
+            let places_json: String = row.get(3).unwrap_or_default();
+            let max_life: i32 = row.get(4).unwrap_or_default();
+            let max_strength: i32 = row.get(5).unwrap_or_default();
+            let daily_strength_recovery: i32 = row.get(6).unwrap_or_default();
+            let move_cost: i32 = row.get(7).unwrap_or_default();
+            let search_cost: i32 = row.get(8).unwrap_or_default();
+            let search_cooldown: i32 = row.get(9).unwrap_or_default();
+            let life_recovery: i32 = row.get(10).unwrap_or_default();
+            let max_moves: i32 = row.get(11).unwrap_or_default();
+            let teammate_behavior: i32 = row.get(12).unwrap_or_default();
+            
             // Parse places JSON
-            let places: Vec<String> = serde_json::from_str(&places_json)?;
+            let places: Vec<String> = if !places_json.is_empty() {
+                serde_json::from_str(&places_json)?
+            } else {
+                Vec::new()
+            };
             
             let rules = GameRules {
                 max_life: max_life as u32,
@@ -247,6 +273,7 @@ pub fn get_rule_template(
                 search_cost: search_cost as u32,
                 places,
                 enable_day_voting: true, // Default value, as it's not stored in the template
+                teammate_behavior,
             };
             
             Ok(RuleTemplate::new(
@@ -291,6 +318,13 @@ mod tests {
         let game_id = create_game(&mut conn, &create_request).expect("Failed to create game");
         assert!(!game_id.is_empty(), "Game ID should not be empty");
         
+        // Get game to verify creation
+        let game = get_game(&mut conn, &game_id).expect("Failed to get game");
+        assert!(game.is_some(), "Game should exist");
+        let game = game.unwrap();
+        // 验证默认的rule_template_id值
+        assert_eq!(game.rule_template_id, None);
+        
         // Update game
         let update_request = UpdateGameRequest {
             name: Some("Updated Test Game".to_string()),
@@ -308,6 +342,8 @@ mod tests {
         let game = game.unwrap();
         assert_eq!(game.name, "Updated Test Game");
         assert_eq!(game.max_players, 75);
+        // 验证rule_template_id值在更新后保持不变
+        assert_eq!(game.rule_template_id, None);
         
         // Delete game
         let result = delete_game(&mut conn, &game_id);
@@ -334,6 +370,7 @@ mod tests {
         let mut rules = GameRules::default();
         rules.max_life = 150;
         rules.max_strength = 150;
+        rules.teammate_behavior = 5; // 设置队友行为规则
         
         let create_request = CreateRuleTemplateRequest {
             name: "Test Template".to_string(),
@@ -345,11 +382,21 @@ mod tests {
         let template_id = create_rule_template(&mut conn, &create_request).expect("Failed to create rule template");
         assert!(!template_id.is_empty(), "Template ID should not be empty");
         
+        // Get rule template to verify creation
+        let template = get_rule_template(&mut conn, &template_id);
+        assert!(template.is_ok(), "Failed to get rule template: {:?}", template.err());
+        let template = template.unwrap();
+        // 验证teammate_behavior值
+        assert_eq!(template.rules.teammate_behavior, 5);
+        
         // Update rule template
+        let mut updated_rules = GameRules::default();
+        updated_rules.teammate_behavior = 10; // 更新队友行为规则
+        
         let update_request = UpdateRuleTemplateRequest {
             name: Some("Updated Test Template".to_string()),
             description: Some("An updated test rule template".to_string()),
-            rules: Some(GameRules::default()),
+            rules: Some(updated_rules),
         };
         
         let result = update_rule_template(&mut conn, &template_id, &update_request);
@@ -358,6 +405,9 @@ mod tests {
         // Get rule template to verify update
         let template = get_rule_template(&mut conn, &template_id);
         assert!(template.is_ok(), "Failed to get rule template: {:?}", template.err());
+        let template = template.unwrap();
+        // 验证teammate_behavior值已更新
+        assert_eq!(template.rules.teammate_behavior, 10);
         
         // Delete rule template
         let result = delete_rule_template(&mut conn, &template_id);

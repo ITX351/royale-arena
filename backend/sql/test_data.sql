@@ -4,13 +4,13 @@
 USE royale_arena;
 
 -- 插入测试管理员账户
--- 普通管理员 (密码: admin123)
+-- 管理员a (密码: 1)
 INSERT INTO admin_users (id, username, password, is_super_admin) 
-VALUES ('admin-001', 'admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', FALSE);
+VALUES ('3e6aa7c8-197a-4627-8ead-0afb2f050677', 'a', '$2b$12$j/bJMGgwyj0tzDSRHZWQZuMPqwOdgCRDMQLO6Sle/ONIMcDMXE15e', TRUE);
 
--- 超级管理员 (密码: super123)
+-- 管理员b (密码: 2)
 INSERT INTO admin_users (id, username, password, is_super_admin) 
-VALUES ('super-001', 'superadmin', '$2b$12$V3l9YdlG7jwBn8pF4Hp9yO//.C.QQVU51RoX5h6mZ55Xv6z9.1.2C', TRUE);
+VALUES ('00f2bd7d-99f8-4bc7-a4a8-f2293549f726', 'b', '$2b$12$xQn6ti4eKhH4H3MXn2OdHufT1HWv.NZOI2rVizjjPYfLkDFKt7zFC', FALSE);
 
 -- 插入测试游戏规则模版
 INSERT INTO rule_templates (id, template_name, description, day_duration, night_duration) 

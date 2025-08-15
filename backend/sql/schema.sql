@@ -47,6 +47,8 @@ CREATE TABLE rule_templates (
     -- 静养模式配置
     life_recovery INT NULL COMMENT '静养模式生命恢复值，NULL表示使用默认值',
     max_moves INT NULL COMMENT '静养模式最大移动次数，NULL表示使用默认值',
+    -- 队友行为规则
+    teammate_behavior INT NOT NULL DEFAULT 0 COMMENT '队友行为规则，位压缩存储：0-无限制，1-禁止队友伤害，2-禁止搜索到队友，4-允许观看队友状态，8-允许赠送队友物品',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '模版创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '模版更新时间'
 ) COMMENT '游戏规则模版表';
@@ -60,8 +62,11 @@ CREATE TABLE games (
     director_password VARCHAR(50) NOT NULL COMMENT '导演密码',
     max_players INT NOT NULL DEFAULT 100 COMMENT '最大玩家数量',
     status ENUM('waiting', 'running', 'paused', 'ended') NOT NULL DEFAULT 'waiting' COMMENT '游戏状态',
+    -- 关联规则模板
+    rule_template_id VARCHAR(36) NULL COMMENT '关联的规则模板ID',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (rule_template_id) REFERENCES rule_templates(id) ON DELETE SET NULL
 ) COMMENT '游戏实例表';
 
 -- 4. 演员账户表

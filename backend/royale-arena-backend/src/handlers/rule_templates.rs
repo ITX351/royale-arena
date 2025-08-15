@@ -1,5 +1,6 @@
 use actix_web::{web, HttpResponse, Result};
 use serde_json::json;
+use crate::services::game_service::get_rule_template_from_db;
 
 pub async fn get_rule_templates(
     data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>
@@ -28,11 +29,13 @@ pub async fn get_rule_template(
     data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>
 ) -> Result<HttpResponse> {
     let template_id = path.into_inner();
-    let state = data.lock().await;
     
-    // 尝试从自定义模版中查找
-    if let Some(template) = state.rule_templates.get(&template_id) {
-        return Ok(HttpResponse::Ok().json(template));
+    // 首先尝试从内存状态中获取
+    {
+        let state = data.lock().await;
+        if let Some(template) = state.rule_templates.get(&template_id) {
+            return Ok(HttpResponse::Ok().json(template));
+        }
     }
     
     // 如果没有找到，检查是否是默认模版
@@ -47,10 +50,30 @@ pub async fn get_rule_template(
         return Ok(HttpResponse::Ok().json(template));
     }
     
-    // 如果都没找到，返回404
-    Ok(HttpResponse::NotFound().json(json!({
-        "error": "Rule template not found"
-    })))
+    // 最后尝试从数据库获取
+    match get_rule_template_from_db(&template_id) {
+        Ok(Some(rules)) => {
+            let template = crate::models::rule_template::RuleTemplate::new(
+                template_id.clone(),
+                format!("数据库模板: {}", template_id),
+                "从数据库加载的规则模板".to_string(),
+                rules,
+            );
+            Ok(HttpResponse::Ok().json(template))
+        },
+        Ok(None) => {
+            // 如果都没找到，返回404
+            Ok(HttpResponse::NotFound().json(json!({
+                "error": "Rule template not found"
+            })))
+        },
+        Err(_) => {
+            // 如果数据库错误，也返回404而不是500
+            Ok(HttpResponse::NotFound().json(json!({
+                "error": "Rule template not found"
+            })))
+        }
+    }
 }
 
 #[cfg(test)]

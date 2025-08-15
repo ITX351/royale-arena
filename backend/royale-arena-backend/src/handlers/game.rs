@@ -1,6 +1,7 @@
 use actix_web::{web, HttpResponse, Result};
 use serde_json::json;
 use crate::models::game::Game;
+use crate::services::game_service::get_game_from_db;
 
 pub async fn get_games(data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>) -> Result<HttpResponse> {
     let state = data.lock().await;
@@ -13,11 +14,22 @@ pub async fn get_games(data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::
 
 pub async fn get_game_info(path: web::Path<String>, data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>) -> Result<HttpResponse> {
     let game_id = path.into_inner();
-    let state = data.lock().await;
     
-    match state.games.get(&game_id) {
-        Some(game) => Ok(HttpResponse::Ok().json(game)),
-        None => Ok(HttpResponse::NotFound().json(json!({
+    // 首先尝试从内存状态中获取
+    {
+        let state = data.lock().await;
+        if let Some(game) = state.games.get(&game_id) {
+            return Ok(HttpResponse::Ok().json(game));
+        }
+    }
+    
+    // 如果内存中没有，尝试从数据库获取
+    match get_game_from_db(&game_id) {
+        Ok(Some(game)) => Ok(HttpResponse::Ok().json(game)),
+        Ok(None) => Ok(HttpResponse::NotFound().json(json!({
+            "error": "Game not found"
+        }))),
+        Err(_) => Ok(HttpResponse::NotFound().json(json!({
             "error": "Game not found"
         })))
     }

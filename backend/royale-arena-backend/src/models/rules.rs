@@ -20,6 +20,10 @@ pub struct GameRules {
     
     // 其他设置
     pub enable_day_voting: bool, // 是否启用白天投票机制
+    
+    // 队友行为规则（位压缩存储）
+    // 0-无限制，1-禁止队友伤害，2-禁止搜索到队友，4-允许观看队友状态，8-允许赠送队友物品
+    pub teammate_behavior: i32,  // 队友行为规则
 }
 
 impl GameRules {
@@ -43,7 +47,28 @@ impl GameRules {
                 "井".to_string(), "研究中心".to_string()
             ],
             enable_day_voting: true,
+            teammate_behavior: 0, // 默认无限制
         }
+    }
+    
+    /// 检查是否禁止队友伤害
+    pub fn is_teammate_harm_prohibited(&self) -> bool {
+        self.teammate_behavior & 1 != 0
+    }
+    
+    /// 检查是否禁止搜索到队友
+    pub fn is_teammate_search_prohibited(&self) -> bool {
+        self.teammate_behavior & 2 != 0
+    }
+    
+    /// 检查是否允许观看队友状态
+    pub fn is_teammate_view_allowed(&self) -> bool {
+        self.teammate_behavior & 4 != 0
+    }
+    
+    /// 检查是否允许赠送队友物品
+    pub fn is_teammate_gift_allowed(&self) -> bool {
+        self.teammate_behavior & 8 != 0
     }
 }
 
@@ -66,6 +91,7 @@ mod tests {
         assert_eq!(rules.search_cost, 5);
         assert_eq!(rules.places.len(), 22);
         assert!(rules.enable_day_voting);
+        assert_eq!(rules.teammate_behavior, 0);
     }
 
     #[test]
@@ -85,5 +111,32 @@ mod tests {
         assert_eq!(rules.search_cost, deserialized.search_cost);
         assert_eq!(rules.places, deserialized.places);
         assert_eq!(rules.enable_day_voting, deserialized.enable_day_voting);
+        assert_eq!(rules.teammate_behavior, deserialized.teammate_behavior);
+    }
+    
+    #[test]
+    fn test_teammate_behavior_flags() {
+        // 测试默认规则（无限制）
+        let rules = GameRules::default();
+        assert!(!rules.is_teammate_harm_prohibited());
+        assert!(!rules.is_teammate_search_prohibited());
+        assert!(!rules.is_teammate_view_allowed());
+        assert!(!rules.is_teammate_gift_allowed());
+        
+        // 测试禁止队友伤害
+        let mut rules = GameRules::default();
+        rules.teammate_behavior = 1;
+        assert!(rules.is_teammate_harm_prohibited());
+        assert!(!rules.is_teammate_search_prohibited());
+        assert!(!rules.is_teammate_view_allowed());
+        assert!(!rules.is_teammate_gift_allowed());
+        
+        // 测试多个标志组合
+        let mut rules = GameRules::default();
+        rules.teammate_behavior = 1 | 2 | 8; // 禁止伤害 + 禁止搜索 + 允许赠送
+        assert!(rules.is_teammate_harm_prohibited());
+        assert!(rules.is_teammate_search_prohibited());
+        assert!(!rules.is_teammate_view_allowed());
+        assert!(rules.is_teammate_gift_allowed());
     }
 }

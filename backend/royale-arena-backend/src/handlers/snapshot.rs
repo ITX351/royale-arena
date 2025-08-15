@@ -32,6 +32,7 @@ pub async fn get_game_snapshot(
         name: "测试游戏".to_string(),
         description: "这是一个测试游戏".to_string(),
         status: "running".to_string(),
+        rule_template_id: Some("default".to_string()),
         phase: "day".to_string(),
         player_count: 50,
         max_players: 100,
