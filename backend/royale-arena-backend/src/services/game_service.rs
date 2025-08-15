@@ -285,12 +285,6 @@ mod tests {
     use crate::models::game::Game;
 
     #[test]
-    fn test_placeholder() {
-        // Placeholder test - will be replaced when actual implementation is added
-        assert!(true);
-    }
-
-    #[test]
     fn test_game_struct_serialization() {
         // 测试Game结构体的序列化是否包含新的rule_template_id字段
         let game = Game {

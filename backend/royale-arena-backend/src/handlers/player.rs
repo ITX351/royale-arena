@@ -1,14 +1,6 @@
 use crate::models::player::Player;
 use actix_web::{HttpResponse, Result, web};
 
-// 模拟从游戏数据中查找玩家的函数
-// 在实际实现中，这将从AppState中查找玩家数据
-fn find_player_in_game_data(game_id: &str, player_id: &str) -> Option<Player> {
-    // 这里应该实现从AppState中查找玩家的逻辑
-    // 目前返回None表示未找到玩家
-    None
-}
-
 /// 验证玩家凭证
 fn verify_player_credentials(player: &Player, password: &str) -> bool {
     match player.verify_password(password) {

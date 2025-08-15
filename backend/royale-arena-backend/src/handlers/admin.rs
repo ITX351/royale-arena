@@ -1,14 +1,14 @@
 use crate::models::admin::{LoginRequest, LoginResponse};
 use crate::services::db_helper::get_db_connection_from_pool;
 use actix_web::{HttpResponse, Result, web};
-use bcrypt::{DEFAULT_COST, verify};
+use bcrypt::verify;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use mysql::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize)]
-struct Claims {
+pub struct Claims {
     sub: String, // subject (user ID)
     exp: usize,  // expiration time
     is_super_admin: bool,
