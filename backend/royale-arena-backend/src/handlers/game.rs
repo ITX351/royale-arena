@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Result};
 use serde_json::json;
 use crate::models::game::Game;
-use crate::services::game_service::get_game_from_db;
+use crate::services::game_service::{get_game_from_db, clear_game_cache};
 
 pub async fn get_games(data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>) -> Result<HttpResponse> {
     let state = data.lock().await;
@@ -15,24 +15,48 @@ pub async fn get_games(data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::
 pub async fn get_game_info(path: web::Path<String>, data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>) -> Result<HttpResponse> {
     let game_id = path.into_inner();
     
+    tracing::info!("Fetching game info for game_id: {}", game_id);
+    
     // 首先尝试从内存状态中获取
     {
         let state = data.lock().await;
         if let Some(game) = state.games.get(&game_id) {
+            tracing::debug!("Found game in memory cache for game_id: {}", game_id);
             return Ok(HttpResponse::Ok().json(game));
         }
     }
     
     // 如果内存中没有，尝试从数据库获取
-    match get_game_from_db(&game_id) {
-        Ok(Some(game)) => Ok(HttpResponse::Ok().json(game)),
-        Ok(None) => Ok(HttpResponse::NotFound().json(json!({
-            "error": "Game not found"
-        }))),
-        Err(_) => Ok(HttpResponse::NotFound().json(json!({
-            "error": "Game not found"
-        })))
+    match get_game_from_db(&game_id).await {
+        Ok(Some(game)) => {
+            tracing::debug!("Found game in database for game_id: {}", game_id);
+            Ok(HttpResponse::Ok().json(game))
+        },
+        Ok(None) => {
+            tracing::warn!("Game not found in database for game_id: {}", game_id);
+            Ok(HttpResponse::NotFound().json(json!({
+                "error": "Game not found"
+            })))
+        },
+        Err(_) => {
+            tracing::error!("Database error when fetching game for game_id: {}", game_id);
+            Ok(HttpResponse::NotFound().json(json!({
+                "error": "Game not found"
+            })))
+        }
     }
+}
+
+/// 清除游戏缓存的端点（用于测试和管理）
+pub async fn clear_game_cache_endpoint(path: web::Path<String>) -> Result<HttpResponse> {
+    let game_id = path.into_inner();
+    tracing::info!("Clearing cache for game_id: {}", game_id);
+    
+    clear_game_cache(&game_id).await;
+    
+    Ok(HttpResponse::Ok().json(json!({
+        "message": format!("Cache cleared for game_id: {}", game_id)
+    })))
 }
 
 #[cfg(test)]

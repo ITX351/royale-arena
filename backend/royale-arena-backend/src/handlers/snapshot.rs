@@ -46,23 +46,31 @@ pub async fn get_game_snapshot(
     };
     
     let players = vec![
-        Player {
-            id: format!("player-{}-1", game_id),
-            name: "测试玩家1".to_string(),
-            password: "password123".to_string(),
-            team_id: 0,
-            life: 100,
-            strength: 100,
-            location: "起始位置".to_string(),
-            things: vec!["道具1".to_string(), "道具2".to_string()],
-            hands: vec!["武器1".to_string()],
-            able: true,
-            injured: 0,
-            vote: 1,
-            ts: 1234567890,
-            deliver: 0,
-            rest: 0,
-        }
+        Player::new(
+            format!("player-{}-1", game_id),
+            "测试玩家1".to_string(),
+            "password123".to_string(),
+            0
+        ).unwrap_or_else(|_| {
+            // 如果创建失败，使用默认值
+            Player {
+                id: format!("player-{}-1", game_id),
+                name: "测试玩家1".to_string(),
+                password_hash: "default_hash".to_string(),
+                team_id: 0,
+                life: 100,
+                strength: 100,
+                location: "起始位置".to_string(),
+                things: vec!["道具1".to_string(), "道具2".to_string()],
+                hands: vec!["武器1".to_string()],
+                able: true,
+                injured: 0,
+                vote: 1,
+                ts: 1234567890,
+                deliver: 0,
+                rest: 0,
+            }
+        })
     ];
     
     let snapshot = GameSnapshot {

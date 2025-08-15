@@ -51,7 +51,7 @@ pub async fn get_rule_template(
     }
     
     // 最后尝试从数据库获取
-    match get_rule_template_from_db(&template_id) {
+    match get_rule_template_from_db(&template_id).await {
         Ok(Some(rules)) => {
             let template = crate::models::rule_template::RuleTemplate::new(
                 template_id.clone(),

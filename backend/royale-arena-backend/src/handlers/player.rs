@@ -1,22 +1,43 @@
 use actix_web::{web, HttpResponse, Result};
 use crate::models::player::Player;
 
+// 模拟从游戏数据中查找玩家的函数
+// 在实际实现中，这将从AppState中查找玩家数据
+fn find_player_in_game_data(game_id: &str, player_id: &str) -> Option<Player> {
+    // 这里应该实现从AppState中查找玩家的逻辑
+    // 目前返回None表示未找到玩家
+    None
+}
+
 pub async fn get_player_info(
     path: web::Path<(String, String)>, // (game_id, player_id)
-    _data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>
+    data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>
 ) -> Result<HttpResponse> {
-    let (_game_id, player_id) = path.into_inner();
+    let (game_id, player_id) = path.into_inner();
+    
+    // 首先尝试从内存状态中获取玩家信息
+    {
+        let state = data.lock().await;
+        // 在实际实现中，我们需要从游戏数据中查找玩家信息
+        // 这里检查是否有对应游戏和玩家的数据
+        if let Some(_game) = state.games.get(&game_id) {
+            // TODO: 实现从游戏数据中获取真实玩家信息的逻辑
+            // 这里应该查找特定玩家的数据
+        }
+    }
     
     // 在实际实现中，我们需要从游戏数据中查找玩家信息
-    // 这里我们暂时返回一个示例玩家信息
-    // TODO: 实现从游戏数据中获取真实玩家信息的逻辑
-    
-    // 为了测试目的，我们创建一个示例玩家
-    let player = Player {
+    // 暂时返回一个示例玩家信息
+    let player = Player::new(
+        player_id.clone(),
+        "Test Player".to_string(),
+        "password123".to_string(),
+        0  // 默认无队伍
+    ).unwrap_or_else(|_| Player {
         id: player_id.clone(),
         name: "Test Player".to_string(),
-        password: "password123".to_string(),
-        team_id: 0,  // 默认无队伍
+        password_hash: "default_hash".to_string(),
+        team_id: 0,
         life: 100,
         strength: 100,
         location: "起始位置".to_string(),
@@ -28,7 +49,7 @@ pub async fn get_player_info(
         ts: 1234567890,
         deliver: 0,
         rest: 0,
-    };
+    });
     
     Ok(HttpResponse::Ok().json(player))
 }

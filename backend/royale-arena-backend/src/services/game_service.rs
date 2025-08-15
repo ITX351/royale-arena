@@ -3,9 +3,62 @@ use crate::models::rules::GameRules;
 use crate::services::db_helper::get_db_connection_from_pool;
 use actix_web::error::ErrorInternalServerError;
 use mysql::prelude::*;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+// 游戏数据缓存，用于减少数据库查询
+pub struct GameCache {
+    games: HashMap<String, Game>,
+    rules: HashMap<String, GameRules>,
+}
+
+impl GameCache {
+    pub fn new() -> Self {
+        Self {
+            games: HashMap::new(),
+            rules: HashMap::new(),
+        }
+    }
+    
+    pub fn get_game(&self, game_id: &str) -> Option<&Game> {
+        self.games.get(game_id)
+    }
+    
+    pub fn insert_game(&mut self, game_id: String, game: Game) {
+        self.games.insert(game_id, game);
+    }
+    
+    pub fn get_rules(&self, game_id: &str) -> Option<&GameRules> {
+        self.rules.get(game_id)
+    }
+    
+    pub fn insert_rules(&mut self, game_id: String, rules: GameRules) {
+        self.rules.insert(game_id, rules);
+    }
+    
+    // 清除缓存中的过期数据
+    pub fn clear_expired(&mut self, game_id: &str) {
+        self.games.remove(game_id);
+        self.rules.remove(game_id);
+    }
+}
+
+// 全局游戏缓存实例
+lazy_static::lazy_static! {
+    pub static ref GAME_CACHE: Arc<Mutex<GameCache>> = Arc::new(Mutex::new(GameCache::new()));
+}
 
 /// 从数据库获取游戏信息
-pub fn get_game_from_db(game_id: &str) -> Result<Option<Game>, actix_web::Error> {
+pub async fn get_game_from_db(game_id: &str) -> Result<Option<Game>, actix_web::Error> {
+    // 首先检查缓存
+    {
+        let cache = GAME_CACHE.lock().await;
+        if let Some(game) = cache.get_game(game_id) {
+            return Ok(Some(game.clone()));
+        }
+    }
+    
     let mut conn = get_db_connection_from_pool()?;
     
     // 使用Vec<Value>来避免参数数量限制
@@ -22,8 +75,8 @@ pub fn get_game_from_db(game_id: &str) -> Result<Option<Game>, actix_web::Error>
     
     // Log the result for debugging
     match &result {
-        Ok(_) => tracing::debug!("Database query successful"),
-        Err(e) => tracing::error!("Database query failed: {}", e),
+        Ok(_) => tracing::debug!("Database query successful for game_id: {}", game_id),
+        Err(e) => tracing::error!("Database query failed for game_id: {}, error: {}", game_id, e),
     }
     
     let result = result.map_err(|e| {
@@ -68,7 +121,7 @@ pub fn get_game_from_db(game_id: &str) -> Result<Option<Game>, actix_web::Error>
                 Vec::new()
             };
             
-            Ok(Some(Game {
+            let game = Game {
                 id,
                 name,
                 description,
@@ -84,14 +137,30 @@ pub fn get_game_from_db(game_id: &str) -> Result<Option<Game>, actix_web::Error>
                 safe_zones,
                 weather,
                 announcements,
-            }))
+            };
+            
+            // 缓存游戏数据
+            {
+                let mut cache = GAME_CACHE.lock().await;
+                cache.insert_game(game_id.to_string(), game.clone());
+            }
+            
+            Ok(Some(game))
         },
         None => Ok(None)
     }
 }
 
 /// 从数据库获取规则模板
-pub fn get_rule_template_from_db(template_id: &str) -> Result<Option<GameRules>, actix_web::Error> {
+pub async fn get_rule_template_from_db(template_id: &str) -> Result<Option<GameRules>, actix_web::Error> {
+    // 首先检查缓存
+    {
+        let cache = GAME_CACHE.lock().await;
+        if let Some(rules) = cache.get_rules(template_id) {
+            return Ok(Some(rules.clone()));
+        }
+    }
+    
     let mut conn = get_db_connection_from_pool()?;
     
     let result: Option<(Option<i32>, Option<i32>, Option<i32>, Option<i32>, Option<i32>, 
@@ -104,7 +173,7 @@ pub fn get_rule_template_from_db(template_id: &str) -> Result<Option<GameRules>,
               FROM rule_templates WHERE id = ?",
             (template_id,)
         ).map_err(|e| {
-            tracing::error!("Failed to query rule template from database: {}", e);
+            tracing::error!("Failed to query rule template from database: {} for template_id: {}", e, template_id);
             ErrorInternalServerError("Database query error")
         })?;
     
@@ -142,10 +211,22 @@ pub fn get_rule_template_from_db(template_id: &str) -> Result<Option<GameRules>,
             if let Some(val) = teammate_behavior { rules.teammate_behavior = val; }
             if !places.is_empty() { rules.places = places; }
             
+            // 缓存规则数据
+            {
+                let mut cache = GAME_CACHE.lock().await;
+                cache.insert_rules(template_id.to_string(), rules.clone());
+            }
+            
             Ok(Some(rules))
         },
         None => Ok(None)
     }
+}
+
+/// 清除指定游戏的缓存数据
+pub async fn clear_game_cache(game_id: &str) {
+    let mut cache = GAME_CACHE.lock().await;
+    cache.clear_expired(game_id);
 }
 
 #[cfg(test)]
