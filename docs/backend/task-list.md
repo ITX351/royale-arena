@@ -10,17 +10,17 @@
 
 ## 2. 核心功能模块开发
 ### REST API服务器
-- [x] 实现基础服务器框架并解决Docker访问问题
-- [x] 实现用户认证（管理员登录验证）
-- [x] 实现游戏状态及设置查询
-- [x] 实现玩家信息获取
-- [x] 实现游戏规则获取
+- [ ] 实现基础服务器框架并解决Docker访问问题
+- [ ] 实现用户认证（管理员登录验证）
+- [ ] 实现游戏状态及设置查询
+- [ ] 实现玩家信息获取
+- [ ] 实现游戏规则获取
 
 ### WebSocket服务器
-- [x] 实现玩家行动指令接收
-- [x] 实现实时游戏状态推送
-- [x] 实现导演操作指令处理
-- [x] 实现行动结果反馈
+- [ ] 实现玩家行动指令接收
+- [ ] 实现实时游戏状态推送
+- [ ] 实现导演操作指令处理
+- [ ] 实现行动结果反馈
 
 ### 游戏逻辑引擎
 - [ ] 实现行动时间窗口管理
@@ -50,35 +50,35 @@
 ### REST API端点
 
 #### 认证接口
-- [x] 实现`POST /api/admin/login` - 管理员登录验证
-- [x] 实现`POST /api/game/{game_id}/ws-auth` - 验证WebSocket连接凭据
+- [ ] 实现`POST /api/admin/login` - 管理员登录验证
+- [ ] 实现`POST /api/game/{game_id}/ws-auth` - 验证WebSocket连接凭据
 
 #### 游戏管理接口
-- [x] 实现`GET /api/games` - 获取游戏列表
-- [x] 实现`GET /api/game/{game_id}` - 获取游戏基本信息
-- [x] 实现`GET /api/game/{game_id}/rules` - 获取游戏规则
-- [x] 实现`GET /api/rule-templates` - 获取游戏规则模版列表
-- [x] 实现`GET /api/rule-templates/{template_id}` - 获取游戏规则模版详情
+- [ ] 实现`GET /api/games` - 获取游戏列表
+- [ ] 实现`GET /api/game/{game_id}` - 获取游戏基本信息
+- [ ] 实现`GET /api/game/{game_id}/rules` - 获取游戏规则
+- [ ] 实现`GET /api/rule-templates` - 获取游戏规则模版列表
+- [ ] 实现`GET /api/rule-templates/{template_id}` - 获取游戏规则模版详情
 
 #### 玩家接口
-- [x] 实现`GET /api/game/{game_id}/player/{player_id}` - 获取玩家详细信息
-- [x] 实现`GET /api/game/{game_id}/places` - 获取地点状态
+- [ ] 实现`GET /api/game/{game_id}/player/{player_id}` - 获取玩家详细信息
+- [ ] 实现`GET /api/game/{game_id}/places` - 获取地点状态
 - [ ] 实现`POST /api/game/{game_id}/vote` - 投票
 
 #### 导演接口
-- [x] 实现`POST /api/game/{game_id}/players` - 批量添加演员账户
-- [x] 实现`GET /api/game/{game_id}/players` - 获取演员列表
-- [x] 实现`DELETE /api/game/{game_id}/players` - 批量删除演员账户
-- [x] 实现`PUT /api/game/{game_id}/rules` - 更新游戏规则配置
-- [x] 实现`GET /api/game/{game_id}/logs` - 获取游戏日志
-- [x] 实现`GET /api/game/{game_id}/stats` - 获取游戏统计
-- [x] 实现`GET /api/game/{game_id}/snapshot` - 获取游戏完整状态快照
-- [x] 实现`GET /api/game/{game_id}/votes` - 获取投票结果
-- [x] 实现`POST /api/game/{game_id}/reset` - 重置游戏
-- [x] 实现`GET /api/game/{game_id}/export` - 导出游戏数据
+- [ ] 实现`POST /api/game/{game_id}/players` - 批量添加演员账户
+- [ ] 实现`GET /api/game/{game_id}/players` - 获取演员列表
+- [ ] 实现`DELETE /api/game/{game_id}/players` - 批量删除演员账户
+- [ ] 实现`PUT /api/game/{game_id}/rules` - 更新游戏规则配置
+- [ ] 实现`GET /api/game/{game_id}/logs` - 获取游戏日志
+- [ ] 实现`GET /api/game/{game_id}/stats` - 获取游戏统计
+- [ ] 实现`GET /api/game/{game_id}/snapshot` - 获取游戏完整状态快照
+- [ ] 实现`GET /api/game/{game_id}/votes` - 获取投票结果
+- [ ] 实现`POST /api/game/{game_id}/reset` - 重置游戏
+- [ ] 实现`GET /api/game/{game_id}/export` - 导出游戏数据
 
 #### 管理员接口
-- [x] 实现`POST /api/admin/login` - 管理员登录验证
+- [ ] 实现`POST /api/admin/login` - 管理员登录验证
 - [x] 实现`POST /api/admin/games` - 创建游戏
 - [x] 实现`PUT /api/admin/game/{game_id}` - 修改游戏设置
 - [x] 实现`DELETE /api/admin/game/{game_id}` - 删除游戏
@@ -87,10 +87,10 @@
 - [x] 实现`DELETE /api/admin/rule-templates/{template_id}` - 删除游戏规则模版
 
 ### WebSocket通信
-- [x] 实现连接时的身份验证
-- [x] 实现玩家行动指令处理（移动、搜索、攻击、使用道具）
-- [x] 实现服务器实时状态推送
-- [x] 实现导演控制指令处理（开始行动、结束行动、缩圈、空投等）
+- [ ] 实现连接时的身份验证
+- [ ] 实现玩家行动指令处理（移动、搜索、攻击、使用道具）
+- [ ] 实现服务器实时状态推送
+- [ ] 实现导演控制指令处理（开始行动、结束行动、缩圈、空投等）
 
 ## 5. 系统约束与性能
 - [ ] 确保不使用游戏引擎或第三方实时通信服务

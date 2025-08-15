@@ -39,7 +39,7 @@ cargo run --bin init_admin_users
 ## 文档
 
 - [游戏规则](docs/game-rules.md)
-- [API规范](docs/api-spec.md)
+- [API规范](docs/api/)
 - [项目总览](QWEN.md)
 - [前端上下文](frontend/QWEN.md)
 - [后端上下文](backend/QWEN.md)
