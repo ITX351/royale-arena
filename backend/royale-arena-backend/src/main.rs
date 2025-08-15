@@ -1,23 +1,23 @@
-use actix_web::{web, App, HttpServer, middleware::Logger};
+use actix_web::{App, HttpServer, middleware::Logger, web};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing_subscriber;
 
 // Import modules
-pub mod models;
 pub mod handlers;
+pub mod models;
 pub mod routes;
 mod services;
 #[cfg(test)]
-mod test_utils;
-#[cfg(test)]
 mod test_data;
+#[cfg(test)]
+mod test_utils;
 
 use models::game::Game;
-use models::rules::GameRules;
-use models::rule_template::RuleTemplate;
 use models::place::Place;
+use models::rule_template::RuleTemplate;
+use models::rules::GameRules;
 
 // AppState structure
 pub struct AppState {
@@ -34,17 +34,17 @@ async fn main() -> std::io::Result<()> {
         Ok(_) => println!("Successfully loaded .env.royale file"),
         Err(e) => eprintln!("Warning: Failed to load .env.royale file: {}", e),
     }
-    
+
     // Initialize logging
     tracing_subscriber::fmt::init();
-    
+
     let app_state = Arc::new(Mutex::new(AppState {
         games: HashMap::new(),
         game_rules: HashMap::new(),
         rule_templates: HashMap::new(),
         places: HashMap::new(),
     }));
-    
+
     // Start HTTP server
     HttpServer::new(move || {
         App::new()

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::models::rules::GameRules;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CreateGameRequest {

@@ -1,7 +1,7 @@
-use actix_web::{web, HttpResponse, Result};
-use serde::{Deserialize, Serialize};
 use crate::models::game::Game;
 use crate::models::player::Player;
+use actix_web::{HttpResponse, Result, web};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct GameSnapshot {
@@ -18,14 +18,14 @@ pub struct GameSnapshotResponse {
 // 获取游戏完整状态快照
 pub async fn get_game_snapshot(
     path: web::Path<String>, // game_id
-    _data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>
+    _data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>,
 ) -> Result<HttpResponse> {
     let game_id = path.into_inner();
-    
+
     // 在实际实现中，我们需要：
     // 1. 验证导演权限
     // 2. 获取游戏的完整状态快照
-    
+
     // 目前返回示例数据
     let game = Game {
         id: game_id.clone(),
@@ -44,14 +44,15 @@ pub async fn get_game_snapshot(
         weather: 0.5,
         announcements: vec!["欢迎来到测试游戏!".to_string()],
     };
-    
+
     let players = vec![
         Player::new(
             format!("player-{}-1", game_id),
             "测试玩家1".to_string(),
             "password123".to_string(),
-            0
-        ).unwrap_or_else(|_| {
+            0,
+        )
+        .unwrap_or_else(|_| {
             // 如果创建失败，使用默认值
             Player {
                 id: format!("player-{}-1", game_id),
@@ -70,26 +71,26 @@ pub async fn get_game_snapshot(
                 deliver: 0,
                 rest: 0,
             }
-        })
+        }),
     ];
-    
+
     let snapshot = GameSnapshot {
         game,
         players,
         timestamp: "2023-01-01T01:30:00Z".to_string(),
     };
-    
+
     let response = GameSnapshotResponse { snapshot };
-    
+
     Ok(HttpResponse::Ok().json(response))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::{create_test_app, create_test_app_state};
     use actix_web::{test, web};
     use serde_json::Value;
-    use crate::test_utils::{create_test_app, create_test_app_state};
 
     #[actix_web::test]
     async fn test_get_game_snapshot() {
@@ -97,19 +98,22 @@ mod tests {
         let app_state = create_test_app_state();
         let app = test::init_service(
             create_test_app(app_state.clone())
-                .route("/game/{game_id}/snapshot", web::get().to(get_game_snapshot))
-        ).await;
+                .route("/game/{game_id}/snapshot", web::get().to(get_game_snapshot)),
+        )
+        .await;
 
         // Make request
-        let req = test::TestRequest::get().uri("/game/test_game/snapshot").to_request();
+        let req = test::TestRequest::get()
+            .uri("/game/test_game/snapshot")
+            .to_request();
         let resp = test::call_service(&app, req).await;
 
         // Check response
         assert!(resp.status().is_success());
-        
+
         let body = test::read_body(resp).await;
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert!(json.get("snapshot").is_some());
         assert!(json["snapshot"].get("game").is_some());
         assert!(json["snapshot"].get("players").is_some());

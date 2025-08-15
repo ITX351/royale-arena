@@ -1,7 +1,7 @@
-pub mod game;
-pub mod player;
 pub mod admin;
-pub mod rules;
-pub mod rule_template;
-pub mod place;
 pub mod admin_game;
+pub mod game;
+pub mod place;
+pub mod player;
+pub mod rule_template;
+pub mod rules;

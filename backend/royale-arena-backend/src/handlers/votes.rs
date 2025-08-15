@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Result};
+use actix_web::{HttpResponse, Result, web};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -24,14 +24,14 @@ pub struct GameVotesResponse {
 // 获取投票结果
 pub async fn get_game_votes(
     path: web::Path<String>, // game_id
-    _data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>
+    _data: web::Data<std::sync::Arc<tokio::sync::Mutex<crate::AppState>>>,
 ) -> Result<HttpResponse> {
     let game_id = path.into_inner();
-    
+
     // 在实际实现中，我们需要：
     // 1. 验证导演权限
     // 2. 从数据库获取投票记录和统计结果
-    
+
     // 目前返回示例数据
     let votes = vec![
         VoteRecord {
@@ -45,27 +45,25 @@ pub async fn get_game_votes(
             voter_id: format!("player-{}-3", game_id),
             target_id: format!("player-{}-2", game_id),
             timestamp: "2023-01-01T01:05:00Z".to_string(),
-        }
+        },
     ];
-    
-    let results = vec![
-        VoteResult {
-            player_id: format!("player-{}-2", game_id),
-            votes_received: 2,
-        }
-    ];
-    
+
+    let results = vec![VoteResult {
+        player_id: format!("player-{}-2", game_id),
+        votes_received: 2,
+    }];
+
     let response = GameVotesResponse { votes, results };
-    
+
     Ok(HttpResponse::Ok().json(response))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::{create_test_app, create_test_app_state};
     use actix_web::{test, web};
     use serde_json::Value;
-    use crate::test_utils::{create_test_app, create_test_app_state};
 
     #[actix_web::test]
     async fn test_get_game_votes() {
@@ -73,19 +71,22 @@ mod tests {
         let app_state = create_test_app_state();
         let app = test::init_service(
             create_test_app(app_state.clone())
-                .route("/game/{game_id}/votes", web::get().to(get_game_votes))
-        ).await;
+                .route("/game/{game_id}/votes", web::get().to(get_game_votes)),
+        )
+        .await;
 
         // Make request
-        let req = test::TestRequest::get().uri("/game/test_game/votes").to_request();
+        let req = test::TestRequest::get()
+            .uri("/game/test_game/votes")
+            .to_request();
         let resp = test::call_service(&app, req).await;
 
         // Check response
         assert!(resp.status().is_success());
-        
+
         let body = test::read_body(resp).await;
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert!(json.get("votes").is_some());
         assert!(json.get("results").is_some());
         assert_eq!(json["votes"].as_array().unwrap().len(), 2);

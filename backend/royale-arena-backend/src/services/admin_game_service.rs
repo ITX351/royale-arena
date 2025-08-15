@@ -1,32 +1,91 @@
-use mysql::prelude::*;
-use mysql::Value;
-use crate::models::admin_game::{CreateGameRequest, UpdateGameRequest, CreateRuleTemplateRequest, UpdateRuleTemplateRequest};
+use crate::models::admin_game::{
+    CreateGameRequest, CreateRuleTemplateRequest, UpdateGameRequest, UpdateRuleTemplateRequest,
+};
 use crate::models::game::Game;
 use crate::models::rule_template::RuleTemplate;
 use crate::models::rules::GameRules;
+use mysql::Value;
+use mysql::prelude::*;
 
 #[cfg(test)]
 use crate::test_data::TestDataManager;
+
+/// 验证游戏状态是否有效
+fn validate_game_status(status: &str) -> Result<(), String> {
+    match status {
+        "waiting" | "running" | "paused" | "ended" => Ok(()),
+        _ => Err("无效的游戏状态".to_string()),
+    }
+}
+
+/// 验证游戏阶段是否有效
+fn validate_game_phase(phase: &str) -> Result<(), String> {
+    match phase {
+        "day" | "night" => Ok(()),
+        _ => Err("无效的游戏阶段".to_string()),
+    }
+}
+
+/// 验证游戏字段
+fn validate_game_fields(name: &str, description: &str, max_players: u32) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("游戏名称不能为空".to_string());
+    }
+
+    if name.len() > 100 {
+        return Err("游戏名称不能超过100个字符".to_string());
+    }
+
+    if description.len() > 1000 {
+        return Err("游戏描述不能超过1000个字符".to_string());
+    }
+
+    if max_players == 0 || max_players > 1000 {
+        return Err("最大玩家数必须在1-1000之间".to_string());
+    }
+
+    Ok(())
+}
+
+/// 验证规则模板字段
+fn validate_rule_template_fields(name: &str, description: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("规则模板名称不能为空".to_string());
+    }
+
+    if name.len() > 100 {
+        return Err("规则模板名称不能超过100个字符".to_string());
+    }
+
+    if description.len() > 500 {
+        return Err("规则模板描述不能超过500个字符".to_string());
+    }
+
+    Ok(())
+}
 
 /// 创建游戏
 pub fn create_game(
     conn: &mut mysql::PooledConn,
     request: &CreateGameRequest,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // 验证游戏字段
+    validate_game_fields(&request.name, &request.description, request.max_players)?;
+
     let game_id = uuid::Uuid::new_v4().to_string();
-    
+
     conn.exec_drop(
         "INSERT INTO games (id, name, description, director_password, max_players) VALUES (?, ?, ?, ?, ?)",
         (&game_id, &request.name, &request.description, &request.director_password, &request.max_players)
     )?;
-    
+
     // 如果提供了规则模板ID，则应用该模板的规则
     if let Some(template_id) = &request.rules_template_id {
         let _template = get_rule_template(conn, template_id)?;
         // 这里应该将模板规则保存到游戏规则表中，但根据任务清单，游戏规则是存储在内存中的
         // 所以我们暂时只记录模板ID，实际规则应用在游戏逻辑引擎中处理
     }
-    
+
     Ok(game_id)
 }
 
@@ -38,35 +97,51 @@ pub fn update_game(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut updates = Vec::new();
     let mut params: Vec<Value> = Vec::new();
-    
+
     if let Some(name) = &request.name {
+        if name.is_empty() {
+            return Err("游戏名称不能为空".into());
+        }
+
+        if name.len() > 100 {
+            return Err("游戏名称不能超过100个字符".into());
+        }
+
         updates.push("name = ?".to_string());
         params.push(name.into());
     }
-    
+
     if let Some(description) = &request.description {
+        if description.len() > 1000 {
+            return Err("游戏描述不能超过1000个字符".into());
+        }
+
         updates.push("description = ?".to_string());
         params.push(description.into());
     }
-    
+
     if let Some(password) = &request.director_password {
         updates.push("director_password = ?".to_string());
         params.push(password.into());
     }
-    
+
     if let Some(max_players) = &request.max_players {
+        if *max_players == 0 || *max_players > 1000 {
+            return Err("最大玩家数必须在1-1000之间".into());
+        }
+
         updates.push("max_players = ?".to_string());
         params.push((*max_players).into());
     }
-    
+
     if !updates.is_empty() {
         let sql = format!("UPDATE games SET {} WHERE id = ?", updates.join(", "));
         params.push(game_id.into());
-        
+
         // Convert params to tuple for mysql exec_drop
         conn.exec_drop(&sql, mysql::Params::Positional(params))?;
     }
-    
+
     Ok(())
 }
 
@@ -75,11 +150,8 @@ pub fn delete_game(
     conn: &mut mysql::PooledConn,
     game_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.exec_drop(
-        "DELETE FROM games WHERE id = ?",
-        (game_id,)
-    )?;
-    
+    conn.exec_drop("DELETE FROM games WHERE id = ?", (game_id,))?;
+
     Ok(())
 }
 
@@ -92,9 +164,20 @@ pub fn get_game(
         "SELECT id, name, description, director_password, max_players, status, rule_template_id FROM games WHERE id = ?",
         (game_id,)
     )?;
-    
+
     match result {
-        Some((id, name, description, _director_password, max_players, status, rule_template_id)) => {
+        Some((
+            id,
+            name,
+            description,
+            _director_password,
+            max_players,
+            status,
+            rule_template_id,
+        )) => {
+            // 验证游戏状态
+            validate_game_status(&status)?;
+
             Ok(Some(Game {
                 id,
                 name,
@@ -102,7 +185,7 @@ pub fn get_game(
                 status,
                 rule_template_id,
                 phase: "day".to_string(), // Default value
-                player_count: 0, // Default value
+                player_count: 0,          // Default value
                 max_players,
                 start_time: None,
                 end_time: None,
@@ -112,7 +195,7 @@ pub fn get_game(
                 weather: 0.0,
                 announcements: vec![],
             }))
-        },
+        }
         None => Ok(None),
     }
 }
@@ -122,11 +205,17 @@ pub fn create_rule_template(
     conn: &mut mysql::PooledConn,
     request: &CreateRuleTemplateRequest,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // 验证规则模板字段
+    validate_rule_template_fields(&request.name, &request.description)?;
+
+    // 验证规则的有效性
+    request.rules.validate()?;
+
     let template_id = uuid::Uuid::new_v4().to_string();
-    
+
     // Convert places to JSON
     let places_json = serde_json::to_string(&request.rules.places)?;
-    
+
     // 使用Vec<Value>来避免参数数量限制
     let params = vec![
         template_id.clone().into(),
@@ -143,12 +232,12 @@ pub fn create_rule_template(
         (request.rules.rest_move_limit as i32).into(),
         (request.rules.teammate_behavior).into(),
     ];
-    
+
     conn.exec_drop(
         "INSERT INTO rule_templates (id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         mysql::Params::Positional(params)
     )?;
-    
+
     Ok(template_id)
 }
 
@@ -160,61 +249,79 @@ pub fn update_rule_template(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut updates = Vec::new();
     let mut params: Vec<Value> = Vec::new();
-    
+
     if let Some(name) = &request.name {
+        if name.is_empty() {
+            return Err("规则模板名称不能为空".into());
+        }
+
+        if name.len() > 100 {
+            return Err("规则模板名称不能超过100个字符".into());
+        }
+
         updates.push("template_name = ?".to_string());
         params.push(name.into());
     }
-    
+
     if let Some(description) = &request.description {
+        if description.len() > 500 {
+            return Err("规则模板描述不能超过500个字符".into());
+        }
+
         updates.push("description = ?".to_string());
         params.push(description.into());
     }
-    
+
     if let Some(rules) = &request.rules {
+        // 验证规则的有效性
+        rules.validate()?;
+
         // Convert places to JSON
         let places_json = serde_json::to_string(&rules.places)?;
-        
+
         updates.push("places = ?".to_string());
         params.push(places_json.into());
-        
+
         // Update individual fields
         updates.push("max_life = ?".to_string());
         params.push((rules.max_life as i32).into());
-        
+
         updates.push("max_strength = ?".to_string());
         params.push((rules.max_strength as i32).into());
-        
+
         updates.push("daily_strength_recovery = ?".to_string());
         params.push((rules.day_recovery as i32).into());
-        
+
         updates.push("move_cost = ?".to_string());
         params.push((rules.move_cost as i32).into());
-        
+
         updates.push("search_cost = ?".to_string());
         params.push((rules.search_cost as i32).into());
-        
+
         updates.push("search_cooldown = ?".to_string());
         params.push((rules.search_interval as i32).into());
-        
+
         updates.push("life_recovery = ?".to_string());
         params.push((rules.rest_recovery as i32).into());
-        
+
         updates.push("max_moves = ?".to_string());
         params.push((rules.rest_move_limit as i32).into());
-        
+
         updates.push("teammate_behavior = ?".to_string());
         params.push((rules.teammate_behavior).into());
     }
-    
+
     if !updates.is_empty() {
-        let sql = format!("UPDATE rule_templates SET {} WHERE id = ?", updates.join(", "));
+        let sql = format!(
+            "UPDATE rule_templates SET {} WHERE id = ?",
+            updates.join(", ")
+        );
         params.push(template_id.into());
-        
+
         // Convert params to tuple for mysql exec_drop
         conn.exec_drop(&sql, mysql::Params::Positional(params))?;
     }
-    
+
     Ok(())
 }
 
@@ -223,11 +330,8 @@ pub fn delete_rule_template(
     conn: &mut mysql::PooledConn,
     template_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.exec_drop(
-        "DELETE FROM rule_templates WHERE id = ?",
-        (template_id,)
-    )?;
-    
+    conn.exec_drop("DELETE FROM rule_templates WHERE id = ?", (template_id,))?;
+
     Ok(())
 }
 
@@ -240,7 +344,7 @@ pub fn get_rule_template(
         "SELECT id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior FROM rule_templates WHERE id = ?",
         (template_id,)
     )?;
-    
+
     match result {
         Some(row) => {
             let id: String = row.get(0).unwrap_or_default();
@@ -256,14 +360,14 @@ pub fn get_rule_template(
             let life_recovery: i32 = row.get(10).unwrap_or_default();
             let max_moves: i32 = row.get(11).unwrap_or_default();
             let teammate_behavior: i32 = row.get(12).unwrap_or_default();
-            
+
             // Parse places JSON
             let places: Vec<String> = if !places_json.is_empty() {
                 serde_json::from_str(&places_json)?
             } else {
                 Vec::new()
             };
-            
+
             let rules = GameRules {
                 max_life: max_life as u32,
                 max_strength: max_strength as u32,
@@ -278,14 +382,12 @@ pub fn get_rule_template(
                 enable_day_voting: true, // Default value, as it's not stored in the template
                 teammate_behavior,
             };
-            
-            Ok(RuleTemplate::new(
-                id,
-                name,
-                description,
-                rules
-            ))
-        },
+
+            // 验证规则的有效性
+            rules.validate()?;
+
+            Ok(RuleTemplate::new(id, name, description, rules))
+        }
         None => Err("Rule template not found".into()),
     }
 }
@@ -295,7 +397,7 @@ mod tests {
     use super::*;
     use crate::services::db::create_db_pool;
     use dotenvy::from_filename;
-    
+
     #[test]
     fn test_create_and_manage_game() {
         // Load environment variables from .env.royale file
@@ -303,14 +405,14 @@ mod tests {
             Ok(_) => println!("Successfully loaded .env.royale file for tests"),
             Err(e) => eprintln!("Warning: Failed to load .env.royale file for tests: {}", e),
         }
-        
+
         // Create database connection pool
         let pool = create_db_pool().expect("Failed to create database pool");
         let mut conn = pool.get_conn().expect("Failed to get database connection");
-        
+
         // Create test data manager
         let mut test_data_manager = TestDataManager::new();
-        
+
         // Test data - 使用唯一游戏名避免冲突
         let game_name = format!("Test Game {}", uuid::Uuid::new_v4());
         let create_request = CreateGameRequest {
@@ -320,21 +422,21 @@ mod tests {
             max_players: 50,
             rules_template_id: None,
         };
-        
+
         // Create game
         let game_id = create_game(&mut conn, &create_request).expect("Failed to create game");
         assert!(!game_id.is_empty(), "Game ID should not be empty");
-        
+
         // Add game to test data manager for cleanup
         test_data_manager.created_games.push(game_id.clone());
-        
+
         // Get game to verify creation
         let game = get_game(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_some(), "Game should exist");
         let game = game.unwrap();
         // 验证默认的rule_template_id值
         assert_eq!(game.rule_template_id, None);
-        
+
         // Update game
         let update_request = UpdateGameRequest {
             name: Some("Updated Test Game".to_string()),
@@ -342,10 +444,10 @@ mod tests {
             director_password: Some("newdirector123".to_string()),
             max_players: Some(75),
         };
-        
+
         let result = update_game(&mut conn, &game_id, &update_request);
         assert!(result.is_ok(), "Failed to update game: {:?}", result.err());
-        
+
         // Get game to verify update
         let game = get_game(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_some(), "Game should exist");
@@ -354,19 +456,21 @@ mod tests {
         assert_eq!(game.max_players, 75);
         // 验证rule_template_id值在更新后保持不变
         assert_eq!(game.rule_template_id, None);
-        
+
         // Delete game
         let result = delete_game(&mut conn, &game_id);
         assert!(result.is_ok(), "Failed to delete game: {:?}", result.err());
-        
+
         // Verify game is deleted
         let game = get_game(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_none(), "Game should not exist after deletion");
-        
+
         // Clean up test data
-        test_data_manager.cleanup().expect("Failed to cleanup test data");
+        test_data_manager
+            .cleanup()
+            .expect("Failed to cleanup test data");
     }
-    
+
     #[test]
     fn test_create_and_manage_rule_template() {
         // Load environment variables from .env.royale file
@@ -374,66 +478,171 @@ mod tests {
             Ok(_) => println!("Successfully loaded .env.royale file for tests"),
             Err(e) => eprintln!("Warning: Failed to load .env.royale file for tests: {}", e),
         }
-        
+
         // Create database connection pool
         let pool = create_db_pool().expect("Failed to create database pool");
         let mut conn = pool.get_conn().expect("Failed to get database connection");
-        
+
         // Create test data manager
         let mut test_data_manager = TestDataManager::new();
-        
+
         // Test data - 使用唯一模板名避免冲突
         let template_name = format!("Test Template {}", uuid::Uuid::new_v4());
         let mut rules = GameRules::default();
         rules.max_life = 150;
         rules.max_strength = 150;
         rules.teammate_behavior = 5; // 设置队友行为规则
-        
+
         let create_request = CreateRuleTemplateRequest {
             name: template_name,
             description: "A test rule template".to_string(),
             rules,
         };
-        
+
         // Create rule template
-        let template_id = create_rule_template(&mut conn, &create_request).expect("Failed to create rule template");
+        let template_id = create_rule_template(&mut conn, &create_request)
+            .expect("Failed to create rule template");
         assert!(!template_id.is_empty(), "Template ID should not be empty");
-        
+
         // Add template to test data manager for cleanup
-        test_data_manager.created_rule_templates.push(template_id.clone());
-        
+        test_data_manager
+            .created_rule_templates
+            .push(template_id.clone());
+
         // Get rule template to verify creation
         let template = get_rule_template(&mut conn, &template_id);
-        assert!(template.is_ok(), "Failed to get rule template: {:?}", template.err());
+        assert!(
+            template.is_ok(),
+            "Failed to get rule template: {:?}",
+            template.err()
+        );
         let template = template.unwrap();
         // 验证teammate_behavior值
         assert_eq!(template.rules.teammate_behavior, 5);
-        
+
         // Update rule template
         let mut updated_rules = GameRules::default();
         updated_rules.teammate_behavior = 10; // 更新队友行为规则
-        
+
         let update_request = UpdateRuleTemplateRequest {
             name: Some("Updated Test Template".to_string()),
             description: Some("An updated test rule template".to_string()),
             rules: Some(updated_rules),
         };
-        
+
         let result = update_rule_template(&mut conn, &template_id, &update_request);
-        assert!(result.is_ok(), "Failed to update rule template: {:?}", result.err());
-        
+        assert!(
+            result.is_ok(),
+            "Failed to update rule template: {:?}",
+            result.err()
+        );
+
         // Get rule template to verify update
         let template = get_rule_template(&mut conn, &template_id);
-        assert!(template.is_ok(), "Failed to get rule template: {:?}", template.err());
+        assert!(
+            template.is_ok(),
+            "Failed to get rule template: {:?}",
+            template.err()
+        );
         let template = template.unwrap();
         // 验证teammate_behavior值已更新
         assert_eq!(template.rules.teammate_behavior, 10);
-        
+
         // Delete rule template
         let result = delete_rule_template(&mut conn, &template_id);
-        assert!(result.is_ok(), "Failed to delete rule template: {:?}", result.err());
-        
+        assert!(
+            result.is_ok(),
+            "Failed to delete rule template: {:?}",
+            result.err()
+        );
+
         // Clean up test data
-        test_data_manager.cleanup().expect("Failed to cleanup test data");
+        test_data_manager
+            .cleanup()
+            .expect("Failed to cleanup test data");
+    }
+
+    #[test]
+    fn test_game_validation() {
+        // 测试有效的游戏创建请求
+        let valid_request = CreateGameRequest {
+            name: "Valid Game".to_string(),
+            description: "A valid game".to_string(),
+            director_password: "password123".to_string(),
+            max_players: 50,
+            rules_template_id: None,
+        };
+        assert!(
+            validate_game_fields(
+                &valid_request.name,
+                &valid_request.description,
+                valid_request.max_players
+            )
+            .is_ok()
+        );
+
+        // 测试空游戏名
+        assert!(validate_game_fields("", "A game", 50).is_err());
+
+        // 测试过长的游戏名
+        let long_name = "A".repeat(101);
+        assert!(validate_game_fields(&long_name, "A game", 50).is_err());
+
+        // 测试过长的游戏描述
+        let long_description = "A".repeat(1001);
+        assert!(validate_game_fields("Game", &long_description, 50).is_err());
+
+        // 测试无效的最大玩家数
+        assert!(validate_game_fields("Game", "A game", 0).is_err());
+        assert!(validate_game_fields("Game", "A game", 1001).is_err());
+    }
+
+    #[test]
+    fn test_rule_template_validation() {
+        // 测试有效的规则模板创建请求
+        let valid_rules = GameRules::default();
+        let valid_request = CreateRuleTemplateRequest {
+            name: "Valid Template".to_string(),
+            description: "A valid template".to_string(),
+            rules: valid_rules,
+        };
+        assert!(
+            validate_rule_template_fields(&valid_request.name, &valid_request.description).is_ok()
+        );
+
+        // 测试空模板名
+        assert!(validate_rule_template_fields("", "A template").is_err());
+
+        // 测试过长的模板名
+        let long_name = "A".repeat(101);
+        assert!(validate_rule_template_fields(&long_name, "A template").is_err());
+
+        // 测试过长的模板描述
+        let long_description = "A".repeat(501);
+        assert!(validate_rule_template_fields("Template", &long_description).is_err());
+    }
+
+    #[test]
+    fn test_game_status_validation() {
+        // 测试有效的游戏状态
+        assert!(validate_game_status("waiting").is_ok());
+        assert!(validate_game_status("running").is_ok());
+        assert!(validate_game_status("paused").is_ok());
+        assert!(validate_game_status("ended").is_ok());
+
+        // 测试无效的游戏状态
+        assert!(validate_game_status("invalid").is_err());
+        assert!(validate_game_status("").is_err());
+    }
+
+    #[test]
+    fn test_game_phase_validation() {
+        // 测试有效的游戏阶段
+        assert!(validate_game_phase("day").is_ok());
+        assert!(validate_game_phase("night").is_ok());
+
+        // 测试无效的游戏阶段
+        assert!(validate_game_phase("invalid").is_err());
+        assert!(validate_game_phase("").is_err());
     }
 }

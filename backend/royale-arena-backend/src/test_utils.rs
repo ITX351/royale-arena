@@ -1,16 +1,16 @@
 // Common test utilities for the Royale Arena backend
 
-use actix_web::{web, App};
+use crate::AppState;
+use crate::services::db::create_db_pool;
+use actix_web::{App, web};
+use mysql::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::AppState;
-use crate::services::db::create_db_pool;
-use mysql::prelude::*;
 
 /// Creates a test application instance with the provided app state
 pub fn create_test_app(
-    app_state: Arc<Mutex<AppState>>
+    app_state: Arc<Mutex<AppState>>,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -18,10 +18,9 @@ pub fn create_test_app(
         Response = actix_web::dev::ServiceResponse<actix_web::body::BoxBody>,
         Error = actix_web::Error,
         InitError = (),
-    >
+    >,
 > {
-    App::new()
-        .app_data(web::Data::new(app_state.clone()))
+    App::new().app_data(web::Data::new(app_state.clone()))
 }
 
 /// Creates a test app state with sample data for testing
@@ -42,13 +41,21 @@ pub fn create_test_db_connection() -> Result<mysql::PooledConn, mysql::Error> {
 }
 
 /// 清理测试数据
-pub fn clean_test_data(conn: &mut mysql::PooledConn, table: &str, condition: &str) -> Result<(), mysql::Error> {
+pub fn clean_test_data(
+    conn: &mut mysql::PooledConn,
+    table: &str,
+    condition: &str,
+) -> Result<(), mysql::Error> {
     let query = format!("DELETE FROM {} WHERE {}", table, condition);
     conn.query_drop(query)
 }
 
 /// 插入测试数据
-pub fn insert_test_data<T: serde::Serialize>(conn: &mut mysql::PooledConn, table: &str, data: &T) -> Result<(), mysql::Error> {
+pub fn insert_test_data<T: serde::Serialize>(
+    conn: &mut mysql::PooledConn,
+    table: &str,
+    data: &T,
+) -> Result<(), mysql::Error> {
     // 这里应该实现具体的插入逻辑，根据数据类型生成INSERT语句
     // 由于实现复杂，暂时只打印日志
     tracing::info!("Inserting test data into table: {}", table);
