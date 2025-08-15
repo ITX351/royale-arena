@@ -11,6 +11,8 @@ pub mod routes;
 mod services;
 #[cfg(test)]
 mod test_utils;
+#[cfg(test)]
+mod test_data;
 
 use models::game::Game;
 use models::rules::GameRules;

@@ -2,6 +2,9 @@ use bcrypt::{hash, verify, DEFAULT_COST};
 use mysql::prelude::*;
 use crate::models::admin::AdminUser;
 
+#[cfg(test)]
+use crate::test_data::TestDataManager;
+
 pub fn create_admin_user(
     conn: &mut mysql::PooledConn,
     username: &str,
@@ -75,38 +78,49 @@ mod tests {
         let pool = create_db_pool().expect("Failed to create database pool");
         let mut conn = pool.get_conn().expect("Failed to get database connection");
         
-        // Test data
-        let username = "test_user";
+        // Create test data manager
+        let mut test_data_manager = TestDataManager::new();
+        
+        // Test data - 使用唯一用户名避免冲突
+        let username = format!("test_user_{}", uuid::Uuid::new_v4());
         let password = "test_password";
         
-        // Clean up any existing test user
-        conn.exec_drop("DELETE FROM admin_users WHERE username = ?", (username,))
-            .expect("Failed to clean up test user");
-        
         // Create admin user
-        let result = create_admin_user(&mut conn, username, password, false);
+        let result = create_admin_user(&mut conn, &username, password, false);
         assert!(result.is_ok(), "Failed to create admin user: {:?}", result.err());
         
+        // Add user to test data manager for cleanup
+        if let Ok(()) = result {
+            // 获取刚创建的用户的ID
+            let user_id: Option<String> = conn.exec_first(
+                "SELECT id FROM admin_users WHERE username = ?",
+                (&username,)
+            ).expect("Failed to get user ID");
+            
+            if let Some(id) = user_id {
+                test_data_manager.created_admin_users.push(id);
+            }
+        }
+        
         // Verify password
-        let verified = verify_admin_password(&mut conn, username, password)
+        let verified = verify_admin_password(&mut conn, &username, password)
             .expect("Failed to verify password");
         assert!(verified, "Password verification failed");
         
         // Verify incorrect password
-        let verified = verify_admin_password(&mut conn, username, "wrong_password")
+        let verified = verify_admin_password(&mut conn, &username, "wrong_password")
             .expect("Failed to verify password");
         assert!(!verified, "Password verification should have failed");
         
         // Get admin user
-        let user = get_admin_user(&mut conn, username)
+        let user = get_admin_user(&mut conn, &username)
             .expect("Failed to get admin user");
         assert!(user.is_some(), "User should exist");
         let user = user.unwrap();
         assert_eq!(user.username, username);
         assert!(!user.is_super_admin);
         
-        // Clean up test user
-        conn.exec_drop("DELETE FROM admin_users WHERE username = ?", (username,))
-            .expect("Failed to clean up test user");
+        // Clean up test data
+        test_data_manager.cleanup().expect("Failed to cleanup test data");
     }
 }

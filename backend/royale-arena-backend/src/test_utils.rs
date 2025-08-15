@@ -32,3 +32,18 @@ pub fn create_test_app_state() -> Arc<Mutex<AppState>> {
         places: HashMap::new(),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_test_app_state() {
+        let app_state = create_test_app_state();
+        let state = app_state.blocking_lock(); // 在测试中获取锁
+        assert!(state.games.is_empty());
+        assert!(state.game_rules.is_empty());
+        assert!(state.rule_templates.is_empty());
+        assert!(state.places.is_empty());
+    }
+}

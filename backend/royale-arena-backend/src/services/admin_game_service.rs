@@ -5,6 +5,9 @@ use crate::models::game::Game;
 use crate::models::rule_template::RuleTemplate;
 use crate::models::rules::GameRules;
 
+#[cfg(test)]
+use crate::test_data::TestDataManager;
+
 /// 创建游戏
 pub fn create_game(
     conn: &mut mysql::PooledConn,
@@ -305,9 +308,13 @@ mod tests {
         let pool = create_db_pool().expect("Failed to create database pool");
         let mut conn = pool.get_conn().expect("Failed to get database connection");
         
-        // Test data
+        // Create test data manager
+        let mut test_data_manager = TestDataManager::new();
+        
+        // Test data - 使用唯一游戏名避免冲突
+        let game_name = format!("Test Game {}", uuid::Uuid::new_v4());
         let create_request = CreateGameRequest {
-            name: "Test Game".to_string(),
+            name: game_name,
             description: "A test game for unit tests".to_string(),
             director_password: "director123".to_string(),
             max_players: 50,
@@ -317,6 +324,9 @@ mod tests {
         // Create game
         let game_id = create_game(&mut conn, &create_request).expect("Failed to create game");
         assert!(!game_id.is_empty(), "Game ID should not be empty");
+        
+        // Add game to test data manager for cleanup
+        test_data_manager.created_games.push(game_id.clone());
         
         // Get game to verify creation
         let game = get_game(&mut conn, &game_id).expect("Failed to get game");
@@ -352,6 +362,9 @@ mod tests {
         // Verify game is deleted
         let game = get_game(&mut conn, &game_id).expect("Failed to get game");
         assert!(game.is_none(), "Game should not exist after deletion");
+        
+        // Clean up test data
+        test_data_manager.cleanup().expect("Failed to cleanup test data");
     }
     
     #[test]
@@ -366,14 +379,18 @@ mod tests {
         let pool = create_db_pool().expect("Failed to create database pool");
         let mut conn = pool.get_conn().expect("Failed to get database connection");
         
-        // Test data
+        // Create test data manager
+        let mut test_data_manager = TestDataManager::new();
+        
+        // Test data - 使用唯一模板名避免冲突
+        let template_name = format!("Test Template {}", uuid::Uuid::new_v4());
         let mut rules = GameRules::default();
         rules.max_life = 150;
         rules.max_strength = 150;
         rules.teammate_behavior = 5; // 设置队友行为规则
         
         let create_request = CreateRuleTemplateRequest {
-            name: "Test Template".to_string(),
+            name: template_name,
             description: "A test rule template".to_string(),
             rules,
         };
@@ -381,6 +398,9 @@ mod tests {
         // Create rule template
         let template_id = create_rule_template(&mut conn, &create_request).expect("Failed to create rule template");
         assert!(!template_id.is_empty(), "Template ID should not be empty");
+        
+        // Add template to test data manager for cleanup
+        test_data_manager.created_rule_templates.push(template_id.clone());
         
         // Get rule template to verify creation
         let template = get_rule_template(&mut conn, &template_id);
@@ -412,5 +432,8 @@ mod tests {
         // Delete rule template
         let result = delete_rule_template(&mut conn, &template_id);
         assert!(result.is_ok(), "Failed to delete rule template: {:?}", result.err());
+        
+        // Clean up test data
+        test_data_manager.cleanup().expect("Failed to cleanup test data");
     }
 }
