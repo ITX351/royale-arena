@@ -12,6 +12,8 @@ mod services;
 #[cfg(test)]
 mod test_data;
 #[cfg(test)]
+mod test_init;
+#[cfg(test)]
 mod test_utils;
 
 use models::game::Game;

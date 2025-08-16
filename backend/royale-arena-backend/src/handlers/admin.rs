@@ -15,7 +15,17 @@ pub struct Claims {
 
 pub async fn admin_login(login_request: web::Json<LoginRequest>) -> Result<HttpResponse> {
     // Get database connection
-    let mut conn = get_db_connection_from_pool()?;
+    let mut conn = match get_db_connection_from_pool() {
+        Ok(conn) => conn,
+        Err(e) => {
+            tracing::error!("Database connection error: {}", e);
+            return Ok(HttpResponse::InternalServerError().json(LoginResponse {
+                success: false,
+                token: None,
+                expires_in: None,
+            }));
+        }
+    };
 
     // Get admin user from database using the service function
     let admin_user = match get_admin_user(&mut conn, &login_request.username) {
@@ -112,4 +122,80 @@ pub fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error
         &validation,
     )?;
     Ok(token_data.claims)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::web;
+    use crate::test_init::init_test_env;
+
+    #[actix_web::test]
+    async fn test_admin_login_success() {
+        // Initialize test environment
+        init_test_env();
+        
+        // Create request data
+        let request_data = LoginRequest {
+            username: "a".to_string(),  // 使用测试数据中的管理员用户名
+            password: "1".to_string(),  // 使用测试数据中的管理员密码
+        };
+
+        // Make request directly to the handler function
+        let json = web::Json(request_data);
+        let result = admin_login(json).await;
+        
+        // We expect a successful response since the test data should exist
+        assert!(result.is_ok());
+        
+        // Check that we get a proper HTTP response
+        let resp = result.unwrap();
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_web::test]
+    async fn test_admin_login_invalid_password() {
+        // Initialize test environment
+        init_test_env();
+        
+        // Create request data with invalid password
+        let request_data = LoginRequest {
+            username: "a".to_string(),  // 使用测试数据中的管理员用户名
+            password: "invalid_password".to_string(),
+        };
+
+        // Make request directly to the handler function
+        let json = web::Json(request_data);
+        let result = admin_login(json).await;
+        
+        // We expect a successful response since the handler should handle the error internally
+        assert!(result.is_ok());
+        
+        // Check that we get an unauthorized response
+        let resp = result.unwrap();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[actix_web::test]
+    async fn test_admin_login_user_not_found() {
+        // Initialize test environment
+        init_test_env();
+        
+        // Create request data with non-existent user
+        let request_data = LoginRequest {
+            username: "non_existent_user".to_string(),
+            password: "some_password".to_string(),
+        };
+
+        // Make request directly to the handler function
+        let json = web::Json(request_data);
+        let result = admin_login(json).await;
+        
+        // We expect a successful response since the handler should handle the error internally
+        assert!(result.is_ok());
+        
+        // Check that we get an unauthorized response
+        let resp = result.unwrap();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::UNAUTHORIZED);
+    }
 }
