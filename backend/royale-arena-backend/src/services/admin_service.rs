@@ -3,7 +3,7 @@ use bcrypt::{DEFAULT_COST, hash, verify};
 use mysql::prelude::*;
 
 #[cfg(test)]
-use crate::test_data::TestDataManager;
+use crate::test_common::test_data::TestDataManager;
 
 pub fn create_admin_user(
     conn: &mut mysql::PooledConn,

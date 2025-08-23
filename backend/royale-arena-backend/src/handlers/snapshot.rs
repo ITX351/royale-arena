@@ -88,7 +88,7 @@ pub async fn get_game_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{create_test_app, create_test_app_state};
+    use crate::test_common::test_utils::{create_test_app, create_test_app_state};
     use actix_web::{test, web};
     use serde_json::Value;
 

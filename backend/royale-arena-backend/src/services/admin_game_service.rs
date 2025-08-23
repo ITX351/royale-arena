@@ -8,7 +8,7 @@ use mysql::Value;
 use mysql::prelude::*;
 
 #[cfg(test)]
-use crate::test_data::TestDataManager;
+use crate::test_common::test_data::TestDataManager;
 #[cfg(test)]
 use crate::models::game::Game;
 

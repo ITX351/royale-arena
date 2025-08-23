@@ -10,11 +10,7 @@ pub mod models;
 pub mod routes;
 mod services;
 #[cfg(test)]
-mod test_data;
-#[cfg(test)]
-mod test_init;
-#[cfg(test)]
-mod test_utils;
+mod test_common;
 
 use models::game::Game;
 use models::place::Place;

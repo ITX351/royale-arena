@@ -3,12 +3,25 @@
 //! 该模块负责在测试开始时向数据库插入测试数据，并在测试结束时清理这些数据。
 //! 所有测试都应该与真实数据库交互，而不是仅仅在内存中创建测试数据。
 
-use crate::services::db_helper::get_db_connection_from_pool;
+use crate::services::db::create_db_pool;
 use mysql::prelude::*;
 // use crate::models::admin::AdminUser;  // 暂时注释掉未使用的导入
 // use crate::models::game::Game;  // 暂时注释掉未使用的导入
 use crate::models::rules::GameRules;
 // use crate::models::rule_template::RuleTemplate;  // 暂时注释掉未使用的导入
+use std::sync::LazyLock;
+use std::sync::Arc;
+
+static DB_POOL: LazyLock<Arc<mysql::Pool>> = LazyLock::new(|| {
+    let pool = create_db_pool().expect("Failed to create database pool for tests");
+    Arc::new(pool)
+});
+
+/// 获取全局共享的数据库连接池
+/// 在测试环境中，我们只创建一个连接池以避免端口冲突
+fn get_shared_db_pool() -> Result<mysql::PooledConn, Box<dyn std::error::Error>> {
+    Ok(DB_POOL.get_conn()?)
+}
 
 /// 测试数据管理器
 pub struct TestDataManager {
@@ -34,7 +47,7 @@ impl TestDataManager {
         password: &str,
         is_super_admin: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut conn = get_db_connection_from_pool()?;
+        let mut conn = get_shared_db_pool()?;
 
         let id = uuid::Uuid::new_v4().to_string();
 
@@ -55,7 +68,7 @@ impl TestDataManager {
         director_password: &str,
         max_players: u32,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let mut conn = get_db_connection_from_pool()?;
+        let mut conn = get_shared_db_pool()?;
 
         let id = uuid::Uuid::new_v4().to_string();
 
@@ -75,7 +88,7 @@ impl TestDataManager {
         description: &str,
         rules: &GameRules,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let mut conn = get_db_connection_from_pool()?;
+        let mut conn = get_shared_db_pool()?;
 
         let id = uuid::Uuid::new_v4().to_string();
 
@@ -109,7 +122,7 @@ impl TestDataManager {
 
     /// 清理所有创建的测试数据
     pub fn cleanup(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut conn = get_db_connection_from_pool()?;
+        let mut conn = get_shared_db_pool()?;
 
         // 删除创建的管理员用户
         for user_id in &self.created_admin_users {
@@ -147,18 +160,14 @@ impl Drop for TestDataManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::db::create_db_pool;
 
     #[test]
     fn test_test_data_manager() {
-        // 尝试创建数据库连接池
-        let _pool = create_db_pool().expect("Failed to create database pool");
-
-        let mut manager = TestDataManager::new();
-
         // 测试创建和清理管理员用户
         // 使用唯一用户名避免冲突
         let username = format!("test_admin_{}", uuid::Uuid::new_v4());
+        
+        let mut manager = TestDataManager::new();
         manager
             .create_test_admin_user(&username, "password123", false)
             .expect("Failed to create test admin user");

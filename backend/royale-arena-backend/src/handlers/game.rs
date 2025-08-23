@@ -67,7 +67,7 @@ pub async fn clear_game_cache_endpoint(path: web::Path<String>) -> Result<HttpRe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{create_test_app, create_test_app_state};
+    use crate::test_common::test_utils::{create_test_app, create_test_app_state};
     use actix_web::{http::StatusCode, test, web};
     use serde_json::Value;
 

@@ -128,7 +128,7 @@ pub fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error
 mod tests {
     use super::*;
     use actix_web::web;
-    use crate::test_init::init_test_env;
+    use crate::test_common::test_init::init_test_env;
 
     #[actix_web::test]
     async fn test_admin_login_success() {
