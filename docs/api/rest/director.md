@@ -180,31 +180,12 @@ GET /api/game/{game_id}/logs?password=<director_password>
 }
 ```
 
-### 6. 获取游戏统计
+### 5. 获取游戏日志
 ```
-GET /api/game/{game_id}/stats?password=<director_password>
-```
-
-**路径参数:**
-- `game_id`: 游戏ID
-
-**查询参数:**
-- `password`: 导演密码
-
-**响应:**
-```json
-{
-  "player_count": "integer",
-  "alive_players": "integer",
-  "total_actions": "integer",
-  "start_time": "ISO8601 datetime",
-  "duration": "integer",  // 游戏持续时间(秒)
-  "votes_cast": "integer",
-  "eliminations": "integer"
-}
+GET /api/game/{game_id}/logs?password=<director_password>
 ```
 
-### 7. 获取游戏完整状态快照
+### 6. 获取游戏完整状态快照
 ```
 GET /api/game/{game_id}/snapshot?password=<director_password>
 ```
@@ -230,9 +211,9 @@ GET /api/game/{game_id}/snapshot?password=<director_password>
 }
 ```
 
-### 8. 获取投票结果
+### 7. 获取击杀记录
 ```
-GET /api/game/{game_id}/votes?password=<director_password>
+GET /api/game/{game_id}/kills?password=<director_password>
 ```
 
 **路径参数:**
@@ -244,15 +225,22 @@ GET /api/game/{game_id}/votes?password=<director_password>
 **响应:**
 ```json
 {
-  "votes": {
-    "player_name": "integer"  // 玩家名称对应票数
-  },
-  "total_votes": "integer",
-  "most_voted": "string"      // 得票最多的玩家，平票时为null
+  "kills": [
+    {
+      "killer": "string",      // 击杀者名称（可为空）
+      "victim": "string",      // 被击杀者名称
+      "kill_time": "ISO8601 datetime",
+      "cause": "string",       // 击杀原因（如：武器、缩圈等）
+      "weapon": "string",      // 可选，使用的武器
+      "location": "string"     // 可选，击杀地点
+    }
+  ],
+  "total_kills": "integer",
+  "most_kills": "string"      // 击杀数最多的玩家（平票时为null）
 }
 ```
 
-### 9. 重置游戏
+### 8. 重置游戏
 ```
 POST /api/game/{game_id}/reset?password=<director_password>
 ```
@@ -271,7 +259,7 @@ POST /api/game/{game_id}/reset?password=<director_password>
 }
 ```
 
-### 10. 导出游戏数据
+### 9. 导出游戏数据
 ```
 GET /api/game/{game_id}/export?password=<director_password>
 ```

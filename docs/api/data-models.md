@@ -162,32 +162,13 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
 ### 游戏规则模版配置（预设模版，可重用）
 ```json
 {
-  "template_name": "string",      // 模版名称
-  "description": "string",        // 模版描述
-  "game_flow": {
-    "day_duration": "integer|null",    // 白天时长(秒)，null表示使用默认值
-    "night_duration": "integer|null"   // 夜晚时长(秒)，null表示使用默认值
-  },
-  "map": {
-    "places": ["string"]|null     // 地点列表，null表示使用默认地图
-  },
-  "player": {
-    "max_life": "integer|null",        // 最大生命值，null表示使用默认值
-    "max_strength": "integer|null",    // 最大体力值，null表示使用默认值
-    "daily_strength_recovery": "integer|null"  // 每日体力恢复值，null表示使用默认值
-  },
-  "action": {
-    "move_cost": "integer|null",       // 移动消耗体力，null表示使用默认值
-    "search_cost": "integer|null",     // 搜索消耗体力，null表示使用默认值
-    "search_cooldown": "integer|null"  // 搜索冷却时间(秒)，null表示使用默认值
-  },
-  "rest_mode": {
-    "life_recovery": "integer|null",   // 静养模式生命恢复值，null表示使用默认值
-    "max_moves": "integer|null"        // 静养模式最大移动次数，null表示使用默认值
-  },
-  "teammate_behavior": "integer",      // 队友行为规则，位压缩存储
-  "created_at": "ISO8601 datetime",    // 模版创建时间
-  "updated_at": "ISO8601 datetime"     // 模版更新时间
+  "id": "string",                     // 模版唯一标识符(UUID)
+  "template_name": "string",          // 模版名称
+  "description": "string",            // 模版描述
+  "is_active": "boolean",             // 模版是否激活
+  "rules_config": {},                 // 完整的游戏规则配置
+  "created_at": "ISO8601 datetime",   // 模版创建时间
+  "updated_at": "ISO8601 datetime"    // 模版更新时间
 }
 ```
 
@@ -201,25 +182,15 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
 }
 ```
 
-### 游戏统计数据
+### 击杀记录
 ```json
 {
-  "player_count": "integer",
-  "alive_players": "integer",
-  "total_actions": "integer",
-  "start_time": "ISO8601 datetime",
-  "duration": "integer",  // 游戏持续时间(秒)
-  "votes_cast": "integer",
-  "eliminations": "integer"
-}
-```
-
-### 投票数据
-```json
-{
-  "voter": "string",      // 投票者
-  "target": "string",     // 被投票者
-  "timestamp": "ISO8601 datetime"
+  "killer": "string",      // 击杀者ID（可为空，表示非玩家击杀）
+  "victim": "string",      // 被击杀者ID
+  "kill_time": "ISO8601 datetime",
+  "cause": "string",       // 击杀原因（如：武器、缩圈等）
+  "weapon": "string",      // 可选，使用的武器
+  "location": "string"     // 可选，击杀地点
 }
 ```
 

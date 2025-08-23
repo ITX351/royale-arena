@@ -109,6 +109,7 @@ GET /api/rule-templates
       "id": "string",
       "template_name": "string",
       "description": "string",
+      "is_active": "boolean",
       "created_at": "ISO8601 datetime",
       "updated_at": "ISO8601 datetime"
     }
@@ -133,27 +134,8 @@ GET /api/rule-templates/{template_id}
   "id": "string",
   "template_name": "string",
   "description": "string",
-  "game_flow": {
-    "day_duration": "integer|null",
-    "night_duration": "integer|null"
-  },
-  "map": {
-    "places": ["string"]
-  },
-  "player": {
-    "max_life": "integer|null",
-    "max_strength": "integer|null",
-    "daily_strength_recovery": "integer|null"
-  },
-  "action": {
-    "move_cost": "integer|null",
-    "search_cost": "integer|null",
-    "search_cooldown": "integer|null"
-  },
-  "rest_mode": {
-    "life_recovery": "integer|null",
-    "max_moves": "integer|null"
-  },
+  "is_active": "boolean",
+  "rules_config": {},                // 完整的游戏规则配置
   "created_at": "ISO8601 datetime",
   "updated_at": "ISO8601 datetime"
 }

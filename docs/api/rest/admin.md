@@ -108,27 +108,8 @@ POST /api/admin/rule-templates
 {
   "template_name": "string",      // 模版名称
   "description": "string",        // 模版描述
-  "game_flow": {
-    "day_duration": "integer|null",    // 白天时长(秒)，null表示使用默认值
-    "night_duration": "integer|null"   // 夜晚时长(秒)，null表示使用默认值
-  },
-  "map": {
-    "places": ["string"]          // 地点列表，可选
-  },
-  "player": {
-    "max_life": "integer|null",        // 最大生命值，null表示使用默认值
-    "max_strength": "integer|null",    // 最大体力值，null表示使用默认值
-    "daily_strength_recovery": "integer|null"  // 每日体力恢复值，null表示使用默认值
-  },
-  "action": {
-    "move_cost": "integer|null",       // 移动消耗体力，null表示使用默认值
-    "search_cost": "integer|null",     // 搜索消耗体力，null表示使用默认值
-    "search_cooldown": "integer|null"  // 搜索冷却时间(秒)，null表示使用默认值
-  },
-  "rest_mode": {
-    "life_recovery": "integer|null",   // 静养模式生命恢复值，null表示使用默认值
-    "max_moves": "integer|null"        // 静养模式最大移动次数，null表示使用默认值
-  }
+  "is_active": "boolean",         // 模版是否激活，默认为true
+  "rules_config": {}              // 完整的游戏规则配置
 }
 ```
 
@@ -138,27 +119,8 @@ POST /api/admin/rule-templates
   "id": "string",
   "template_name": "string",
   "description": "string",
-  "game_flow": {
-    "day_duration": "integer|null",
-    "night_duration": "integer|null"
-  },
-  "map": {
-    "places": ["string"]
-  },
-  "player": {
-    "max_life": "integer|null",
-    "max_strength": "integer|null",
-    "daily_strength_recovery": "integer|null"
-  },
-  "action": {
-    "move_cost": "integer|null",
-    "search_cost": "integer|null",
-    "search_cooldown": "integer|null"
-  },
-  "rest_mode": {
-    "life_recovery": "integer|null",
-    "max_moves": "integer|null"
-  },
+  "is_active": "boolean",
+  "rules_config": {},             // 完整的游戏规则配置
   "created_at": "ISO8601 datetime",
   "updated_at": "ISO8601 datetime"
 }
@@ -177,27 +139,8 @@ PUT /api/admin/rule-templates/{template_id}
 {
   "template_name": "string",      // 可选
   "description": "string",        // 可选
-  "game_flow": {
-    "day_duration": "integer|null",    // 可选
-    "night_duration": "integer|null"   // 可选
-  },
-  "map": {
-    "places": ["string"]          // 可选
-  },
-  "player": {
-    "max_life": "integer|null",        // 可选
-    "max_strength": "integer|null",    // 可选
-    "daily_strength_recovery": "integer|null"  // 可选
-  },
-  "action": {
-    "move_cost": "integer|null",       // 可选
-    "search_cost": "integer|null",     // 可选
-    "search_cooldown": "integer|null"  // 可选
-  },
-  "rest_mode": {
-    "life_recovery": "integer|null",   // 可选
-    "max_moves": "integer|null"        // 可选
-  }
+  "is_active": "boolean",         // 可选
+  "rules_config": {}              // 可选，完整的游戏规则配置
 }
 ```
 
@@ -207,27 +150,8 @@ PUT /api/admin/rule-templates/{template_id}
   "id": "string",
   "template_name": "string",
   "description": "string",
-  "game_flow": {
-    "day_duration": "integer|null",
-    "night_duration": "integer|null"
-  },
-  "map": {
-    "places": ["string"]
-  },
-  "player": {
-    "max_life": "integer|null",
-    "max_strength": "integer|null",
-    "daily_strength_recovery": "integer|null"
-  },
-  "action": {
-    "move_cost": "integer|null",
-    "search_cost": "integer|null",
-    "search_cooldown": "integer|null"
-  },
-  "rest_mode": {
-    "life_recovery": "integer|null",
-    "max_moves": "integer|null"
-  },
+  "is_active": "boolean",
+  "rules_config": {},             // 完整的游戏规则配置
   "created_at": "ISO8601 datetime",
   "updated_at": "ISO8601 datetime"
 }

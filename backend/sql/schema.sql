@@ -22,35 +22,24 @@ CREATE TABLE admin_users (
     password VARCHAR(255) NOT NULL COMMENT '管理员密码(密文存储)',
     is_super_admin BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否为超级管理员',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    INDEX idx_admin_users_username (username)
 ) COMMENT '管理员账户表';
 
 -- 2. 游戏规则模版表
 -- 存储可重用的游戏规则配置模版
 CREATE TABLE rule_templates (
     id VARCHAR(36) PRIMARY KEY COMMENT '模版唯一标识符(UUID)',
-    template_name VARCHAR(100) NOT NULL UNIQUE COMMENT '模版名称',
+    template_name VARCHAR(100) NOT NULL COMMENT '模版名称',
     description TEXT COMMENT '模版描述',
-    -- 游戏流程配置
-    day_duration INT NULL COMMENT '白天时长(秒)，NULL表示使用默认值',
-    night_duration INT NULL COMMENT '夜晚时长(秒)，NULL表示使用默认值',
-    -- 地图配置
-    places JSON NULL COMMENT '地点列表(JSON数组)，NULL表示使用默认地图',
-    -- 玩家配置
-    max_life INT NULL COMMENT '最大生命值，NULL表示使用默认值',
-    max_strength INT NULL COMMENT '最大体力值，NULL表示使用默认值',
-    daily_strength_recovery INT NULL COMMENT '每日体力恢复值，NULL表示使用默认值',
-    -- 行动配置
-    move_cost INT NULL COMMENT '移动消耗体力，NULL表示使用默认值',
-    search_cost INT NULL COMMENT '搜索消耗体力，NULL表示使用默认值',
-    search_cooldown INT NULL COMMENT '搜索冷却时间(秒)，NULL表示使用默认值',
-    -- 静养模式配置
-    life_recovery INT NULL COMMENT '静养模式生命恢复值，NULL表示使用默认值',
-    max_moves INT NULL COMMENT '静养模式最大移动次数，NULL表示使用默认值',
-    -- 队友行为规则
-    teammate_behavior INT NOT NULL DEFAULT 0 COMMENT '队友行为规则，位压缩存储：0-无限制，1-禁止队友伤害，2-禁止搜索到队友，4-允许观看队友状态，8-允许赠送队友物品',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE COMMENT '模版是否激活',
+    rules_config JSON NOT NULL COMMENT '完整的游戏规则配置(JSON格式)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '模版创建时间',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '模版更新时间'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '模版更新时间',
+    
+    INDEX idx_rule_templates_name (template_name),
+    INDEX idx_rule_templates_active (is_active)
 ) COMMENT '游戏规则模版表';
 
 -- 3. 游戏实例表
@@ -66,7 +55,9 @@ CREATE TABLE games (
     rule_template_id VARCHAR(36) NULL COMMENT '关联的规则模板ID',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    FOREIGN KEY (rule_template_id) REFERENCES rule_templates(id) ON DELETE SET NULL
+    FOREIGN KEY (rule_template_id) REFERENCES rule_templates(id) ON DELETE SET NULL,
+    
+    INDEX idx_games_status (status)
 ) COMMENT '游戏实例表';
 
 -- 4. 演员账户表
@@ -79,27 +70,13 @@ CREATE TABLE actors (
     team_id INT NOT NULL DEFAULT 0 COMMENT '队伍ID，用于标识玩家所属队伍，0表示无队伍',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    
+    INDEX idx_actors_game_id (game_id),
+    INDEX idx_actors_name (name)
 ) COMMENT '演员账户表';
 
--- 5. 游戏统计数据表
--- 存储游戏的统计数据
-CREATE TABLE game_stats (
-    id VARCHAR(36) PRIMARY KEY COMMENT '统计数据唯一标识符(UUID)',
-    game_id VARCHAR(36) NOT NULL COMMENT '所属游戏ID',
-    player_count INT NOT NULL DEFAULT 0 COMMENT '玩家总数',
-    alive_players INT NOT NULL DEFAULT 0 COMMENT '存活玩家数',
-    total_actions INT NOT NULL DEFAULT 0 COMMENT '总行动数',
-    start_time TIMESTAMP NULL COMMENT '游戏开始时间',
-    duration INT NOT NULL DEFAULT 0 COMMENT '游戏持续时间(秒)',
-    votes_cast INT NOT NULL DEFAULT 0 COMMENT '总投票数',
-    eliminations INT NOT NULL DEFAULT 0 COMMENT '淘汰数',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-) COMMENT '游戏统计数据表';
-
--- 6. 游戏日志表
+-- 5. 游戏日志表
 -- 存储游戏运行过程中的日志信息
 CREATE TABLE game_logs (
     id VARCHAR(36) PRIMARY KEY COMMENT '日志唯一标识符(UUID)',
@@ -109,46 +86,30 @@ CREATE TABLE game_logs (
     player_id VARCHAR(36) NULL COMMENT '相关玩家ID',
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '日志时间戳',
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (player_id) REFERENCES actors(id) ON DELETE SET NULL
+    FOREIGN KEY (player_id) REFERENCES actors(id) ON DELETE SET NULL,
+    
+    INDEX idx_game_logs_game_id (game_id),
+    INDEX idx_game_logs_level (level),
+    INDEX idx_game_logs_timestamp (timestamp)
 ) COMMENT '游戏日志表';
 
--- 7. 投票记录表
--- 存储玩家的投票记录
-CREATE TABLE votes (
-    id VARCHAR(36) PRIMARY KEY COMMENT '投票记录唯一标识符(UUID)',
+-- 5. 击杀记录表
+-- 存储玩家的击杀记录
+CREATE TABLE kill_records (
+    id VARCHAR(36) PRIMARY KEY COMMENT '击杀记录唯一标识符(UUID)',
     game_id VARCHAR(36) NOT NULL COMMENT '所属游戏ID',
-    voter_id VARCHAR(36) NOT NULL COMMENT '投票者ID',
-    target_id VARCHAR(36) NOT NULL COMMENT '被投票者ID',
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '投票时间',
+    killer_id VARCHAR(36) NULL COMMENT '击杀者ID（可为空，表示非玩家击杀）',
+    victim_id VARCHAR(36) NOT NULL COMMENT '被击杀者ID',
+    kill_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '击杀时间',
+    cause VARCHAR(50) NOT NULL COMMENT '击杀原因（如：武器、缩圈等）',
+    weapon VARCHAR(50) NULL COMMENT '使用的武器/方式',
+    location VARCHAR(100) NULL COMMENT '击杀地点',
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (voter_id) REFERENCES actors(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_id) REFERENCES actors(id) ON DELETE CASCADE
-) COMMENT '投票记录表';
-
--- 创建索引以提高查询性能
--- 管理员表索引
-CREATE INDEX idx_admin_users_username ON admin_users(username);
-
--- 游戏规则模版表索引
-CREATE INDEX idx_rule_templates_name ON rule_templates(template_name);
-
--- 游戏实例表索引
-CREATE INDEX idx_games_status ON games(status);
-
--- 演员账户表索引
-CREATE INDEX idx_actors_game_id ON actors(game_id);
-CREATE INDEX idx_actors_name ON actors(name);
-
--- 游戏统计数据表索引
-CREATE INDEX idx_game_stats_game_id ON game_stats(game_id);
-
--- 游戏日志表索引
-CREATE INDEX idx_game_logs_game_id ON game_logs(game_id);
-CREATE INDEX idx_game_logs_level ON game_logs(level);
-CREATE INDEX idx_game_logs_timestamp ON game_logs(timestamp);
-
--- 投票记录表索引
-CREATE INDEX idx_votes_game_id ON votes(game_id);
-CREATE INDEX idx_votes_voter_id ON votes(voter_id);
-CREATE INDEX idx_votes_target_id ON votes(target_id);
-CREATE INDEX idx_votes_timestamp ON votes(timestamp);
+    FOREIGN KEY (killer_id) REFERENCES actors(id) ON DELETE CASCADE,
+    FOREIGN KEY (victim_id) REFERENCES actors(id) ON DELETE CASCADE,
+    
+    INDEX idx_kill_records_game_id (game_id),
+    INDEX idx_kill_records_killer_id (killer_id),
+    INDEX idx_kill_records_victim_id (victim_id),
+    INDEX idx_kill_records_kill_time (kill_time)
+) COMMENT '击杀记录表';

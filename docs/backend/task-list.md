@@ -71,7 +71,6 @@
 - [ ] 实现`DELETE /api/game/{game_id}/players` - 批量删除演员账户
 - [ ] 实现`PUT /api/game/{game_id}/rules` - 更新游戏规则配置
 - [ ] 实现`GET /api/game/{game_id}/logs` - 获取游戏日志
-- [ ] 实现`GET /api/game/{game_id}/stats` - 获取游戏统计
 - [ ] 实现`GET /api/game/{game_id}/snapshot` - 获取游戏完整状态快照
 - [ ] 实现`GET /api/game/{game_id}/votes` - 获取投票结果
 - [ ] 实现`POST /api/game/{game_id}/reset` - 重置游戏
