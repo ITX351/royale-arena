@@ -9,10 +9,10 @@ use mysql::prelude::*;
 // use crate::models::game::Game;  // 暂时注释掉未使用的导入
 use crate::models::rules::GameRules;
 // use crate::models::rule_template::RuleTemplate;  // 暂时注释掉未使用的导入
-use std::sync::LazyLock;
+use once_cell::sync::Lazy;
 use std::sync::Arc;
 
-static DB_POOL: LazyLock<Arc<mysql::Pool>> = LazyLock::new(|| {
+static DB_POOL: Lazy<Arc<mysql::Pool>> = Lazy::new(|| {
     let pool = create_db_pool().expect("Failed to create database pool for tests");
     Arc::new(pool)
 });

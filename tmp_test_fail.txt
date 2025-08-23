@@ -1,0 +1,39 @@
+
+thread 'test_common::test_data::tests::test_test_data_manager' panicked at src\test_common\test_data.rs:230:14:
+Failed to create test rule template: MySqlError { ERROR 3140 (22032): Invalid JSON text: "Missing a comma or ']' after an array element." at position 210 in value for column 'rule_templates.rules_config'. }
+stack backtrace:
+   0: std::panicking::begin_panic_handler
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library\std\src\panicking.rs:697
+   1: core::panicking::panic_fmt
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library\core\src\panicking.rs:75
+   2: core::result::unwrap_failed
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library\core\src\result.rs:1732
+   3: enum2$<core::result::Result<alloc::string::String,alloc::boxed::Box<dyn$<core::error::Error>,alloc::alloc::Global> > >::expect<alloc::string::String,alloc::boxed::Box<dyn$<core::error::Error>,alloc::alloc::Global> >
+             at C:\Users\ITX351\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\core\src\result.rs:1089
+   4: royale_arena_backend::test_common::test_data::tests::test_test_data_manager
+             at .\src\test_common\test_data.rs:228
+   5: royale_arena_backend::test_common::test_data::tests::test_test_data_manager::closure$0
+             at .\src\test_common\test_data.rs:209
+   6: core::ops::function::FnOnce::call_once<royale_arena_backend::test_common::test_data::tests::test_test_data_manager::closure_env$0,tuple$<> >
+             at C:\Users\ITX351\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\core\src\ops\function.rs:250
+   7: core::ops::function::FnOnce::call_once
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library\core\src\ops\function.rs:250
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+✦ 根据错误信息分析，这个测试失败的问题出现在创建测试规则模板时，MySQL报告了JSON格式错误："Missing a comma or ']' after an array element." at position 210 in value for column
+  'rule_templates.rules_config'。
+
+  这是一个典型的并发问题或数据竞争问题，可能的原因包括：
+
+   1. 并发测试冲突：多个测试并行运行时，同时操作rule_templates表，导致JSON数据在序列化或插入过程中被干扰
+   2. 全局状态污染：测试之间共享的数据库连接池或缓存状态未正确隔离
+   3. JSON序列化问题：GameRules结构在特定条件下序列化为JSON时出现格式错误
+   4. 数据库连接竞争：多个测试同时使用同一个数据库连接执行操作
+
+  建议的解决方案：
+   1. 检查测试数据管理器中的JSON序列化逻辑
+   2. 确保每个测试使用独立的数据库事务或连接
+   3. 在测试中添加更严格的隔离机制
+   4. 考虑为测试生成唯一的表名或数据库实例
+
+  这种间歇性失败是并发环境下典型的数据竞争问题。

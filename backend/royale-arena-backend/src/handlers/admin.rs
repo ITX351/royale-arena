@@ -46,8 +46,8 @@ pub async fn admin_login(login_request: web::Json<LoginRequest>) -> Result<HttpR
         let password_valid = match verify_admin_password(&mut conn, &login_request.username, &login_request.password) {
             Ok(valid) => valid,
             Err(e) => {
-                tracing::error!("Password verification error: {}", e);
-                return Ok(HttpResponse::InternalServerError().json(LoginResponse {
+                tracing::warn!("Password verification failed: {}", e);
+                return Ok(HttpResponse::Unauthorized().json(LoginResponse {
                     success: false,
                     token: None,
                     expires_in: None,
