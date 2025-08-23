@@ -19,7 +19,7 @@ static DB_POOL: LazyLock<Arc<mysql::Pool>> = LazyLock::new(|| {
 
 /// 获取全局共享的数据库连接池
 /// 在测试环境中，我们只创建一个连接池以避免端口冲突
-fn get_shared_db_pool() -> Result<mysql::PooledConn, Box<dyn std::error::Error>> {
+pub fn get_shared_db_pool() -> Result<mysql::PooledConn, Box<dyn std::error::Error>> {
     Ok(DB_POOL.get_conn()?)
 }
 
@@ -28,6 +28,7 @@ pub struct TestDataManager {
     pub created_admin_users: Vec<String>,
     pub created_games: Vec<String>,
     pub created_rule_templates: Vec<String>,
+    pub created_actors: Vec<String>,
 }
 
 impl TestDataManager {
@@ -37,6 +38,7 @@ impl TestDataManager {
             created_admin_users: Vec::new(),
             created_games: Vec::new(),
             created_rule_templates: Vec::new(),
+            created_actors: Vec::new(),
         }
     }
 
@@ -92,31 +94,67 @@ impl TestDataManager {
 
         let id = uuid::Uuid::new_v4().to_string();
 
-        // Convert places to JSON
-        let places_json = serde_json::to_string(&rules.places)?;
+        // Convert GameRules to JSON
+        let rules_config_json = serde_json::to_string(rules)?;
 
         let params = vec![
             id.clone().into(),
             name.into(),
             description.into(),
-            places_json.into(),
-            (rules.max_life as i32).into(),
-            (rules.max_strength as i32).into(),
-            (rules.day_recovery as i32).into(),
-            (rules.move_cost as i32).into(),
-            (rules.search_cost as i32).into(),
-            (rules.search_interval as i32).into(),
-            (rules.rest_recovery as i32).into(),
-            (rules.rest_move_limit as i32).into(),
-            (rules.teammate_behavior).into(),
+            rules_config_json.into(),
         ];
 
         conn.exec_drop(
-            "INSERT INTO rule_templates (id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO rule_templates (id, template_name, description, rules_config) VALUES (?, ?, ?, ?)",
             mysql::Params::Positional(params)
         )?;
 
         self.created_rule_templates.push(id.clone());
+        Ok(id)
+    }
+
+    /// 创建测试演员
+    pub fn create_test_actor(
+        &mut self,
+        game_id: &str,
+        name: &str,
+        password: &str,
+        team_id: u32,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let mut conn = get_shared_db_pool()?;
+
+        let id = uuid::Uuid::new_v4().to_string();
+
+        conn.exec_drop(
+            "INSERT INTO actors (id, game_id, name, password, team_id) VALUES (?, ?, ?, ?, ?)",
+            (&id, game_id, name, password, team_id)
+        )?;
+
+        self.created_actors.push(id.clone());
+        Ok(id)
+    }
+
+    /// 创建测试击杀记录
+    pub fn create_test_kill_record(
+        &mut self,
+        game_id: &str,
+        killer_id: Option<&str>,
+        victim_id: &str,
+        cause: &str,
+        weapon: Option<&str>,
+        location: Option<&str>,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let mut conn = get_shared_db_pool()?;
+
+        let id = uuid::Uuid::new_v4().to_string();
+
+        conn.exec_drop(
+            "INSERT INTO kill_records (id, game_id, killer_id, victim_id, cause, weapon, location) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (&id, game_id, killer_id, victim_id, cause, weapon, location)
+        )?;
+
+        // We don't track kill records in the cleanup list since they will be deleted
+        // when the game is deleted
         Ok(id)
     }
 
@@ -139,10 +177,16 @@ impl TestDataManager {
             conn.exec_drop("DELETE FROM rule_templates WHERE id = ?", (template_id,))?;
         }
 
+        // 删除创建的演员
+        for actor_id in &self.created_actors {
+            conn.exec_drop("DELETE FROM actors WHERE id = ?", (actor_id,))?;
+        }
+
         // 清空记录
         self.created_admin_users.clear();
         self.created_games.clear();
         self.created_rule_templates.clear();
+        self.created_actors.clear();
 
         Ok(())
     }

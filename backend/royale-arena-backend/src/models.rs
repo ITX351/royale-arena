@@ -2,6 +2,7 @@ pub mod actor;
 pub mod admin;
 pub mod admin_game;
 pub mod game;
+pub mod kill_record;
 pub mod place;
 pub mod player;
 pub mod rule_template;

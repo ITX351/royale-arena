@@ -4,6 +4,7 @@ pub mod admin_user;
 pub mod director;
 pub mod export;
 pub mod game;
+pub mod kill_records;
 pub mod logs;
 pub mod places;
 pub mod player;

@@ -1,25 +1,15 @@
 #[cfg(test)]
 mod tests {
     use dotenvy::from_filename;
-    use crate::services::db::create_db_pool;
+    use crate::test_common::test_data::get_shared_db_pool;
 
     #[test]
     fn test_database_connection() {
         // Load environment variables from .env.royale file
         let _ = from_filename(".env.royale");
         
-        // Try to create a database connection pool
-        let pool = create_db_pool();
-        
-        // Print the result for debugging
-        println!("Database pool creation result: {:?}", pool);
-        
-        // We expect the pool to be created successfully
-        assert!(pool.is_ok());
-        
-        // Try to get a connection from the pool
-        let pool = pool.unwrap();
-        let conn = pool.get_conn();
+        // Try to get a database connection from the shared pool
+        let conn = get_shared_db_pool();
         
         // Print the result for debugging
         println!("Database connection result: {:?}", conn);

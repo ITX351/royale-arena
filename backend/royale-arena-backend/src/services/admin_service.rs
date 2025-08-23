@@ -63,7 +63,7 @@ pub fn get_admin_user(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::db::create_db_pool;
+    use crate::test_common::test_data::get_shared_db_pool;
     use dotenvy::from_filename;
 
     #[test]
@@ -71,10 +71,8 @@ mod tests {
         // Load environment variables from .env.royale file
         from_filename(".env.royale").expect("Failed to load .env.royale file for tests");
 
-        // Create database connection pool
-        let pool = create_db_pool().expect("Failed to create database pool");
-        
-        let mut conn = pool.get_conn().expect("Failed to get database connection");
+        // Get database connection from shared pool
+        let mut conn = get_shared_db_pool().expect("Failed to get database connection");
 
         // Create test data manager
         let mut test_data_manager = TestDataManager::new();

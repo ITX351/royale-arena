@@ -218,28 +218,19 @@ pub fn create_rule_template(
 
     let template_id = uuid::Uuid::new_v4().to_string();
 
-    // Convert places to JSON
-    let places_json = serde_json::to_string(&request.rules.places)?;
+    // Convert GameRules to JSON
+    let rules_config_json = serde_json::to_string(&request.rules)?;
 
     // 使用Vec<Value>来避免参数数量限制
     let params = vec![
         template_id.clone().into(),
         request.name.clone().into(),
         request.description.clone().into(),
-        places_json.into(),
-        (request.rules.max_life as i32).into(),
-        (request.rules.max_strength as i32).into(),
-        (request.rules.day_recovery as i32).into(),
-        (request.rules.move_cost as i32).into(),
-        (request.rules.search_cost as i32).into(),
-        (request.rules.search_interval as i32).into(),
-        (request.rules.rest_recovery as i32).into(),
-        (request.rules.rest_move_limit as i32).into(),
-        (request.rules.teammate_behavior).into(),
+        rules_config_json.into(),
     ];
 
     conn.exec_drop(
-        "INSERT INTO rule_templates (id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO rule_templates (id, template_name, description, rules_config) VALUES (?, ?, ?, ?)",
         mysql::Params::Positional(params)
     )?;
 
@@ -281,51 +272,27 @@ pub fn update_rule_template(
         // 验证规则的有效性
         rules.validate()?;
 
-        // Convert places to JSON
-        let places_json = serde_json::to_string(&rules.places)?;
+        // Convert GameRules to JSON
+        let rules_config_json = serde_json::to_string(rules)?;
 
-        updates.push("places = ?".to_string());
-        params.push(places_json.into());
-
-        // Update individual fields
-        updates.push("max_life = ?".to_string());
-        params.push((rules.max_life as i32).into());
-
-        updates.push("max_strength = ?".to_string());
-        params.push((rules.max_strength as i32).into());
-
-        updates.push("daily_strength_recovery = ?".to_string());
-        params.push((rules.day_recovery as i32).into());
-
-        updates.push("move_cost = ?".to_string());
-        params.push((rules.move_cost as i32).into());
-
-        updates.push("search_cost = ?".to_string());
-        params.push((rules.search_cost as i32).into());
-
-        updates.push("search_cooldown = ?".to_string());
-        params.push((rules.search_interval as i32).into());
-
-        updates.push("life_recovery = ?".to_string());
-        params.push((rules.rest_recovery as i32).into());
-
-        updates.push("max_moves = ?".to_string());
-        params.push((rules.rest_move_limit as i32).into());
-
-        updates.push("teammate_behavior = ?".to_string());
-        params.push((rules.teammate_behavior).into());
+        updates.push("rules_config = ?".to_string());
+        params.push(rules_config_json.into());
     }
 
-    if !updates.is_empty() {
-        let sql = format!(
-            "UPDATE rule_templates SET {} WHERE id = ?",
-            updates.join(", ")
-        );
-        params.push(template_id.into());
-
-        // Convert params to tuple for mysql exec_drop
-        conn.exec_drop(&sql, mysql::Params::Positional(params))?;
+    // 如果没有要更新的字段，直接返回
+    if updates.is_empty() {
+        return Ok(());
     }
+
+    // 添加模板ID到参数列表的末尾
+    params.push(template_id.into());
+
+    let query = format!(
+        "UPDATE rule_templates SET {} WHERE id = ?",
+        updates.join(", ")
+    );
+
+    conn.exec_drop(&query, mysql::Params::Positional(params))?;
 
     Ok(())
 }
@@ -345,47 +312,18 @@ pub fn get_rule_template(
     conn: &mut mysql::PooledConn,
     template_id: &str,
 ) -> Result<RuleTemplate, Box<dyn std::error::Error>> {
-    let result: Option<mysql::Row> = conn.exec_first(
-        "SELECT id, template_name, description, places, max_life, max_strength, daily_strength_recovery, move_cost, search_cost, search_cooldown, life_recovery, max_moves, teammate_behavior FROM rule_templates WHERE id = ?",
+    let result: Option<(String, String, String, String)> = conn.exec_first(
+        "SELECT id, template_name, description, rules_config FROM rule_templates WHERE id = ?",
         (template_id,)
     )?;
 
     match result {
-        Some(row) => {
-            let id: String = row.get(0).unwrap_or_default();
-            let name: String = row.get(1).unwrap_or_default();
-            let description: String = row.get(2).unwrap_or_default();
-            let places_json: String = row.get(3).unwrap_or_default();
-            let max_life: i32 = row.get(4).unwrap_or_default();
-            let max_strength: i32 = row.get(5).unwrap_or_default();
-            let daily_strength_recovery: i32 = row.get(6).unwrap_or_default();
-            let move_cost: i32 = row.get(7).unwrap_or_default();
-            let search_cost: i32 = row.get(8).unwrap_or_default();
-            let search_cooldown: i32 = row.get(9).unwrap_or_default();
-            let life_recovery: i32 = row.get(10).unwrap_or_default();
-            let max_moves: i32 = row.get(11).unwrap_or_default();
-            let teammate_behavior: i32 = row.get(12).unwrap_or_default();
-
-            // Parse places JSON
-            let places: Vec<String> = if !places_json.is_empty() {
-                serde_json::from_str(&places_json)?
+        Some((id, name, description, rules_config_json)) => {
+            // Parse rules_config JSON
+            let rules: GameRules = if !rules_config_json.is_empty() {
+                serde_json::from_str(&rules_config_json)?
             } else {
-                Vec::new()
-            };
-
-            let rules = GameRules {
-                max_life: max_life as u32,
-                max_strength: max_strength as u32,
-                day_recovery: daily_strength_recovery as u32,
-                rest_recovery: life_recovery as u32,
-                search_interval: search_cooldown as u32,
-                rest_move_limit: max_moves as u32,
-                game_duration: 15, // Default value, as it's not stored in the template
-                move_cost: move_cost as u32,
-                search_cost: search_cost as u32,
-                places,
-                enable_day_voting: true, // Default value, as it's not stored in the template
-                teammate_behavior,
+                GameRules::default()
             };
 
             // 验证规则的有效性
@@ -400,7 +338,7 @@ pub fn get_rule_template(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::db::create_db_pool;
+    use crate::test_common::test_data::get_shared_db_pool;
     use dotenvy::from_filename;
 
     #[test]
@@ -411,9 +349,8 @@ mod tests {
             Err(e) => eprintln!("Warning: Failed to load .env.royale file for tests: {}", e),
         }
 
-        // Create database connection pool
-        let pool = create_db_pool().expect("Failed to create database pool");
-        let mut conn = pool.get_conn().expect("Failed to get database connection");
+        // Get shared database connection pool
+        let mut conn = get_shared_db_pool().expect("Failed to get database connection");
 
         // Create test data manager
         let mut test_data_manager = TestDataManager::new();
@@ -484,9 +421,8 @@ mod tests {
             Err(e) => eprintln!("Warning: Failed to load .env.royale file for tests: {}", e),
         }
 
-        // Create database connection pool
-        let pool = create_db_pool().expect("Failed to create database pool");
-        let mut conn = pool.get_conn().expect("Failed to get database connection");
+        // Get shared database connection pool
+        let mut conn = get_shared_db_pool().expect("Failed to get database connection");
 
         // Create test data manager
         let mut test_data_manager = TestDataManager::new();
