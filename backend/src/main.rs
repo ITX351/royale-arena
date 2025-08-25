@@ -4,6 +4,7 @@ mod config;
 mod database;
 mod errors;
 mod routes;
+mod rule_template;
 
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
@@ -15,6 +16,7 @@ use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
 use routes::create_routes;
+use rule_template::RuleTemplateService;
 
 #[tokio::main]
 async fn main() {
@@ -41,10 +43,11 @@ async fn main() {
 
     // 创建服务实例
     let auth_service = AuthService::new(pool.clone(), jwt_manager);
-    let admin_service = AdminService::new(pool, config.bcrypt_cost);
+    let admin_service = AdminService::new(pool.clone(), config.bcrypt_cost);
+    let rule_template_service = RuleTemplateService::new(pool);
 
     // 构建路由
-    let app = create_routes(auth_service, admin_service)
+    let app = create_routes(auth_service, admin_service, rule_template_service)
         .layer(TraceLayer::new_for_http());
 
     // 定义服务器地址

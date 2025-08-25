@@ -116,13 +116,16 @@ POST /api/admin/rule-templates
 **响应:**
 ```json
 {
-  "id": "string",
-  "template_name": "string",
-  "description": "string",
-  "is_active": "boolean",
-  "rules_config": {},             // 完整的游戏规则配置
-  "created_at": "ISO8601 datetime",
-  "updated_at": "ISO8601 datetime"
+  "success": true,
+  "data": {
+    "id": "string",
+    "template_name": "string",
+    "description": "string",
+    "is_active": "boolean",
+    "rules_config": {},             // 完整的游戏规则配置
+    "created_at": "ISO8601 datetime",
+    "updated_at": "ISO8601 datetime"
+  }
 }
 ```
 
@@ -147,31 +150,60 @@ PUT /api/admin/rule-templates/{template_id}
 **响应:**
 ```json
 {
-  "id": "string",
-  "template_name": "string",
-  "description": "string",
-  "is_active": "boolean",
-  "rules_config": {},             // 完整的游戏规则配置
-  "created_at": "ISO8601 datetime",
-  "updated_at": "ISO8601 datetime"
+  "success": true,
+  "data": {
+    "id": "string",
+    "template_name": "string",
+    "description": "string",
+    "is_active": "boolean",
+    "rules_config": {},             // 完整的游戏规则配置
+    "created_at": "ISO8601 datetime",
+    "updated_at": "ISO8601 datetime"
+  }
 }
 ```
 
-### 7. 删除游戏规则模版
+### 7. 获取游戏规则模版列表
 ```
-DELETE /api/admin/rule-templates/{template_id}
+GET /api/rule-templates
 ```
 
-**路径参数:**
-- `template_id`: 模版ID
+**查询参数:**
+- `id`: 可选，获取指定ID的模版（返回单元素数组）
+- `is_active`: 可选，筛选激活状态的模版
+- `search`: 可选，按模版名称搜索
+
+**请求示例:**
+```
+# 获取所有模版列表
+GET /api/rule-templates?is_active=true&search=经典
+
+# 获取特定模版
+GET /api/rule-templates?id=template-001
+```
 
 **响应:**
 ```json
 {
   "success": true,
-  "message": "Rule template deleted successfully"
+  "data": [
+    {
+      "id": "string",
+      "template_name": "string",
+      "description": "string",
+      "is_active": "boolean",
+      "rules_config": {},           // 完整的游戏规则配置
+      "created_at": "ISO8601 datetime",
+      "updated_at": "ISO8601 datetime"
+    }
+  ]
 }
 ```
+
+**说明:**
+- 该接口无需认证，公开访问
+- 支持多种查询方式：列表查询、单个查询、条件筛选
+- 返回统一的数组格式，无论是单个还是多个结果
 
 ### 8. 获取管理员列表（仅超级管理员）
 ```
