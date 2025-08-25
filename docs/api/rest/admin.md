@@ -35,27 +35,35 @@ POST /api/admin/games
 **请求参数:**
 ```json
 {
-  "name": "string",
-  "description": "string",
-  "director_password": "string",
-  "max_players": "integer"
+  "name": "string",                    // 游戏名称，必填
+  "description": "string",             // 游戏描述，可选
+  "director_password": "string",       // 导演密码，必填
+  "max_players": "integer",           // 最大玩家数，必填
+  "rule_template_id": "string"        // 规则模板ID，可选
 }
 ```
 
 **响应:**
 ```json
 {
-  "id": "string",
-  "name": "string",
-  "description": "string",
-  "director_password": "string",
-  "max_players": "integer"
+  "success": true,
+  "data": {
+    "id": "string",
+    "name": "string",
+    "description": "string",
+    "director_password": "string",
+    "max_players": "integer",
+    "status": "waiting",
+    "rule_template_id": "string|null",
+    "created_at": "ISO8601 datetime",
+    "updated_at": "ISO8601 datetime"
+  }
 }
 ```
 
 ### 3. 修改游戏设置
 ```
-PUT /api/admin/game/{game_id}
+PUT /api/admin/games/{game_id}
 ```
 
 **路径参数:**
@@ -64,27 +72,35 @@ PUT /api/admin/game/{game_id}
 **请求参数:**
 ```json
 {
-  "name": "string",           // 可选
-  "description": "string",    // 可选
-  "director_password": "string",  // 可选
-  "max_players": "integer"    // 可选
+  "name": "string",                   // 可选
+  "description": "string",            // 可选
+  "director_password": "string",      // 可选
+  "max_players": "integer",          // 可选
+  "rule_template_id": "string"       // 可选
 }
 ```
 
 **响应:**
 ```json
 {
-  "id": "string",
-  "name": "string",
-  "description": "string",
-  "director_password": "string",
-  "max_players": "integer"
+  "success": true,
+  "data": {
+    "id": "string",
+    "name": "string",
+    "description": "string",
+    "director_password": "string",
+    "max_players": "integer",
+    "status": "waiting|running|paused|ended",
+    "rule_template_id": "string|null",
+    "created_at": "ISO8601 datetime",
+    "updated_at": "ISO8601 datetime"
+  }
 }
 ```
 
 ### 4. 删除游戏
 ```
-DELETE /api/admin/game/{game_id}
+DELETE /api/admin/games/{game_id}
 ```
 
 **路径参数:**

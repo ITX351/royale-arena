@@ -3,6 +3,7 @@ mod auth;
 mod config;
 mod database;
 mod errors;
+mod game;
 mod routes;
 mod rule_template;
 
@@ -15,6 +16,7 @@ use admin::AdminService;
 use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
+use game::GameService;
 use routes::create_routes;
 use rule_template::RuleTemplateService;
 
@@ -44,10 +46,11 @@ async fn main() {
     // 创建服务实例
     let auth_service = AuthService::new(pool.clone(), jwt_manager);
     let admin_service = AdminService::new(pool.clone(), config.bcrypt_cost);
+    let game_service = GameService::new(pool.clone());
     let rule_template_service = RuleTemplateService::new(pool);
 
     // 构建路由
-    let app = create_routes(auth_service, admin_service, rule_template_service)
+    let app = create_routes(auth_service, admin_service, game_service, rule_template_service)
         .layer(TraceLayer::new_for_http());
 
     // 定义服务器地址
