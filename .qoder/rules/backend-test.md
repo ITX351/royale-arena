@@ -11,3 +11,4 @@ description: 后台生成rust测试
    - 测试真实数据库交互
 3. API集成测试: 复杂业务流程的端到端测试
 4. 测试数据自动管理，依赖sqlx::test事务自动清理
+5. 返回值使用Result，`.await`后使用`?`传播错误，Result传播与assert混合。

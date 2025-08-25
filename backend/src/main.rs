@@ -1,11 +1,20 @@
-use axum::{
-    routing::get,
-    Router,
-};
+mod admin;
+mod auth;
+mod config;
+mod database;
+mod errors;
+mod routes;
+
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+use admin::AdminService;
+use auth::{AuthService, JwtManager};
+use config::AppConfig;
+use database::create_pool;
+use routes::create_routes;
 
 #[tokio::main]
 async fn main() {
@@ -18,27 +27,31 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // 构建我们的应用路由
-    let app = Router::new()
-        .route("/", get(handler))
-        .route("/health", get(health_check))
+    // 加载配置
+    let config = AppConfig::from_env()
+        .expect("Failed to load configuration");
+
+    // 创建数据库连接池
+    let pool = create_pool(&config)
+        .await
+        .expect("Failed to create database pool");
+
+    // 创建 JWT 管理器
+    let jwt_manager = JwtManager::new(&config.jwt_secret, config.jwt_expiration_hours);
+
+    // 创建服务实例
+    let auth_service = AuthService::new(pool.clone(), jwt_manager);
+    let admin_service = AdminService::new(pool, config.bcrypt_cost);
+
+    // 构建路由
+    let app = create_routes(auth_service, admin_service)
         .layer(TraceLayer::new_for_http());
 
     // 定义服务器地址
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     info!("server running on {}", addr);
 
-    // 运行服务器 (修正Axum 0.8的语法)
+    // 运行服务器
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
-}
-
-// 基础的处理函数
-async fn handler() -> &'static str {
-    "Welcome to Royale Arena Backend!"
-}
-
-// 健康检查端点
-async fn health_check() -> &'static str {
-    "OK"
 }
