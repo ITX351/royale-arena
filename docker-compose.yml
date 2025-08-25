@@ -1,0 +1,68 @@
+services:
+  # backend:
+  #   container_name: royale-arena-backend
+  #   build:
+  #     context: ./backend/royale-arena-backend
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./backend/royale-arena-backend:/app
+  #     - /app/target
+  #   environment: 
+  #     - RUST_LOG=debug
+  #   command: cargo watch -x run
+  #   networks:
+  #     - discuz_net
+  
+  # frontend:
+  #   container_name: royale-arena-frontend
+  #   build:
+  #     context: ./frontend/royale-arena-frontend
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend/royale-arena-frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - NODE_ENV=development
+  #   command: npm run dev -- --host 0.0.0.0
+  #   networks:
+  #     - discuz_net
+
+  mysql:
+    image: mysql:5.7
+    container_name: discuz_mysql
+    ports:
+      - "3306:3306"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ultrax
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    command: --character-set-server=gbk --collation-server=gbk_chinese_ci --sql-mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
+    networks:
+      - discuz_net
+
+  adminer:
+    image: adminer
+    container_name: discuz_adminer
+    ports:
+      - 8081:8080
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      - mysql
+    networks:
+      - discuz_net
+    profiles:
+      - tools
+
+networks:
+  discuz_net:
+    driver: bridge

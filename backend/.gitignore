@@ -1,0 +1,17 @@
+# Compiled files
+target/
+**/target/
+
+# Cargo.lock is included in version control for binary projects
+# but not for libraries
+Cargo.lock
+
+# IDE files
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.*
+!*.example
+!*.example.*

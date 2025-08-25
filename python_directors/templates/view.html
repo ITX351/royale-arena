@@ -1,0 +1,186 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大逃杀行动提交</title>
+<style>
+    input, select {
+        font-size: 15px;
+        margin-left: 2px;
+        margin-right: 2px;
+        padding: 2px;
+    }
+</style>
+<h3>提交行动</h3>
+<p>
+    {{ role.name }}，生命：<b style="color:red">{{ role.life }}</b>{% if role.injured > 0 %}（每天清晨减10）{% endif %}，
+    体力：{{ role.strength }}，当前位置：{{ role.location }}<br/>
+    手中道具：{{ role.hands | join(' ') }} | 
+    背包道具：{% for item in role.things %}{{ item }}{% if items.get(item, [9, 1])[1] <= 10 %}({{ items.get(item, [9, 1])[1] }}次){% endif %} {% endfor %}<br/>
+</p>
+<form action="{{ send_url }}" method="POST" onsubmit="return isValid()">
+    {% if role.location == '' %}
+    <p>
+        <label><input type="radio" name="action" value="born" />出生</label>
+        <select name="born_in">
+            <option value="">选择</option>
+            {% for place in places %}
+            <option value="{{ place.name }}">{{ place.name }}</option>
+            {% endfor %}
+        </select> 
+    </p>
+    {% else %}
+    <p>
+        <label><input type="radio" name="action" value="move" />移动到</label>
+        <select name="move_to">
+            <option value="">选择</option>
+            {% for place in places %}
+            <option value="{{ place.name }}">{{ place.name }}</option>
+            {% endfor %}
+        </select> 
+    </p>
+    <p>
+        <label>
+            <input type="radio" name="action" value="search" />搜索{{ role.location }}，
+            <span id="search_second">0</span> 秒后可再次搜索
+            <span id="search_ts" style="display:none">{{ role.ts }}</span>
+        </label>
+        <script>
+            function updateSearchSecond() {
+                const left = Math.floor(Date.now() / 1000) - parseInt(document.getElementById("search_ts").innerText);
+                if (left <= 30) {
+                    document.getElementById("search_second").innerText = (30 - left).toString();
+                    setTimeout(updateSearchSecond, 1000);
+                } else {
+                    document.getElementById("search_second").innerText = "0";
+                }
+            }
+            setTimeout(updateSearchSecond, 0);
+        </script>
+    </p>
+    <p>
+        <label><input type="radio" name="action" value="pick" />捡拾</label>
+    </p>
+    <p>
+        <label><input type="radio" name="action" value="attack" />攻击</label>
+    </p>
+    <p>
+        <label><input type="radio" name="action" value="equip" />从背包拿到手里</label>
+        <select name="equip_item">
+            <option value="">选择</option>
+            {% for item in role.things %}
+            <option value="{{ item }}">{{ item }}</option>
+            {% endfor %}
+        </select>
+    </p>
+    <p>
+        <script>
+            function showOptions(value) {
+                if (value.startsWith("[侦]") || value.startsWith("[毒]")) {
+                    document.getElementById("use_item_target_role").style.display = "inline";
+                } else {
+                    document.getElementById("use_item_target_role").style.display = "none";
+                }
+                if (value.startsWith("[GPS]")) {
+                    document.getElementById("use_item_target_item").style.display = "inline";
+                } else {
+                    document.getElementById("use_item_target_item").style.display = "none";
+                }
+                if (value.startsWith("[合]")) {
+                    document.getElementById("use_item_target_upgrade").style.display = "inline";
+                } else {
+                    document.getElementById("use_item_target_upgrade").style.display = "none";
+                }
+            }
+        </script>
+        <label><input type="radio" name="action" value="use" />使用手里的</label>
+        <select name="use_item" onChange="showOptions(this.value);">
+            <option value="">选择</option>
+            {% for item in role.hands %}
+            <option value="{{ item }}">{{ item }}</option>
+            {% endfor %}
+        </select>
+        <select name="use_item_target_role" id="use_item_target_role" style="display:none">
+            <option value="">对象</option>
+            {% for role in roles %}
+            <option value="{{ role.name }}">{{ role.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="use_item_target_item" id="use_item_target_item" style="display:none">
+            <option value="">查看</option>
+            {% for item in all_items %}
+            <option value="{{ item }}">{{ item }}</option>
+            {% endfor %}
+        </select>
+        <select name="use_item_target_upgrade" id="use_item_target_upgrade" style="display:none">
+            <option value="">目标等级</option>
+            {% for level in item_levels %}
+            <option value="{{ level }}">{{ level }}</option>
+            {% endfor %}
+        </select>
+    </p>
+    <p>
+        <label><input type="radio" name="action" value="throw" />丢弃在原地</label>
+        <select name="throw_item">
+            <option value="">选择</option>
+            {% for item in role.things %}
+            <option value="{{ item }}">{{ item }}</option>
+            {% endfor %}
+        </select>
+    </p>
+    <p>
+        <label><input type="radio" name="action" value="deliver" />传音</label>
+        <select name="deliver_target" id="deliver_target">
+            <option value="">对象</option>
+            {% for role in all_roles %}
+            {% if role != '导演' and role != '观众' %}
+            <option value="{{ role }}">{{ role }}</option>
+            {% endif %}
+            {% endfor %}
+        </select>
+        <input type="text" name="deliver_content" placeholder="传音内容" size="30"/>
+    </p>
+    {% endif %}
+    <p>
+        <label><input type="radio" name="action" value="send" />对话导演</label>
+        <input type="text" name="content" placeholder="对话内容" size="30"/>
+    </p>
+    <p><input type="submit" value="提交" />&nbsp;<input type="reset" value="重置"></p>
+</form>
+
+<h3>历史行动</h3>
+{% for message in messages | reverse %}
+    <p>
+        {{ message.time }} 角色 <b>{{ message.from }}</b> 对 <b>{{ message.to }}</b> 说：<br/>
+        {{ message.content }}
+    </p>
+{% endfor %}
+
+<script>
+    function isValid() {
+        const radios = document.getElementsByName("action");
+        for (var i = 0; i < radios.length; i++) {
+            if (radios[i].checked) {
+                return true;
+            }
+        }
+        alert("请选择行动类型（单选框）");
+        return false;
+    }
+
+    function setCaretPosition(input, pos) {
+        if (input.setSelectionRange){
+            setTimeout(function() {
+                input.setSelectionRange(pos, pos);
+                input.focus();
+            }, 5);
+        }
+    }
+
+    function refresh() {
+        const text = document.getElementById("content").value;
+        location.href = location.pathname + "?content=" + text;
+    }
+
+    //const input = document.getElementById("content");
+    //setCaretPosition(input, input.value.length);
+    setTimeout("location.reload(true);", 60000);
+</script>

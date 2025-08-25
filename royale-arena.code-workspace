@@ -1,0 +1,91 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": "."
+    },
+    {
+      "name": "Frontend App",
+      "path": "./frontend/"
+    },
+    {
+      "name": "Backend Service",
+      "path": "./backend/"
+    }
+  ],
+  "settings": {
+    // 全局设置
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.log": true
+    },
+    // Vue 相关设置
+    "emmet.includeLanguages": {
+      "vue-html": "html",
+      "vue": "html"
+    },
+    // TypeScript 设置
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    // Rust 设置
+    "rust-analyzer.linkedProjects": [
+      "./backend/Cargo.toml"
+    ],
+    "rust-analyzer.testExplorer": true,
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.files.watcher": "server",
+    "rust-analyzer.workspace.symbol.search.scope": "workspace_and_dependencies"
+  },
+  "extensions": {
+    "recommendations": [
+      "vue.volar",
+      "rust-lang.rust-analyzer",
+      "bradlc.vscode-tailwindcss",
+      "ms-azuretools.vscode-docker",
+      "editorconfig.editorconfig"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug Backend",
+        "cargo": {
+          "args": [
+            "build",
+            "--bin=royale-arena-backend"
+          ],
+          "filter": {
+            "name": "royale-arena-backend",
+            "kind": "bin"
+          },
+          "cwd": "${workspaceFolder}/backend"
+        },
+        "args": [],
+        "sourceLanguages": [
+          "rust"
+        ]
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Run Frontend Dev Server",
+        "skipFiles": [
+          "<node_internals>/**"
+        ],
+        "program": "${workspaceFolder}/frontend/node_modules/vite/bin/vite.js",
+        "args": [
+          "--host",
+          "0.0.0.0"
+        ],
+        "cwd": "${workspaceFolder}/frontend",
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "console": "integratedTerminal"
+      }
+    ]
+  }
+}
