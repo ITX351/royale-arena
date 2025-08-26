@@ -7,6 +7,8 @@ pub struct AppConfig {
     pub jwt_secret: String,
     pub jwt_expiration_hours: u64,
     pub bcrypt_cost: u32,
+    pub server_port: u16,
+    pub api_prefix: String,
 }
 
 impl AppConfig {
@@ -28,12 +30,22 @@ impl AppConfig {
             .unwrap_or_else(|_| "12".to_string())
             .parse()
             .map_err(|_| "BCRYPT_COST must be a valid number".to_string())?;
+            
+        let server_port = env::var("SERVER_PORT")
+            .unwrap_or_else(|_| "3000".to_string())
+            .parse()
+            .map_err(|_| "SERVER_PORT must be a valid number".to_string())?;
+            
+        let api_prefix = env::var("API_PREFIX")
+            .unwrap_or_else(|_| "/royale-arena".to_string());
         
         Ok(Self {
             database_url,
             jwt_secret,
             jwt_expiration_hours,
             bcrypt_cost,
+            server_port,
+            api_prefix,
         })
     }
 }

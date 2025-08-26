@@ -15,6 +15,10 @@ pub enum GameStatus {
     Paused,
     #[serde(rename = "ended")]
     Ended,
+    #[serde(rename = "hidden")]
+    Hidden,
+    #[serde(rename = "deleted")]
+    Deleted,
 }
 
 impl FromStr for GameStatus {
@@ -26,6 +30,8 @@ impl FromStr for GameStatus {
             "running" => Ok(GameStatus::Running),
             "paused" => Ok(GameStatus::Paused),
             "ended" => Ok(GameStatus::Ended),
+            "hidden" => Ok(GameStatus::Hidden),
+            "deleted" => Ok(GameStatus::Deleted),
             _ => Err(()),
         }
     }
@@ -127,10 +133,54 @@ pub struct UpdateGameRequest {
     pub rule_template_id: Option<String>,
 }
 
+/// 游戏筛选类型
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GameFilterType {
+    /// 全部（不包括已隐藏和已删除）
+    All,
+    /// 活动中（等待中、进行中、已暂停）
+    Active,
+    /// 等待中
+    Waiting,
+    /// 进行中
+    Running,
+    /// 已结束
+    Ended,
+    /// 已隐藏
+    Hidden,
+    /// 已删除（管理员可见）
+    Deleted,
+}
+
+impl GameFilterType {
+    /// 获取筛选类型对应的游戏状态列表
+    pub fn get_status_list(&self) -> Vec<GameStatus> {
+        match self {
+            GameFilterType::All => vec![
+                GameStatus::Waiting,
+                GameStatus::Running,
+                GameStatus::Paused,
+                GameStatus::Ended,
+            ],
+            GameFilterType::Active => vec![
+                GameStatus::Waiting,
+                GameStatus::Running,
+                GameStatus::Paused,
+            ],
+            GameFilterType::Waiting => vec![GameStatus::Waiting],
+            GameFilterType::Running => vec![GameStatus::Running],
+            GameFilterType::Ended => vec![GameStatus::Ended],
+            GameFilterType::Hidden => vec![GameStatus::Hidden],
+            GameFilterType::Deleted => vec![GameStatus::Deleted],
+        }
+    }
+}
+
 /// 游戏列表查询参数
 #[derive(Debug, Deserialize)]
 pub struct GameListQuery {
-    pub status: Option<GameStatus>,
+    pub filter: Option<GameFilterType>,
 }
 
 impl CreateGameRequest {

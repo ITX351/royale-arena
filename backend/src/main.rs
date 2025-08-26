@@ -50,12 +50,18 @@ async fn main() {
     let rule_template_service = RuleTemplateService::new(pool);
 
     // 构建路由
-    let app = create_routes(auth_service, admin_service, game_service, rule_template_service)
+    let app = create_routes(
+        auth_service, 
+        admin_service, 
+        game_service, 
+        rule_template_service,
+        &config.api_prefix
+    )
         .layer(TraceLayer::new_for_http());
 
     // 定义服务器地址
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    info!("server running on {}", addr);
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));
+    info!("server running on {} with API prefix: {}", addr, config.api_prefix);
 
     // 运行服务器
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

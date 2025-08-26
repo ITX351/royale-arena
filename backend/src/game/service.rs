@@ -158,7 +158,7 @@ impl GameService {
         Ok(())
     }
 
-    /// 获取游戏列表
+    /// 获取游戏列表（支持筛选）
     pub async fn get_games(&self, query: &GameListQuery) -> Result<Vec<GameListItem>, GameError> {
         let base_query = r#"
             SELECT g.id, g.name, g.description, g.status, g.max_players, g.created_at,
@@ -167,14 +167,30 @@ impl GameService {
             LEFT JOIN actors a ON g.id = a.game_id
         "#;
         
-        let results = if let Some(ref status) = query.status {
-            let full_query = format!("{} WHERE g.status = ? GROUP BY g.id ORDER BY g.created_at DESC", base_query);
-            sqlx::query_as::<_, GameQueryResult>(&full_query)
-                .bind(status)
-                .fetch_all(&self.pool)
-                .await?
+        let results = if let Some(ref filter) = query.filter {
+            // 根据筛选类型获取对应的状态列表
+            let status_list = filter.get_status_list();
+            
+            // 构建 WHERE 子句
+            let status_placeholders = status_list.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let full_query = format!(
+                "{} WHERE g.status IN ({}) GROUP BY g.id ORDER BY g.created_at DESC",
+                base_query, status_placeholders
+            );
+            
+            // 执行查询
+            let mut query_builder = sqlx::query_as::<_, GameQueryResult>(&full_query);
+            for status in status_list {
+                query_builder = query_builder.bind(status);
+            }
+            
+            query_builder.fetch_all(&self.pool).await?
         } else {
-            let full_query = format!("{} GROUP BY g.id ORDER BY g.created_at DESC", base_query);
+            // 默认显示所有非隐藏和非删除的游戏（相当于"All"筛选）
+            let full_query = format!(
+                "{} WHERE g.status NOT IN ('hidden', 'deleted') GROUP BY g.id ORDER BY g.created_at DESC",
+                base_query
+            );
             sqlx::query_as::<_, GameQueryResult>(&full_query)
                 .fetch_all(&self.pool)
                 .await?

@@ -2,6 +2,7 @@
 name = "royale-arena-backend"
 version = "0.1.0"
 edition = "2024"
+default-run = "royale-arena-backend"
 
 [lib]
 name = "royale_arena_backend"
