@@ -14,14 +14,18 @@ import type {
 
 export const gameService = {
   // 获取游戏列表
-  async getGames(query?: GameListQuery): Promise<ApiResponse<GameListItem[]>> {
-    const response = await apiClient.get(API_ENDPOINTS.GAMES, { params: query })
+  async getGames(query?: GameListQuery, isAdmin: boolean = false): Promise<ApiResponse<GameListItem[]>> {
+    const client = isAdmin ? adminClient : apiClient;
+    const endpoint = isAdmin ? API_ENDPOINTS.ADMIN_GAMES : API_ENDPOINTS.GAMES;
+    const response = await client.get(endpoint, { params: query })
     return response.data
   },
 
   // 获取游戏详情
-  async getGameDetail(id: string): Promise<ApiResponse<GameWithRules>> {
-    const response = await apiClient.get(API_ENDPOINTS.GAME_DETAIL(id))
+  async getGameDetail(id: string, isAdmin: boolean = false): Promise<ApiResponse<GameWithRules>> {
+    const client = isAdmin ? adminClient : apiClient;
+    const endpoint = isAdmin ? `${API_ENDPOINTS.ADMIN_GAMES}/${id}` : API_ENDPOINTS.GAME_DETAIL(id);
+    const response = await client.get(endpoint)
     return response.data
   },
 

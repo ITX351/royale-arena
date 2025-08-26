@@ -62,6 +62,7 @@ pub fn create_routes(
     let game_admin_routes = Router::new()
         .route(&format!("{}/admin/games", api_prefix), get(get_games))
         .route(&format!("{}/admin/games", api_prefix), post(create_game))
+        .route(&format!("{}/admin/games/{{game_id}}", api_prefix), get(get_game_with_rules))
         .route(&format!("{}/admin/games/{{game_id}}", api_prefix), put(update_game))
         .route(&format!("{}/admin/games/{{game_id}}", api_prefix), delete(delete_game))
         .layer(

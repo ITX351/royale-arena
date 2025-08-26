@@ -174,9 +174,8 @@
         <el-form-item label="导演密码" prop="director_password">
           <el-input 
             v-model="gameForm.director_password" 
-            type="password"
+            type="text"
             placeholder="请输入导演密码"
-            show-password
           />
         </el-form-item>
 
@@ -303,7 +302,7 @@ const filteredGames = computed(() => {
 const loadGames = async () => {
   loading.value = true
   try {
-    const response = await gameService.getGames()
+    const response = await gameService.getGames(undefined, true) // 使用管理员权限获取游戏列表
     if (response.success && response.data) {
       games.value = response.data
     }
@@ -341,7 +340,7 @@ const editGame = (game: GameListItem) => {
   // 填充表单数据
   gameForm.name = game.name
   gameForm.description = game.description || ''
-  gameForm.director_password = '' // 不显示现有密码
+  gameForm.director_password = game.director_password || '' // 显示现有密码
   gameForm.max_players = game.max_players
   gameForm.rule_template_id = game.rule_template?.id || ''
   

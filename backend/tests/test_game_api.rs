@@ -1,6 +1,5 @@
 use royale_arena_backend::{
-    create_pool, AppConfig,
-    game::{CreateGameRequest, GameService, UpdateGameRequest, GameListQuery, GameStatus},
+    game::{CreateGameRequest, GameService, UpdateGameRequest, GameListQuery, GameStatus, GameFilterType},
 };
 use serde_json::json;
 use sqlx::MySqlPool;
@@ -71,16 +70,40 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     assert!(updated_game.rule_template_id.is_none());
     
     // 测试4: 获取游戏列表
-    let all_games_query = GameListQuery { status: None };
-    let all_games = service.get_games(&all_games_query).await?;
+    let all_games_query = GameListQuery { filter: None };
+    let all_games = service.get_games(&all_games_query, false).await?;
     assert!(all_games.len() >= 2);
     
-    let waiting_games_query = GameListQuery { status: Some(GameStatus::Waiting) };
-    let waiting_games = service.get_games(&waiting_games_query).await?;
+    let waiting_games_query = GameListQuery { filter: Some(GameFilterType::Waiting) };
+    let waiting_games = service.get_games(&waiting_games_query, false).await?;
     assert!(waiting_games.len() >= 2);
     
+    // 测试4.5: 验证游戏列表的权限控制行为
+    // 检查没有管理员权限时，游戏列表项中不包含导演密码
+    for game in &all_games {
+        assert!(game.director_password.is_none(), "Non-admin user should not see director password in game list");
+    }
+    
+    // 检查有管理员权限时，游戏列表项中包含导演密码
+    let all_games_with_password = service.get_games(&all_games_query, true).await?;
+    assert!(all_games_with_password.len() >= 2);
+    
+    // 验证至少有一个游戏包含导演密码
+    let game_with_password = all_games_with_password.iter().find(|g| g.director_password.is_some());
+    assert!(game_with_password.is_some(), "Admin user should see director password in game list");
+    
+    // 验证密码内容正确
+    if let Some(game) = game_with_password {
+        // 根据创建请求中的密码验证
+        if game.name == "test_game_1" {
+            assert_eq!(game.director_password.as_ref().unwrap(), "password123");
+        } else if game.name == "test_game_2" {
+            assert_eq!(game.director_password.as_ref().unwrap(), "password456");
+        }
+    }
+    
     // 测试5: 获取游戏详情（包含规则）
-    let game_details = service.get_game_with_rules(&game_with_template.id).await?;
+    let game_details = service.get_game_with_rules(&game_with_template.id, false).await?;
     assert_eq!(game_details.name, "test_game_2");
     assert!(game_details.rule_template.is_some());
     
@@ -88,15 +111,25 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     assert_eq!(rule_template.template_name, "test_template_1");
     assert_eq!(rule_template.id, template_id);
     
-    let game_without_rules = service.get_game_with_rules(&updated_game.id).await?;
+    let game_without_rules = service.get_game_with_rules(&updated_game.id, false).await?;
     assert_eq!(game_without_rules.name, "updated_game_name");
     assert!(game_without_rules.rule_template.is_none());
+    
+    // 测试5.5: 验证权限控制行为
+    // 没有管理员权限时，不应该返回导演密码
+    assert!(game_details.director_password.is_none());
+    assert!(game_without_rules.director_password.is_none());
+    
+    // 有管理员权限时，应该返回导演密码
+    let game_with_password = service.get_game_with_rules(&game_with_template.id, true).await?;
+    assert!(game_with_password.director_password.is_some());
+    assert_eq!(game_with_password.director_password.unwrap(), "password456");
     
     // 测试6: 删除游戏
     service.delete_game(&created_game.id).await?;
     
     // 验证游戏已删除
-    let result = service.get_game_with_rules(&created_game.id).await;
+    let result = service.get_game_with_rules(&created_game.id, false).await;
     assert!(result.is_err());
     
     // 测试7: 验证错误情况

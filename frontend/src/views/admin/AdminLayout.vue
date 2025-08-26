@@ -215,6 +215,10 @@ onUnmounted(() => {
   display: flex;
   height: 100vh;
   background-color: #f5f7fa;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 /* 移动端顶部导航 */
@@ -260,6 +264,8 @@ onUnmounted(() => {
 /* 侧边栏 */
 .sidebar {
   width: 250px;
+  min-width: 250px;
+  max-width: 250px;
   background: white;
   border-right: 1px solid #ebeef5;
   display: flex;
@@ -267,10 +273,13 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   position: relative;
   z-index: 1000;
+  height: 100vh;
 }
 
 .sidebar-collapsed {
   width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 
 .sidebar-mobile {
@@ -313,6 +322,7 @@ onUnmounted(() => {
 .sidebar-nav {
   flex: 1;
   padding: 16px 0;
+  overflow: hidden;
 }
 
 .sidebar-menu {
@@ -327,6 +337,11 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.sidebar-collapsed .sidebar-footer {
+  align-items: center;
+  padding: 16px 8px;
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -339,6 +354,20 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.sidebar-collapsed .sidebar-actions {
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.sidebar-collapsed .sidebar-actions .el-button {
+  margin: 0 !important;
+  align-self: center;
 }
 
 .user-avatar {
@@ -377,11 +406,13 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: calc(100vw - 250px);
   transition: all 0.3s ease;
+  height: 100vh;
 }
 
 .main-content-expanded {
-  margin-left: -186px;
+  width: calc(100vw - 64px);
 }
 
 .main-content-mobile {
@@ -442,7 +473,7 @@ onUnmounted(() => {
 .page-content {
   flex: 1;
   padding: 24px;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 /* 移动端遮罩 */

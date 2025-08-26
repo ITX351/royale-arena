@@ -1,10 +1,11 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, State, Request},
     response::Json,
 };
 use serde_json::json;
 
 use crate::routes::AppState;
+use crate::admin::models::JwtClaims;
 use super::errors::GameError;
 use super::models::*;
 
@@ -52,8 +53,12 @@ pub async fn delete_game(
 pub async fn get_games(
     State(state): State<AppState>,
     Query(query): Query<GameListQuery>,
+    req: Request,
 ) -> Result<Json<serde_json::Value>, GameError> {
-    let games = state.game_service.get_games(&query).await?;
+    // 检查是否有管理员权限
+    let has_admin_privileges = req.extensions().get::<JwtClaims>().is_some();
+    
+    let games = state.game_service.get_games(&query, has_admin_privileges).await?;
     
     Ok(Json(json!({
         "success": true,
@@ -65,8 +70,12 @@ pub async fn get_games(
 pub async fn get_game_with_rules(
     State(state): State<AppState>,
     Path(game_id): Path<String>,
+    req: Request,
 ) -> Result<Json<serde_json::Value>, GameError> {
-    let game = state.game_service.get_game_with_rules(&game_id).await?;
+    // 检查是否有管理员权限
+    let has_admin_privileges = req.extensions().get::<JwtClaims>().is_some();
+    
+    let game = state.game_service.get_game_with_rules(&game_id, has_admin_privileges).await?;
     
     Ok(Json(json!({
         "success": true,

@@ -159,10 +159,11 @@ impl GameService {
     }
 
     /// 获取游戏列表（支持筛选）
-    pub async fn get_games(&self, query: &GameListQuery) -> Result<Vec<GameListItem>, GameError> {
+    pub async fn get_games(&self, query: &GameListQuery, include_director_password: bool) -> Result<Vec<GameListItem>, GameError> {
         let base_query = r#"
             SELECT g.id, g.name, g.description, g.status, g.max_players, g.created_at,
-                   COUNT(a.id) as player_count
+                   COUNT(a.id) as player_count,
+                   g.director_password
             FROM games g
             LEFT JOIN actors a ON g.id = a.game_id
         "#;
@@ -198,18 +199,23 @@ impl GameService {
         
         let game_list = results
             .into_iter()
-            .map(GameListItem::from)
+            .map(|mut result| {
+                if !include_director_password {
+                    result.director_password = None;
+                }
+                GameListItem::from(result)
+            })
             .collect();
         
         Ok(game_list)
     }
 
     /// 获取游戏详情（包含规则信息）
-    pub async fn get_game_with_rules(&self, game_id: &str) -> Result<GameWithRules, GameError> {
+    pub async fn get_game_with_rules(&self, game_id: &str, include_director_password: bool) -> Result<GameWithRules, GameError> {
         // 获取游戏基本信息和规则模板信息
         let game_info = sqlx::query!(
             r#"
-            SELECT g.id, g.name, g.description, g.status as "status: GameStatus", g.max_players, g.created_at,
+            SELECT g.id, g.name, g.description, g.status as "status: GameStatus", g.max_players, g.created_at, g.director_password,
                    rt.id as rule_template_id, rt.template_name, rt.description as rule_description, rt.rules_config
             FROM games g
             LEFT JOIN rule_templates rt ON g.rule_template_id = rt.id
@@ -219,12 +225,12 @@ impl GameService {
         )
         .fetch_optional(&self.pool)
         .await?;
-        
+
         let game_info = game_info.ok_or(GameError::GameNotFound)?;
-        
+
         // 获取玩家数量
         let player_count = self.get_player_count(game_id).await?;
-        
+
         // 构建规则模板信息
         let rule_template = if let Some(template_id) = game_info.rule_template_id {
             Some(RuleTemplateInfo {
@@ -236,7 +242,14 @@ impl GameService {
         } else {
             None
         };
-        
+
+        // 根据权限决定是否包含导演密码
+        let director_password = if include_director_password {
+            Some(game_info.director_password)
+        } else {
+            None
+        };
+
         Ok(GameWithRules {
             id: game_info.id,
             name: game_info.name,
@@ -245,6 +258,7 @@ impl GameService {
             player_count,
             max_players: game_info.max_players,
             created_at: game_info.created_at,
+            director_password,
             rule_template,
         })
     }

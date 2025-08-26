@@ -61,6 +61,8 @@ pub struct GameListItem {
     pub player_count: i32,
     pub max_players: i32,
     pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub director_password: Option<String>,
 }
 
 /// 游戏查询结果（用于query_as宏）
@@ -73,6 +75,7 @@ pub struct GameQueryResult {
     pub max_players: i32,
     pub created_at: DateTime<Utc>,
     pub player_count: i64,
+    pub director_password: Option<String>,
 }
 
 impl From<GameQueryResult> for GameListItem {
@@ -87,6 +90,7 @@ impl From<GameQueryResult> for GameListItem {
             player_count: result.player_count as i32,
             max_players: result.max_players,
             created_at: result.created_at,
+            director_password: result.director_password,
         }
     }
 }
@@ -101,6 +105,8 @@ pub struct GameWithRules {
     pub player_count: i32,
     pub max_players: i32,
     pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub director_password: Option<String>,
     pub rule_template: Option<RuleTemplateInfo>,
 }
 

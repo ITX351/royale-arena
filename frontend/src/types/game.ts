@@ -48,6 +48,7 @@ export interface GameListItem {
   player_count: number
   max_players: number
   created_at: string
+  director_password?: string
 }
 
 // 游戏详情（包含规则信息）
