@@ -32,8 +32,10 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('admin_user')
       
       // 只在访问管理员相关API时才重定向到登录页
+      // 但要排除登录页面本身，避免登录失败时页面刷新
       const isAdminAPI = error.config?.url?.includes('/admin/')
-      if (isAdminAPI && window.location.pathname.startsWith('/admin')) {
+      const isLoginPage = window.location.pathname === '/admin/login'
+      if (isAdminAPI && window.location.pathname.startsWith('/admin') && !isLoginPage) {
         window.location.href = '/admin/login'
       }
     }

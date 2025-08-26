@@ -22,6 +22,11 @@ POST /api/admin/login
 {
   "success": true,
   "token": "string",     // 认证令牌
+  "user": {              // 用户信息
+    "id": "string",
+    "username": "string",
+    "is_super_admin": "boolean"
+  },
   "expires_in": "integer" // 令牌过期时间（秒）
 }
 ```

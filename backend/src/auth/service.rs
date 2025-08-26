@@ -34,6 +34,7 @@ impl AuthService {
         Ok(LoginResponse {
             success: true,
             token,
+            user: user.into(), // 转换为不包含密码的响应结构
             expires_in: self.jwt_manager.expiration_hours * 3600, // 转换为秒
         })
     }

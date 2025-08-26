@@ -108,8 +108,17 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const adminStore = useAdminStore()
+  
+  // 只在需要认证的路由上才初始化认证状态，避免干扰正常的路由跳转
+  if (to.meta.requiresAuth && !adminStore.isLoggedIn) {
+    try {
+      await adminStore.initAuth()
+    } catch (err) {
+      console.warn('初始化认证状态失败:', err)
+    }
+  }
   
   // 设置页面标题
   if (to.meta.title) {

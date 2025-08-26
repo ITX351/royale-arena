@@ -23,15 +23,12 @@ adminClient.interceptors.response.use(
   response => response,
   error => {
     if (error.response?.status === 401) {
-      // 清除过期token
+      // 只清除token，不进行自动重定向
+      // 重定向由路由守卫处理
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       
-      // 重定向到管理员登录页
-      if (window.location.pathname.startsWith('/admin') && 
-          !window.location.pathname.includes('/login')) {
-        window.location.href = '/admin/login'
-      }
+      console.warn('管理员token已过期，已清除本地存储')
     }
     return Promise.reject(error)
   }

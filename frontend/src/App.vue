@@ -5,15 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useAdminStore } from '@/stores/admin'
-
-const adminStore = useAdminStore()
-
-// 初始化时检查登录状态
-onMounted(() => {
-  adminStore.initAuth()
-})
+// 认证初始化在路由守卫中处理，这里不需要重复调用
 </script>
 
 <style>

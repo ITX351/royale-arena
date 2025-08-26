@@ -21,20 +21,51 @@ export const useAdminStore = defineStore('admin', () => {
     const savedToken = localStorage.getItem('admin_token')
     const savedUser = localStorage.getItem('admin_user')
     
-    if (savedToken && savedUser) {
+    // 严格检查数据有效性
+    if (savedToken && savedUser && 
+        savedToken !== 'null' && savedToken !== 'undefined' &&
+        savedUser !== 'null' && savedUser !== 'undefined') {
       try {
-        token.value = savedToken
-        userInfo.value = JSON.parse(savedUser)
-        
-        // 验证token是否有效（可选）
-        // 这里可以添加一个验证接口调用
-        
-        isLoggedIn.value = true
+        // 尝试解析用户信息
+        const parsedUser = JSON.parse(savedUser)
+        if (parsedUser && typeof parsedUser === 'object' && parsedUser.id) {
+          token.value = savedToken
+          userInfo.value = parsedUser
+          isLoggedIn.value = true
+          
+          // 验证token是否有效（简单本地验证）
+          await validateToken(savedToken)
+        } else {
+          throw new Error('用户信息格式无效')
+        }
       } catch (err) {
         console.warn('清除无效的管理员登录信息:', err)
         // 清除无效数据
         logout()
       }
+    }
+  }
+  
+  // 验证token有效性（简化版本）
+  const validateToken = async (token: string) => {
+    try {
+      // 基本格式检查
+      if (!token || token.length < 10) {
+        throw new Error('无效的token格式')
+      }
+      
+      // JWT token基本格式检查（包含三个部分）
+      const parts = token.split('.')
+      if (parts.length !== 3) {
+        throw new Error('无效的token格式')
+      }
+      
+      // 暂时跳过复杂的payload解析，避免错误
+      // 在后续版本中可以添加更详细的验证
+      
+    } catch (err) {
+      console.warn('Token验证失败:', err)
+      throw err
     }
   }
 
@@ -57,11 +88,38 @@ export const useAdminStore = defineStore('admin', () => {
         
         return { success: true }
       } else {
-        throw new Error(response.message || '登录失败')
+        const friendlyMessage = response.message === 'Invalid credentials' || response.message === 'Unauthorized' 
+          ? '用户名或密码错误，请检查后重试'
+          : response.message || '登录失败，请稍后重试'
+        throw new Error(friendlyMessage)
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '登录失败'
+    } catch (err: any) {
+      let errorMessage = '登录失败，请稍后重试'
+      
+      // 根据HTTP状态码提供更友好的错误信息
+      if (err.response?.status === 401) {
+        errorMessage = '用户名或密码错误，请检查后重试'
+      } else if (err.response?.status === 403) {
+        errorMessage = '账户被禁用，请联系管理员'
+      } else if (err.response?.status === 404) {
+        errorMessage = '登录服务暂时不可用，请稍后重试'
+      } else if (err.response?.status >= 500) {
+        errorMessage = '服务器错误，请稍后重试'
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorMessage = '请求超时，请检查网络连接后重试'
+      } else if (err.code === 'NETWORK_ERROR' || err.message?.includes('Network Error')) {
+        errorMessage = '网络连接失败，请检查网络设置后重试'
+      } else if (err.message && !err.message.includes('Error') && !err.message.includes('Failed')) {
+        // 如果有自定义的友好错误信息，使用它
+        errorMessage = err.message
+      }
+      
       error.value = errorMessage
+      
+      // 确保错误信息在界面上保持显示，不会一闪而过
+      console.error('管理员登录失败:', err)
+      
+      // 返回错误信息，让调用者可以处理
       return { success: false, error: errorMessage }
     } finally {
       loading.value = false

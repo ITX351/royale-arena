@@ -8,8 +8,8 @@
         </div>
         <el-tag 
           :type="getGameStatusConfig(game.status).type" 
-          :color="getGameStatusConfig(game.status).color"
           size="small"
+          effect="dark"
         >
           {{ getGameStatusConfig(game.status).text }}
         </el-tag>
@@ -261,7 +261,7 @@ const getGameStatusClass = (status: string) => {
 
 /* 状态特定样式 */
 .game-card--waiting {
-  border-left: 4px solid #909399;
+  border-left: 4px solid #E6A23C;
 }
 
 .game-card--running {

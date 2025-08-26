@@ -57,6 +57,7 @@
               <el-tag 
                 :type="getGameStatusConfig(row.status).type"
                 size="small"
+                effect="dark"
                 class="status-tag"
               >
                 {{ getGameStatusConfig(row.status).text }}

@@ -43,6 +43,7 @@ pub struct LoginRequest {
 pub struct LoginResponse {
     pub success: bool,
     pub token: String,
+    pub user: AdminUserResponse,
     pub expires_in: u64,
 }
 

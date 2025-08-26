@@ -6,8 +6,8 @@ export function getGameStatusConfig(status: GameStatus) {
     case 'waiting':
       return {
         text: '等待中',
-        type: 'info' as const,
-        color: '#909399'
+        type: 'warning' as const,
+        color: '#E6A23C'
       }
     case 'running':
       return {

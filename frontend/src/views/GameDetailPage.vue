@@ -31,8 +31,8 @@
               <h2 class="game-title">{{ gameDetail.name }}</h2>
               <el-tag 
                 :type="getGameStatusConfig(gameDetail.status).type"
-                :color="getGameStatusConfig(gameDetail.status).color"
                 size="large"
+                effect="dark"
               >
                 {{ getGameStatusConfig(gameDetail.status).text }}
               </el-tag>

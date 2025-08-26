@@ -5,21 +5,11 @@
       <div class="mobile-header-content">
         <el-button @click="toggleSidebar" :icon="Menu" circle />
         <h2 class="mobile-title">{{ currentPageTitle }}</h2>
-        <el-dropdown @command="handleCommand">
-          <el-button :icon="User" circle />
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="profile">
-                <el-icon><UserFilled /></el-icon>
-                个人信息
-              </el-dropdown-item>
-              <el-dropdown-item command="logout" divided>
-                <el-icon><SwitchButton /></el-icon>
-                退出登录
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        <div class="mobile-header-right">
+          <span class="mobile-username">{{ adminStore.userInfo?.username }}</span>
+          <el-button @click="goToHome" :icon="House" circle size="small" />
+          <el-button @click="handleLogout" :icon="SwitchButton" circle size="small" type="danger" />
+        </div>
       </div>
     </div>
 
@@ -48,7 +38,7 @@
           router
         >
           <el-menu-item index="/admin/games">
-            <el-icon><GamepadFilled /></el-icon>
+            <el-icon><Setting /></el-icon>
             <span>游戏管理</span>
           </el-menu-item>
           
@@ -81,25 +71,23 @@
           </div>
         </div>
         
-        <el-dropdown @command="handleCommand" placement="top">
+        <div class="sidebar-actions">
           <el-button 
-            :icon="Setting" 
+            @click="goToHome"
+            :icon="House" 
             circle 
-            :class="{ 'collapsed-button': sidebarCollapsed }"
+            size="small"
+            title="返回首页"
           />
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="home">
-                <el-icon><HomeFilled /></el-icon>
-                返回首页
-              </el-dropdown-item>
-              <el-dropdown-item command="logout" divided>
-                <el-icon><SwitchButton /></el-icon>
-                退出登录
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+          <el-button 
+            @click="handleLogout"
+            :icon="SwitchButton" 
+            circle 
+            size="small"
+            type="danger"
+            title="退出登录"
+          />
+        </div>
       </div>
     </aside>
 
@@ -111,26 +99,22 @@
           <h2 class="page-title">{{ currentPageTitle }}</h2>
         </div>
         <div class="content-header-right">
-          <el-button @click="goToHome" :icon="HomeFilled" text>
+          <div class="user-info">
+            <span class="username">{{ adminStore.userInfo?.username }}</span>
+            <el-tag 
+              :type="adminStore.isSuperAdmin ? 'danger' : 'primary'" 
+              size="small" 
+              effect="dark"
+            >
+              {{ adminStore.isSuperAdmin ? '超级管理员' : '管理员' }}
+            </el-tag>
+          </div>
+          <el-button @click="goToHome" :icon="House" text>
             返回首页
           </el-button>
-          <el-dropdown @command="handleCommand">
-            <div class="user-dropdown">
-              <span class="username">{{ adminStore.userInfo?.username }}</span>
-              <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item disabled>
-                  {{ adminStore.isSuperAdmin ? '超级管理员' : '管理员' }}
-                </el-dropdown-item>
-                <el-dropdown-item command="logout" divided>
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button @click="handleLogout" :icon="SwitchButton" text type="danger">
+            退出登录
+          </el-button>
         </div>
       </header>
 
@@ -152,7 +136,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { 
   Menu, 
   User, 
@@ -161,11 +145,8 @@ import {
   Monitor, 
   Expand, 
   Fold,
-  GamepadFilled,
   DocumentChecked,
-  Setting,
-  HomeFilled,
-  ArrowDown
+  House
 } from '@element-plus/icons-vue'
 import { useAdminStore } from '@/stores/admin'
 
@@ -206,44 +187,16 @@ const closeSidebar = () => {
   }
 }
 
-// 下拉菜单处理
-const handleCommand = async (command: string) => {
-  switch (command) {
-    case 'home':
-      goToHome()
-      break
-    case 'logout':
-      await handleLogout()
-      break
-    case 'profile':
-      // 可以添加个人信息页面
-      ElMessage.info('个人信息功能待开发')
-      break
-  }
-}
+// 下拉菜单处理（移动端使用） - 已移除，直接使用按钮
 
 const goToHome = () => {
   router.push('/')
 }
 
-const handleLogout = async () => {
-  try {
-    await ElMessageBox.confirm(
-      '确定要退出登录吗？',
-      '确认退出',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    adminStore.logout()
-    ElMessage.success('已退出登录')
-    router.push('/admin/login')
-  } catch {
-    // 用户取消
-  }
+const handleLogout = () => {
+  adminStore.logout()
+  ElMessage.success('已退出登录')
+  router.push('/admin/login')
 }
 
 // 生命周期
@@ -282,6 +235,19 @@ onUnmounted(() => {
   justify-content: space-between;
   height: 100%;
   padding: 0 16px;
+}
+
+.mobile-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-username {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  margin-right: 8px;
 }
 
 .mobile-title {
@@ -357,8 +323,8 @@ onUnmounted(() => {
   border-top: 1px solid #ebeef5;
   padding: 16px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .user-info {
@@ -366,6 +332,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   flex: 1;
+}
+
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .user-avatar {
@@ -396,10 +369,6 @@ onUnmounted(() => {
 .user-role {
   font-size: 12px;
   color: #909399;
-}
-
-.collapsed-button {
-  margin: 0 auto;
 }
 
 /* 主要内容区域 */

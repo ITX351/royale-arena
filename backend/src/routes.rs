@@ -60,6 +60,7 @@ pub fn create_routes(
 
     // 需要管理员权限的游戏管理路由
     let game_admin_routes = Router::new()
+        .route(&format!("{}/admin/games", api_prefix), get(get_games))
         .route(&format!("{}/admin/games", api_prefix), post(create_game))
         .route(&format!("{}/admin/games/{{game_id}}", api_prefix), put(update_game))
         .route(&format!("{}/admin/games/{{game_id}}", api_prefix), delete(delete_game))
@@ -73,6 +74,7 @@ pub fn create_routes(
 
     // 需要管理员权限的规则模版路由
     let rule_template_admin_routes = Router::new()
+        .route(&format!("{}/admin/rule-templates", api_prefix), get(get_templates))
         .route(&format!("{}/admin/rule-templates", api_prefix), post(create_template))
         .route(&format!("{}/admin/rule-templates/{{id}}", api_prefix), put(update_template))
         .layer(
