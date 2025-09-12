@@ -63,8 +63,8 @@ GET /api/game/{game_id}/players?password=<director_password>
   "players": [
     {
       "id": "string",
-      "name": "string"
-      // 注意：出于安全考虑，不返回密码
+      "name": "string",
+      "password": "string" // 明文返回密码
     }
   ]
 }
@@ -101,7 +101,7 @@ DELETE /api/game/{game_id}/players?password=<director_password>
   "failed": [
     {
       "id": "string",
-      "reason": "string"
+      "reason": "string" // 游戏开始后不允许删除演员
     }
   ]
 }
@@ -178,11 +178,6 @@ GET /api/game/{game_id}/logs?password=<director_password>
     }
   ]
 }
-```
-
-### 5. 获取游戏日志
-```
-GET /api/game/{game_id}/logs?password=<director_password>
 ```
 
 ### 6. 获取游戏完整状态快照

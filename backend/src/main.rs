@@ -2,6 +2,7 @@ mod admin;
 mod auth;
 mod config;
 mod database;
+mod director;
 mod errors;
 mod game;
 mod routes;
@@ -16,6 +17,7 @@ use admin::AdminService;
 use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
+use director::DirectorService;
 use game::GameService;
 use routes::create_routes;
 use rule_template::RuleTemplateService;
@@ -46,6 +48,7 @@ async fn main() {
     // 创建服务实例
     let auth_service = AuthService::new(pool.clone(), jwt_manager);
     let admin_service = AdminService::new(pool.clone(), config.bcrypt_cost);
+    let director_service = DirectorService::new(pool.clone());
     let game_service = GameService::new(pool.clone());
     let rule_template_service = RuleTemplateService::new(pool);
 
@@ -53,6 +56,7 @@ async fn main() {
     let app = create_routes(
         auth_service, 
         admin_service, 
+        director_service,
         game_service, 
         rule_template_service,
         &config.api_prefix

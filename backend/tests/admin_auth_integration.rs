@@ -14,7 +14,7 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         jwt_secret: "test-secret-key-for-testing-purposes-only".to_string(),
         jwt_expiration_hours: 24,
         bcrypt_cost: 4, // 降低成本以加快测试
-        server_port: 3000,
+        server_port: 3001,
         api_prefix: "/api".to_string(),
     };
 

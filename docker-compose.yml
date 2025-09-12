@@ -1,36 +1,4 @@
 services:
-  # backend:
-  #   container_name: royale-arena-backend
-  #   build:
-  #     context: ./backend/royale-arena-backend
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - "8080:8080"
-  #   volumes:
-  #     - ./backend/royale-arena-backend:/app
-  #     - /app/target
-  #   environment: 
-  #     - RUST_LOG=debug
-  #   command: cargo watch -x run
-  #   networks:
-  #     - discuz_net
-  
-  # frontend:
-  #   container_name: royale-arena-frontend
-  #   build:
-  #     context: ./frontend/royale-arena-frontend
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - "5173:5173"
-  #   volumes:
-  #     - ./frontend/royale-arena-frontend:/app
-  #     - /app/node_modules
-  #   environment:
-  #     - NODE_ENV=development
-  #   command: npm run dev -- --host 0.0.0.0
-  #   networks:
-  #     - discuz_net
-
   mysql:
     image: mysql:5.7
     container_name: discuz_mysql
