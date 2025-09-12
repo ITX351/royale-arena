@@ -7,8 +7,6 @@ import type {
   GameListQuery, 
   CreateGameRequest, 
   UpdateGameRequest,
-  GameLoginRequest,
-  GameLoginResponse,
   ApiResponse 
 } from '@/types/game'
 
@@ -44,18 +42,6 @@ export const gameService = {
   // 删除游戏（管理员）
   async deleteGame(id: string): Promise<ApiResponse<void>> {
     const response = await adminClient.delete(`${API_ENDPOINTS.ADMIN_GAMES}/${id}`)
-    return response.data
-  },
-
-  // 以玩家身份加入游戏
-  async joinAsPlayer(id: string, password: string): Promise<GameLoginResponse> {
-    const response = await apiClient.post(API_ENDPOINTS.JOIN_AS_PLAYER(id), { password })
-    return response.data
-  },
-
-  // 以导演身份加入游戏
-  async joinAsDirector(id: string, password: string): Promise<GameLoginResponse> {
-    const response = await apiClient.post(API_ENDPOINTS.JOIN_AS_DIRECTOR(id), { password })
     return response.data
   }
 }

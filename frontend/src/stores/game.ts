@@ -27,7 +27,7 @@ export const useGameStore = defineStore('game', () => {
       if (response.success && response.data) {
         games.value = response.data
       } else {
-        throw new Error(response.error?.message || '获取游戏列表失败')
+        throw new Error(response.error || '获取游戏列表失败')
       }
     } catch (err) {
       console.error('加载游戏列表失败:', err)

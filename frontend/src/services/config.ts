@@ -18,7 +18,8 @@ export const API_ENDPOINTS = {
   ADMIN_RULES: '/admin/rule-templates',
   ADMIN_USERS: '/admin/users',
   
-  // 游戏参与
-  JOIN_AS_PLAYER: (id: string) => `/games/${id}/join/player`,
-  JOIN_AS_DIRECTOR: (id: string) => `/games/${id}/join/director`
+  // 导演控制台相关
+  DIRECTOR_PLAYERS: (gameId: string) => `/game/${gameId}/players`,
+  DIRECTOR_BATCH_ADD: (gameId: string) => `/game/${gameId}/players`,
+  DIRECTOR_BATCH_DELETE: (gameId: string) => `/game/${gameId}/players`
 }

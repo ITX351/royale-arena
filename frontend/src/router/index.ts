@@ -46,6 +46,14 @@ const routes = [
       title: '导演控制台'
     }
   },
+  {
+    path: '/game/:id/:password',
+    name: 'GameDirectAccess',
+    component: DirectorConsole,
+    meta: {
+      title: '导演控制台'
+    }
+  },
   
   // 管理员登录路由
   {
@@ -108,7 +116,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const adminStore = useAdminStore()
   
   // 只在需要认证的路由上才初始化认证状态，避免干扰正常的路由跳转

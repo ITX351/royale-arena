@@ -89,9 +89,9 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Clock, Document, View } from '@element-plus/icons-vue'
-import type { GameListItem, GameStatus } from '@/types/game'
+import type { GameListItem } from '@/types/game'
 import { getGameStatusConfig, formatDateTime } from '@/utils/gameFilter'
-import { gameService } from '@/services/gameService'
+import { directorService } from '@/services/directorService'
 
 interface Props {
   game: GameListItem
@@ -99,10 +99,6 @@ interface Props {
 
 const props = defineProps<Props>()
 const router = useRouter()
-
-const emit = defineEmits<{
-  'view-detail': [game: GameListItem]
-}>()
 
 // 响应式数据
 const loginPassword = ref('')
@@ -125,23 +121,16 @@ const handleQuickLogin = async () => {
   loginLoading.value = true
   
   try {
-    // 先尝试作为玩家登录
+    // 直接尝试导演身份验证
     try {
-      await gameService.joinAsPlayer(props.game.id, loginPassword.value)
-      ElMessage.success('成功以玩家身份加入游戏')
-      router.push(`/game/${props.game.id}/player`)
+      await directorService.authenticateAndGetPlayers(props.game.id, loginPassword.value)
+      ElMessage.success('成功以导演身份进入控制台')
+      router.push(`/game/${props.game.id}/${encodeURIComponent(loginPassword.value)}`)
       return
-    } catch (playerError) {
-      // 玩家登录失败，尝试导演登录
-      try {
-        await gameService.joinAsDirector(props.game.id, loginPassword.value)
-        ElMessage.success('成功以导演身份进入控制台')
-        router.push(`/game/${props.game.id}/director`)
-        return
-      } catch (directorError) {
-        // 两种身份都登录失败
-        ElMessage.error('密码错误或无权限')
-      }
+    } catch (directorError) {
+      // 导演登录失败，显示错误信息
+      console.error('导演登录失败:', directorError)
+      ElMessage.error('密码错误或无权限')
     }
   } catch (error) {
     console.error('登录失败:', error)

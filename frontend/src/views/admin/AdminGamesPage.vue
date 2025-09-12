@@ -100,7 +100,7 @@
             >
               查看
             </el-button>
-            <el-dropdown @command="(command) => handleGameAction(command, row)">
+            <el-dropdown @command="(command: string) => handleGameAction(command, row)">
               <el-button type="info" size="small" :icon="More" text />
               <template #dropdown>
                 <el-dropdown-menu>
@@ -365,7 +365,7 @@ const handleGameAction = async (command: string, game: GameListItem) => {
   }
 }
 
-const updateGameStatus = async (game: GameListItem, status: string) => {
+const updateGameStatus = async (game: GameListItem, _status: string) => {
   try {
     // 这里需要调用更新游戏状态的API
     // 由于当前API设计中没有直接的状态更新接口，这里先用占位逻辑
@@ -467,14 +467,14 @@ const cancelEdit = () => {
   showCreateDialog.value = false
   editingGame.value = null
   
-  // 重置表单
-  gameForm.name = ''
-  gameForm.description = ''
-  gameForm.director_password = ''
-  gameForm.max_players = 10
-  gameForm.rule_template_id = ''
+  // // 重置表单
+  // gameForm.name = ''
+  // gameForm.description = ''
+  // gameForm.director_password = ''
+  // gameForm.max_players = 10
+  // gameForm.rule_template_id = ''
   
-  gameFormRef.value?.resetFields()
+  //gameFormRef.value?.resetFields()
 }
 
 // 生命周期

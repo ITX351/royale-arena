@@ -1,22 +1,26 @@
-// 游戏状态枚举
-export enum GameStatus {
-  WAITING = 'waiting',
-  RUNNING = 'running',
-  PAUSED = 'paused',
-  ENDED = 'ended',
-  HIDDEN = 'hidden',
-  DELETED = 'deleted'
-}
+// 游戏状态
+export const GameStatus = {
+  WAITING: 'waiting',
+  RUNNING: 'running',
+  PAUSED: 'paused',
+  ENDED: 'ended',
+  HIDDEN: 'hidden',
+  DELETED: 'deleted'
+} as const
+
+export type GameStatus = typeof GameStatus[keyof typeof GameStatus]
 
 // 游戏筛选类型
-export enum GameFilterType {
-  ALL = 'all',           // 全部（不包括已隐藏）
-  ACTIVE = 'active',     // 活动中（等待中、进行中、已暂停）
-  WAITING = 'waiting',   // 等待中
-  RUNNING = 'running',   // 进行中
-  ENDED = 'ended',       // 已结束
-  HIDDEN = 'hidden'      // 已隐藏
-}
+export const GameFilterType = {
+  ALL: 'all',           // 全部（不包括已隐藏）
+  ACTIVE: 'active',     // 活动中（等待中、进行中、已暂停）
+  WAITING: 'waiting',   // 等待中
+  RUNNING: 'running',   // 进行中
+  ENDED: 'ended',       // 已结束
+  HIDDEN: 'hidden'      // 已隐藏
+} as const
+
+export type GameFilterType = typeof GameFilterType[keyof typeof GameFilterType]
 
 // 规则模版信息
 export interface RuleTemplateInfo {
@@ -49,6 +53,7 @@ export interface GameListItem {
   max_players: number
   created_at: string
   director_password?: string
+  rule_template?: RuleTemplateInfo
 }
 
 // 游戏详情（包含规则信息）
@@ -89,4 +94,12 @@ export interface GameLoginResponse {
   success: boolean
   role: 'player' | 'director'
   message?: string
+}
+
+// API响应基础类型
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  message?: string
+  error?: string
 }

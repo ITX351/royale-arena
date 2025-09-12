@@ -154,6 +154,7 @@ import {
 import type { GameWithRules } from '@/types/game'
 import { getGameStatusConfig, formatDateTime } from '@/utils/gameFilter'
 import { gameService } from '@/services/gameService'
+import { directorService } from '@/services/directorService'
 
 const route = useRoute()
 const router = useRouter()
@@ -188,7 +189,7 @@ const loadGameDetail = async () => {
     if (response.success && response.data) {
       gameDetail.value = response.data
     } else {
-      throw new Error(response.error?.message || '获取游戏详情失败')
+      throw new Error(response.error || '获取游戏详情失败')
     }
   } catch (err) {
     console.error('加载游戏详情失败:', err)
@@ -212,23 +213,16 @@ const handleLogin = async () => {
   loginLoading.value = true
 
   try {
-    // 先尝试作为玩家登录
+    // 直接尝试导演身份验证
     try {
-      await gameService.joinAsPlayer(gameDetail.value.id, loginPassword.value)
-      ElMessage.success('成功以玩家身份加入游戏')
-      router.push(`/game/${gameDetail.value.id}/player`)
+      await directorService.authenticateAndGetPlayers(gameDetail.value.id, loginPassword.value)
+      ElMessage.success('成功以导演身份进入控制台')
+      router.push(`/game/${gameDetail.value.id}/${encodeURIComponent(loginPassword.value)}`)
       return
-    } catch (playerError) {
-      // 玩家登录失败，尝试导演登录
-      try {
-        await gameService.joinAsDirector(gameDetail.value.id, loginPassword.value)
-        ElMessage.success('成功以导演身份进入控制台')
-        router.push(`/game/${gameDetail.value.id}/director`)
-        return
-      } catch (directorError) {
-        // 两种身份都登录失败
-        ElMessage.error('密码错误或无权限')
-      }
+    } catch (directorError) {
+      // 导演登录失败，显示错误信息
+      console.error('导演登录失败:', directorError)
+      ElMessage.error('密码错误或无权限')
     }
   } catch (error) {
     console.error('登录失败:', error)
