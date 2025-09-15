@@ -325,10 +325,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.sidebar-menu {
-  border: none;
-}
-
 .sidebar-footer {
   border-top: 1px solid #ebeef5;
   padding: 16px;
@@ -446,28 +442,9 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.user-dropdown {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.user-dropdown:hover {
-  background-color: #f5f7fa;
-}
-
 .username {
   font-weight: 500;
   color: #303133;
-}
-
-.dropdown-icon {
-  font-size: 12px;
-  color: #909399;
 }
 
 .page-content {
@@ -485,12 +462,5 @@ onUnmounted(() => {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
-}
-
-/* 响应式设计 */
-@media (max-width: 767px) {
-  .page-content {
-    padding: 16px;
-  }
 }
 </style>

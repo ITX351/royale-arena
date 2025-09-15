@@ -185,12 +185,6 @@ onMounted(async () => {
   z-index: 100;
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px;
-}
-
 .header-content {
   display: flex;
   align-items: center;
@@ -245,12 +239,6 @@ onMounted(async () => {
   margin: 48px 0;
 }
 
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
-
 /* 响应式设计 */
 @media (max-width: 767px) {
   .header-content {
@@ -275,10 +263,6 @@ onMounted(async () => {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
-  .container {
-    padding: 0 12px;
-  }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
@@ -292,16 +276,6 @@ onMounted(async () => {
   .games-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
-  }
-  
-  .container {
-    padding: 0 24px;
-  }
-}
-
-@media (min-width: 1280px) {
-  .container {
-    padding: 0 32px;
   }
 }
 </style>

@@ -1,0 +1,53 @@
+/* 布局相关样式 */
+
+/* 容器样式 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* 响应式容器 */
+@media (max-width: 767px) {
+  .container {
+    padding: 0 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 24px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    padding: 0 32px;
+  }
+}
+
+/* 页面布局 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.page-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: visible;
+}
+
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .page-content {
+    padding: 16px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

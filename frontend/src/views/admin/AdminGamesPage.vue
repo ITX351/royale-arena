@@ -499,13 +499,6 @@ onMounted(async () => {
   gap: 24px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
 .header-left {
   flex: 1;
 }
@@ -536,10 +529,6 @@ onMounted(async () => {
 .search-input {
   flex: 1;
   max-width: 300px;
-}
-
-.table-card {
-  flex: 1;
 }
 
 .game-name {
@@ -573,28 +562,5 @@ onMounted(async () => {
 .batch-actions {
   display: flex;
   gap: 8px;
-}
-
-/* 响应式设计 */
-@media (max-width: 767px) {
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-input {
-    max-width: none;
-  }
-  
-  .table-footer {
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
-  }
 }
 </style>

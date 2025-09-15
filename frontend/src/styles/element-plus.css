@@ -1,0 +1,33 @@
+/* Element Plus 样式覆盖 */
+
+/* 按钮间距 */
+.el-button + .el-button {
+  margin-left: 8px;
+}
+
+/* 卡片圆角 */
+.el-card {
+  border-radius: 8px;
+}
+
+/* 表格圆角 */
+.el-table {
+  border-radius: 8px;
+}
+
+/* 菜单样式 */
+.sidebar-menu {
+  border: none;
+}
+
+/* 表格卡片 */
+.table-card {
+  flex: 1;
+}
+
+/* 分页组件 */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}

@@ -148,51 +148,6 @@ const getGameStatusClass = (status: string) => {
 </script>
 
 <style scoped>
-.game-card {
-  margin-bottom: 16px;
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.game-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.title-section {
-  flex: 1;
-  min-width: 0;
-}
-
-.game-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.game-description {
-  margin: 4px 0 0 0;
-  font-size: 12px;
-  color: #909399;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .game-info {
   display: flex;
   flex-direction: column;
@@ -241,37 +196,5 @@ const getGameStatusClass = (status: string) => {
   font-size: 11px;
   color: #909399;
   line-height: 1.2;
-}
-
-.detail-button {
-  width: 100%;
-  border-radius: 4px;
-}
-
-/* 状态特定样式 */
-.game-card--waiting {
-  border-left: 4px solid #E6A23C;
-}
-
-.game-card--running {
-  border-left: 4px solid #67C23A;
-}
-
-.game-card--paused {
-  border-left: 4px solid #E6A23C;
-}
-
-.game-card--ended {
-  border-left: 4px solid #606266;
-}
-
-.game-card--hidden {
-  border-left: 4px solid #C0C4CC;
-  opacity: 0.7;
-}
-
-.game-card--deleted {
-  border-left: 4px solid #F56C6C;
-  opacity: 0.7;
 }
 </style>
