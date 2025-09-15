@@ -46,7 +46,7 @@ pub struct Game {
     pub director_password: String,
     pub max_players: i32,
     pub status: GameStatus,
-    pub rule_template_id: Option<String>,
+    pub rules_config: serde_json::Value, // 修改：替换 rule_template_id 为 rules_config，且为非Option类型
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -107,15 +107,7 @@ pub struct GameWithRules {
     pub created_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub director_password: Option<String>,
-    pub rule_template: Option<RuleTemplateInfo>,
-}
-
-/// 规则模板信息
-#[derive(Debug, Serialize)]
-pub struct RuleTemplateInfo {
-    pub id: String,
-    pub template_name: String,
-    pub description: Option<String>,
+    // 修改：直接包含规则配置而非模板信息，且为非Option类型
     pub rules_config: serde_json::Value,
 }
 
@@ -126,7 +118,7 @@ pub struct CreateGameRequest {
     pub description: Option<String>,
     pub director_password: String,
     pub max_players: i32,
-    pub rule_template_id: Option<String>,
+    pub rule_template_id: String, // 修改：rule_template_id 现在是必需的
 }
 
 /// 更新游戏请求
@@ -136,7 +128,8 @@ pub struct UpdateGameRequest {
     pub description: Option<String>,
     pub director_password: Option<String>,
     pub max_players: Option<i32>,
-    pub rule_template_id: Option<String>,
+    // 修改：移除 rule_template_id，添加 rules_config（内部使用）
+    pub rules_config: Option<serde_json::Value>,
 }
 
 /// 游戏筛选类型
@@ -208,6 +201,10 @@ impl CreateGameRequest {
             return Err("最大玩家数必须在1-1000之间".to_string());
         }
         
+        if self.rule_template_id.trim().is_empty() {
+            return Err("规则模板ID不能为空".to_string());
+        }
+        
         Ok(())
     }
 }
@@ -252,7 +249,7 @@ mod tests {
             description: Some("测试描述".to_string()),
             director_password: "password123".to_string(),
             max_players: 10,
-            rule_template_id: None,
+            rule_template_id: "template-id".to_string(), // 修改：现在是必需的
         };
         assert!(valid_request.validate().is_ok());
 
@@ -262,7 +259,7 @@ mod tests {
             description: None,
             director_password: "password123".to_string(),
             max_players: 10,
-            rule_template_id: None,
+            rule_template_id: "template-id".to_string(), // 修改：现在是必需的
         };
         assert!(invalid_name.validate().is_err());
 
@@ -272,7 +269,7 @@ mod tests {
             description: None,
             director_password: "123".to_string(),
             max_players: 10,
-            rule_template_id: None,
+            rule_template_id: "template-id".to_string(), // 修改：现在是必需的
         };
         assert!(invalid_password.validate().is_err());
 
@@ -282,9 +279,19 @@ mod tests {
             description: None,
             director_password: "password123".to_string(),
             max_players: 1001,
-            rule_template_id: None,
+            rule_template_id: "template-id".to_string(), // 修改：现在是必需的
         };
         assert!(invalid_players.validate().is_err());
+
+        // 测试空模板ID
+        let invalid_template_id = CreateGameRequest {
+            name: "测试游戏".to_string(),
+            description: None,
+            director_password: "password123".to_string(),
+            max_players: 10,
+            rule_template_id: "".to_string(), // 修改：空模板ID
+        };
+        assert!(invalid_template_id.validate().is_err());
     }
 
     #[test]
@@ -295,7 +302,7 @@ mod tests {
             description: Some("新描述".to_string()),
             director_password: Some("newpassword".to_string()),
             max_players: Some(20),
-            rule_template_id: Some("template-id".to_string()),
+            rules_config: Some(serde_json::json!({"test": "config"})),
         };
         assert!(valid_update.validate().is_ok());
 
@@ -305,7 +312,7 @@ mod tests {
             description: None,
             director_password: None,
             max_players: None,
-            rule_template_id: None,
+            rules_config: None,
         };
         assert!(empty_update.validate().is_ok());
 
@@ -315,7 +322,7 @@ mod tests {
             description: None,
             director_password: None,
             max_players: None,
-            rule_template_id: None,
+            rules_config: None,
         };
         assert!(invalid_name.validate().is_err());
     }

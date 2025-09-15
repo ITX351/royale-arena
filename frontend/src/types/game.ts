@@ -22,14 +22,6 @@ export const GameFilterType = {
 
 export type GameFilterType = typeof GameFilterType[keyof typeof GameFilterType]
 
-// 规则模版信息
-export interface RuleTemplateInfo {
-  id: string
-  template_name: string
-  description?: string
-  rules_config: Record<string, any>
-}
-
 // 游戏基础信息
 export interface Game {
   id: string
@@ -40,7 +32,8 @@ export interface Game {
   max_players: number
   created_at: string
   updated_at: string
-  rule_template?: RuleTemplateInfo
+  // 修改：直接包含规则配置而非模板信息
+  rules_config?: Record<string, any>
 }
 
 // 游戏列表项
@@ -53,12 +46,13 @@ export interface GameListItem {
   max_players: number
   created_at: string
   director_password?: string
-  rule_template?: RuleTemplateInfo
+  // 修改：移除 rule_template 字段
 }
 
 // 游戏详情（包含规则信息）
 export interface GameWithRules extends GameListItem {
-  rule_template?: RuleTemplateInfo
+  // 修改：直接包含规则配置而非模板信息
+  rules_config?: Record<string, any>
 }
 
 // 创建游戏请求
@@ -67,7 +61,7 @@ export interface CreateGameRequest {
   description?: string
   director_password: string
   max_players: number
-  rule_template_id?: string
+  rule_template_id?: string // 保持不变：继续接受 rule_template_id 参数
 }
 
 // 更新游戏请求
@@ -76,7 +70,8 @@ export interface UpdateGameRequest {
   description?: string
   director_password?: string
   max_players?: number
-  rule_template_id?: string
+  // 修改：移除 rule_template_id，添加 rules_config（内部使用）
+  rules_config?: Record<string, any>
 }
 
 // 游戏列表查询参数

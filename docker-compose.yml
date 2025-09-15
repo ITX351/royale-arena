@@ -2,8 +2,7 @@ services:
   mysql:
     image: mysql:5.7
     container_name: discuz_mysql
-    ports:
-      - "3306:3306"
+    network_mode: "host"  # 添加这一行
     environment:
       TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -14,23 +13,12 @@ services:
       - ./mysql:/var/lib/mysql
       - ./conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     command: --character-set-server=gbk --collation-server=gbk_chinese_ci --sql-mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
-    networks:
-      - discuz_net
 
   adminer:
     image: adminer
     container_name: discuz_adminer
-    ports:
-      - 8081:8080
+    network_mode: "host"  # 添加这一行
     environment:
       TZ: Asia/Shanghai
     depends_on:
       - mysql
-    networks:
-      - discuz_net
-    profiles:
-      - tools
-
-networks:
-  discuz_net:
-    driver: bridge

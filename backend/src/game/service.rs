@@ -1,8 +1,10 @@
 use sqlx::MySqlPool;
 use uuid::Uuid;
+use serde_json::json; // 添加json导入
 
 use super::errors::GameError;
 use super::models::*;
+use crate::rule_template::models::RuleTemplate; // 添加RuleTemplate导入
 
 #[derive(Clone)]
 pub struct GameService {
@@ -31,10 +33,9 @@ impl GameService {
             return Err(GameError::GameNameExists);
         }
         
-        // 如果提供了规则模板ID，验证其存在性
-        if let Some(ref template_id) = request.rule_template_id {
-            self.validate_rule_template_exists(template_id).await?;
-        }
+        // 从规则模板获取配置
+        let template = self.get_rule_template(&request.rule_template_id).await?;
+        let rules_config = template.rules_config;
         
         // 生成新的游戏ID
         let game_id = Uuid::new_v4().to_string();
@@ -42,7 +43,7 @@ impl GameService {
         // 插入新游戏记录
         sqlx::query!(
             r#"
-            INSERT INTO games (id, name, description, director_password, max_players, status, rule_template_id)
+            INSERT INTO games (id, name, description, director_password, max_players, status, rules_config)
             VALUES (?, ?, ?, ?, ?, 'waiting', ?)
             "#,
             game_id,
@@ -50,7 +51,7 @@ impl GameService {
             request.description,
             request.director_password,
             request.max_players,
-            request.rule_template_id
+            &rules_config
         )
         .execute(&self.pool)
         .await?;
@@ -60,7 +61,7 @@ impl GameService {
             Game,
             r#"
             SELECT id, name, description, director_password, max_players, 
-                   status as "status: GameStatus", rule_template_id, created_at, updated_at
+                   status as "status: GameStatus", rules_config, created_at, updated_at
             FROM games 
             WHERE id = ?
             "#,
@@ -104,18 +105,14 @@ impl GameService {
             }
         }
         
-        // 如果提供了新的规则模板ID，验证其存在性
-        if let Some(ref template_id) = request.rule_template_id {
-            self.validate_rule_template_exists(template_id).await?;
-        }
-        
         // 检查是否有要更新的字段
         if request.name.is_none() && request.description.is_none() && 
            request.director_password.is_none() && request.max_players.is_none() && 
-           request.rule_template_id.is_none() {
+           request.rules_config.is_none() {
             // 如果没有要更新的字段，直接返回当前游戏信息
             return self.get_game_by_id(game_id).await;
         }
+        
         // 执行字段更新操作
         if let Some(ref name) = request.name {
             sqlx::query!("UPDATE games SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", name, game_id)
@@ -133,8 +130,10 @@ impl GameService {
             sqlx::query!("UPDATE games SET max_players = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", max_players, game_id)
                 .execute(&self.pool).await?;
         }
-        if let Some(ref template_id) = request.rule_template_id {
-            sqlx::query!("UPDATE games SET rule_template_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", template_id, game_id)
+        // 注意：我们不再更新 rule_template_id，因为已经移除了这个字段
+        // 如果需要更新规则配置，可以在这里处理
+        if let Some(ref rules_config) = request.rules_config {
+            sqlx::query!("UPDATE games SET rules_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", rules_config, game_id)
                 .execute(&self.pool).await?;
         }
         
@@ -212,14 +211,13 @@ impl GameService {
 
     /// 获取游戏详情（包含规则信息）
     pub async fn get_game_with_rules(&self, game_id: &str, include_director_password: bool) -> Result<GameWithRules, GameError> {
-        // 获取游戏基本信息和规则模板信息
+        // 直接查询游戏表，无需JOIN规则模板表
         let game_info = sqlx::query!(
             r#"
-            SELECT g.id, g.name, g.description, g.status as "status: GameStatus", g.max_players, g.created_at, g.director_password,
-                   rt.id as rule_template_id, rt.template_name, rt.description as rule_description, rt.rules_config
-            FROM games g
-            LEFT JOIN rule_templates rt ON g.rule_template_id = rt.id
-            WHERE g.id = ?
+            SELECT id, name, description, status as "status: GameStatus", 
+                   max_players, created_at, director_password, rules_config
+            FROM games
+            WHERE id = ?
             "#,
             game_id
         )
@@ -231,25 +229,7 @@ impl GameService {
         // 获取玩家数量
         let player_count = self.get_player_count(game_id).await?;
 
-        // 构建规则模板信息
-        let rule_template = if let Some(template_id) = game_info.rule_template_id {
-            Some(RuleTemplateInfo {
-                id: template_id,
-                template_name: game_info.template_name.unwrap_or_default(),
-                description: game_info.rule_description,
-                rules_config: game_info.rules_config.unwrap_or(serde_json::Value::Null),
-            })
-        } else {
-            None
-        };
-
-        // 根据权限决定是否包含导演密码
-        let director_password = if include_director_password {
-            Some(game_info.director_password)
-        } else {
-            None
-        };
-
+        // 构建响应
         Ok(GameWithRules {
             id: game_info.id,
             name: game_info.name,
@@ -258,8 +238,12 @@ impl GameService {
             player_count,
             max_players: game_info.max_players,
             created_at: game_info.created_at,
-            director_password,
-            rule_template,
+            director_password: if include_director_password { 
+                Some(game_info.director_password) 
+            } else { 
+                None 
+            },
+            rules_config: game_info.rules_config,
         })
     }
 
@@ -269,7 +253,7 @@ impl GameService {
             Game,
             r#"
             SELECT id, name, description, director_password, max_players, 
-                   status as "status: GameStatus", rule_template_id, created_at, updated_at
+                   status as "status: GameStatus", rules_config, created_at, updated_at
             FROM games 
             WHERE id = ?
             "#,
@@ -279,22 +263,6 @@ impl GameService {
         .await?;
         
         game.ok_or(GameError::GameNotFound)
-    }
-
-    /// 验证规则模板是否存在
-    async fn validate_rule_template_exists(&self, template_id: &str) -> Result<(), GameError> {
-        let exists = sqlx::query!(
-            "SELECT id FROM rule_templates WHERE id = ? AND is_active = TRUE",
-            template_id
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-        
-        if exists.is_none() {
-            return Err(GameError::RuleTemplateNotFound);
-        }
-        
-        Ok(())
     }
 
     /// 获取游戏的玩家数量
@@ -307,5 +275,26 @@ impl GameService {
         .await?;
         
         Ok(count.count as i32)
+    }
+    
+    /// 新增辅助方法：获取规则模板
+    async fn get_rule_template(&self, template_id: &str) -> Result<RuleTemplate, GameError> {
+        let template = sqlx::query!(
+            "SELECT id, template_name, description, rules_config FROM rule_templates WHERE id = ? AND is_active = true",
+            template_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        
+        template.ok_or(GameError::RuleTemplateNotFound)
+            .map(|t| RuleTemplate {
+                id: t.id,
+                template_name: t.template_name,
+                description: t.description,
+                is_active: true, // 查询中已经限制了is_active = true
+                rules_config: t.rules_config,
+                created_at: chrono::Utc::now(), // 这些字段在当前上下文中不重要
+                updated_at: chrono::Utc::now(),
+            })
     }
 }

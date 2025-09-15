@@ -18,25 +18,11 @@ mod director_integration_tests {
 
         let director_service = DirectorService::new(pool.clone());
 
-        // 创建测试数据：规则模板
-        let rule_template_id = Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO rule_templates (id, template_name, description, is_active, rules_config) 
-             VALUES (?, ?, ?, ?, ?)"
-        )
-        .bind(&rule_template_id)
-        .bind("测试规则模板")
-        .bind("用于集成测试")
-        .bind(true)
-        .bind(r#"{"test": true}"#)
-        .execute(&pool)
-        .await?;
-
         // 创建测试数据：游戏
         let game_id = Uuid::new_v4().to_string();
         let director_password = "test123";
         sqlx::query(
-            "INSERT INTO games (id, name, description, director_password, max_players, status, rule_template_id) 
+            "INSERT INTO games (id, name, description, director_password, max_players, status, rules_config) 
              VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&game_id)
@@ -45,7 +31,7 @@ mod director_integration_tests {
         .bind(director_password)
         .bind(100)
         .bind("waiting")
-        .bind(&rule_template_id)
+        .bind(r#"{"test": true}"#)
         .execute(&pool)
         .await?;
 

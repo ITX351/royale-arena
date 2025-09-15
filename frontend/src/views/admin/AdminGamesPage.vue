@@ -10,7 +10,7 @@
         <el-button 
           type="primary" 
           :icon="Plus"
-          @click="showCreateDialog = true"
+          @click="createGame()"
         >
           创建游戏
         </el-button>
@@ -188,7 +188,8 @@
           />
         </el-form-item>
 
-        <el-form-item label="规则模版" prop="rule_template_id">
+        <!-- 创建游戏时显示规则模板选择 -->
+        <el-form-item v-if="!editingGame" label="规则模版" prop="rule_template_id">
           <el-select 
             v-model="gameForm.rule_template_id" 
             placeholder="请选择规则模版（可选）"
@@ -342,8 +343,13 @@ const editGame = (game: GameListItem) => {
   gameForm.description = game.description || ''
   gameForm.director_password = game.director_password || '' // 显示现有密码
   gameForm.max_players = game.max_players
-  gameForm.rule_template_id = game.rule_template?.id || ''
+  // 注意：编辑时不再显示规则模板选择
   
+  showCreateDialog.value = true
+}
+
+const createGame = () => {
+  editingGame.value = null;
   showCreateDialog.value = true
 }
 
@@ -436,8 +442,8 @@ const saveGame = async () => {
       const updateData: UpdateGameRequest = {
         name: gameForm.name,
         description: gameForm.description || undefined,
-        max_players: gameForm.max_players,
-        rule_template_id: gameForm.rule_template_id || undefined
+        max_players: gameForm.max_players
+        // 注意：编辑时不再包含 rule_template_id
       }
       
       // 只有输入了新密码才更新
@@ -465,7 +471,7 @@ const saveGame = async () => {
 
 const cancelEdit = () => {
   showCreateDialog.value = false
-  editingGame.value = null
+  //editingGame.value = null
   
   // // 重置表单
   // gameForm.name = ''
