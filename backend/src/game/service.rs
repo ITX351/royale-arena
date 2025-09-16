@@ -1,10 +1,9 @@
 use sqlx::MySqlPool;
 use uuid::Uuid;
-use serde_json::json; // 添加json导入
 
 use super::errors::GameError;
 use super::models::*;
-use crate::rule_template::models::RuleTemplate; // 添加RuleTemplate导入
+use crate::rule_template::models::RuleTemplate;
 
 #[derive(Clone)]
 pub struct GameService {
@@ -248,7 +247,7 @@ impl GameService {
     }
 
     /// 根据ID获取游戏信息
-    async fn get_game_by_id(&self, game_id: &str) -> Result<Game, GameError> {
+    pub async fn get_game_by_id(&self, game_id: &str) -> Result<Game, GameError> {
         let game = sqlx::query_as!(
             Game,
             r#"
@@ -263,6 +262,95 @@ impl GameService {
         .await?;
         
         game.ok_or(GameError::GameNotFound)
+    }
+
+    /// 导演更新游戏状态
+    pub async fn update_game_status(&self, game_id: &str, request: UpdateGameStatusRequest) -> Result<(), GameError> {
+        // 验证请求参数
+        request.validate().map_err(GameError::ValidationError)?;
+        
+        // 验证游戏是否存在
+        let game = self.get_game_by_id(game_id).await?;
+        
+        // 验证导演密码
+        if game.director_password != request.password {
+            return Err(GameError::ValidationError("Invalid director password".to_string()));
+        }
+        
+        // 验证状态转换是否合法
+        let current_status = game.status;
+        let target_status = request.status;
+        
+        // 检查状态转换是否合法
+        let is_valid_transition = match (&current_status, &target_status) {
+            // 从等待中状态可以开始游戏
+            (GameStatus::Waiting, GameStatus::Running) => true,
+            // 从进行中状态可以暂停或结束游戏
+            (GameStatus::Running, GameStatus::Paused) => true,
+            (GameStatus::Running, GameStatus::Ended) => true,
+            // 从暂停状态可以恢复游戏
+            (GameStatus::Paused, GameStatus::Running) => true,
+            // 其他转换都是非法的
+            _ => false,
+        };
+        
+        if !is_valid_transition {
+            return Err(GameError::InvalidGameState);
+        }
+        
+        // 更新游戏状态
+        sqlx::query!(
+            "UPDATE games SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            target_status,
+            game_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+        
+        Ok(())
+    }
+
+    /// 获取玩家消息记录
+    pub async fn get_player_messages(&self, game_id: &str, player_id: &str, password: &str) -> Result<Vec<MessageRecord>, GameError> {
+        // 验证请求参数
+        let request = GetPlayerMessagesRequest {
+            password: password.to_string(),
+        };
+        request.validate().map_err(GameError::ValidationError)?;
+        
+        // 验证玩家是否存在且密码正确
+        let actor = sqlx::query!(
+            "SELECT id FROM actors WHERE id = ? AND game_id = ? AND password = ?",
+            player_id,
+            game_id,
+            password
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+        
+        if actor.is_none() {
+            return Err(GameError::ValidationError("Invalid player credentials".to_string()));
+        }
+        
+        // 查询玩家相关的消息记录
+        let messages = sqlx::query_as!(
+            MessageRecord,
+            r#"
+            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp
+            FROM game_logs 
+            WHERE game_id = ? AND player_id = ?
+            ORDER BY timestamp ASC
+            "#,
+            game_id,
+            player_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+        
+        Ok(messages)
     }
 
     /// 获取游戏的玩家数量

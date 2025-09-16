@@ -1,4 +1,5 @@
 use axum::{
+    extract::ws::WebSocketUpgrade,
     middleware,
     routing::{delete, get, post, put},
     Router,
@@ -8,8 +9,10 @@ use crate::admin::{admin_login, create_admin, delete_admin, list_admins, update_
 use crate::auth::{jwt_auth_middleware, super_admin_middleware, AuthService};
 use crate::admin::service::AdminService;
 use crate::director::{batch_add_players, batch_delete_players, get_players, DirectorService};
-use crate::game::{create_game, delete_game, get_game_with_rules, get_games, update_game, GameService};
+use crate::game::{create_game, delete_game, get_game_with_rules, get_games, get_player_messages, update_game, update_game_status, GameService};
+use crate::game::game_state_manager::GlobalGameStateManager;
 use crate::rule_template::{create_template, get_templates, update_template, RuleTemplateService};
+use crate::websocket::service::WebSocketService;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -17,6 +20,7 @@ pub struct AppState {
     pub admin_service: AdminService,
     pub director_service: DirectorService,
     pub game_service: GameService,
+    pub game_state_manager: GlobalGameStateManager,
     pub rule_template_service: RuleTemplateService,
 }
 
@@ -25,6 +29,7 @@ pub fn create_routes(
     admin_service: AdminService, 
     director_service: DirectorService,
     game_service: GameService,
+    game_state_manager: GlobalGameStateManager,
     rule_template_service: RuleTemplateService,
     api_prefix: &str
 ) -> Router {
@@ -33,6 +38,7 @@ pub fn create_routes(
         admin_service,
         director_service,
         game_service,
+        game_state_manager,
         rule_template_service,
     };
 
@@ -45,6 +51,11 @@ pub fn create_routes(
         // 公开游戏查询接口
         .route(&format!("{}/games", api_prefix), get(get_games))
         .route(&format!("{}/games/{{game_id}}", api_prefix), get(get_game_with_rules))
+        // WebSocket连接端点
+        .route(&format!("{}/ws/{{game_id}}", api_prefix), get(
+            |ws: WebSocketUpgrade, state: axum::extract::State<AppState>, path: axum::extract::Path<String>, query: axum::extract::Query<crate::websocket::models::WebSocketAuthRequest>| 
+             WebSocketService::handle_websocket_upgrade(ws, state, path, query)
+        ))
         .with_state(app_state.clone());
 
     // 需要超级管理员权限的路由
@@ -96,6 +107,14 @@ pub fn create_routes(
                post(batch_add_players)
                .get(get_players)
                .delete(batch_delete_players))
+        // 导演更新游戏状态接口
+        .route(&format!("{}/game/{{game_id}}/status", api_prefix), put(update_game_status))
+        .with_state(app_state.clone());
+
+    // 玩家接口路由（无需JWT认证，使用玩家密码验证）
+    let player_routes = Router::new()
+        // 获取玩家消息记录接口
+        .route(&format!("{}/game/{{game_id}}/player/{{player_id}}/messages", api_prefix), post(get_player_messages))
         .with_state(app_state.clone());
 
     // 合并路由
@@ -105,6 +124,7 @@ pub fn create_routes(
         .merge(game_admin_routes)
         .merge(rule_template_admin_routes)
         .merge(director_routes)
+        .merge(player_routes)
 }
 
 // 健康检查端点

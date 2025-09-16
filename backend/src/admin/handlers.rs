@@ -7,8 +7,6 @@ use crate::admin::models::{
     AdminListResponse, CreateAdminRequest, CreateAdminResponse, DeleteAdminResponse,
     JwtClaims, LoginRequest, LoginResponse, UpdateAdminRequest, UpdateAdminResponse,
 };
-use crate::admin::service::AdminService;
-use crate::auth::service::AuthService;
 use crate::errors::ServiceError;
 use crate::routes::AppState;
 

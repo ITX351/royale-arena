@@ -7,6 +7,7 @@ mod errors;
 mod game;
 mod routes;
 mod rule_template;
+mod websocket;
 
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
@@ -18,7 +19,7 @@ use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
 use director::DirectorService;
-use game::GameService;
+use game::{GameService, game_state_manager::GlobalGameStateManager};
 use routes::create_routes;
 use rule_template::RuleTemplateService;
 
@@ -50,7 +51,9 @@ async fn main() {
     let admin_service = AdminService::new(pool.clone(), config.bcrypt_cost);
     let director_service = DirectorService::new(pool.clone());
     let game_service = GameService::new(pool.clone());
-    let rule_template_service = RuleTemplateService::new(pool);
+    let game_state_manager = GlobalGameStateManager::new(pool.clone());
+    let rule_template_service = RuleTemplateService::new(pool.clone());
+    // websocket_service 在路由中创建，不需要在这里创建
 
     // 构建路由
     let app = create_routes(
@@ -58,6 +61,7 @@ async fn main() {
         admin_service, 
         director_service,
         game_service, 
+        game_state_manager,
         rule_template_service,
         &config.api_prefix
     )

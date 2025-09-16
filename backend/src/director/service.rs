@@ -5,7 +5,7 @@ use crate::director::{DirectorError, models::*};
 /// 导演服务层
 #[derive(Clone)]
 pub struct DirectorService {
-    pool: MySqlPool,
+    pub pool: MySqlPool,
 }
 
 impl DirectorService {

@@ -61,17 +61,17 @@ CREATE TABLE IF NOT EXISTS actors (
 
 -- 5. 游戏日志表
 CREATE TABLE IF NOT EXISTS game_logs (
-    id VARCHAR(36) PRIMARY KEY COMMENT '日志唯一标识符(UUID)',
-    game_id VARCHAR(36) NOT NULL COMMENT '所属游戏ID',
-    level ENUM('info', 'warn', 'error') NOT NULL COMMENT '日志级别',
-    message TEXT NOT NULL COMMENT '日志消息',
-    player_id VARCHAR(36) NULL COMMENT '相关玩家ID',
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '日志时间戳',
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (player_id) REFERENCES actors(id) ON DELETE SET NULL,
+    `id` varchar(36) PRIMARY KEY COMMENT '日志唯一标识符(UUID)',
+    `game_id` varchar(36) NOT NULL COMMENT '所属游戏ID',
+    `type` enum('SystemNotice','UserDirected') NOT NULL COMMENT '日志级别',
+    `message` text NOT NULL COMMENT '日志消息',
+    `player_id` varchar(36) NOT NULL COMMENT '相关玩家ID',
+    `timestamp` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '日志时间戳',
+    FOREIGN KEY (`game_id`) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (`player_id`) REFERENCES actors(id) ON DELETE CASCADE,
     
     INDEX idx_game_logs_game_id (game_id),
-    INDEX idx_game_logs_level (level),
+    INDEX idx_game_logs_type (type),
     INDEX idx_game_logs_timestamp (timestamp)
 ) COMMENT '游戏日志表';
 

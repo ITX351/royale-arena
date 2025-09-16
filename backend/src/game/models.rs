@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::str::FromStr;
+use std::fmt;
 
 /// 游戏状态枚举
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
@@ -19,6 +20,19 @@ pub enum GameStatus {
     Hidden,
     #[serde(rename = "deleted")]
     Deleted,
+}
+
+impl fmt::Display for GameStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GameStatus::Waiting => write!(f, "waiting"),
+            GameStatus::Running => write!(f, "running"),
+            GameStatus::Paused => write!(f, "paused"),
+            GameStatus::Ended => write!(f, "ended"),
+            GameStatus::Hidden => write!(f, "hidden"),
+            GameStatus::Deleted => write!(f, "deleted"),
+        }
+    }
 }
 
 impl FromStr for GameStatus {
@@ -132,6 +146,44 @@ pub struct UpdateGameRequest {
     pub rules_config: Option<serde_json::Value>,
 }
 
+/// 导演更新游戏状态请求
+#[derive(Debug, Deserialize)]
+pub struct UpdateGameStatusRequest {
+    /// 导演密码
+    pub password: String,
+    /// 目标游戏状态
+    pub status: GameStatus,
+}
+
+/// 获取玩家消息记录请求
+#[derive(Debug, Deserialize)]
+pub struct GetPlayerMessagesRequest {
+    /// 玩家密码
+    pub password: String,
+}
+
+/// 消息记录类型枚举
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "type", rename_all = "PascalCase")]
+pub enum MessageType {
+    #[serde(rename = "SystemNotice")]
+    SystemNotice,
+    #[serde(rename = "UserDirected")]
+    UserDirected,
+}
+
+/// 消息记录模型
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct MessageRecord {
+    pub id: String,
+    pub game_id: String,
+    #[serde(rename = "type")]
+    pub message_type: MessageType,
+    pub message: String,
+    pub player_id: String,
+    pub timestamp: DateTime<Utc>,
+}
+
 /// 游戏筛选类型
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -231,6 +283,36 @@ impl UpdateGameRequest {
             if max_players < 1 || max_players > 1000 {
                 return Err("最大玩家数必须在1-1000之间".to_string());
             }
+        }
+        
+        Ok(())
+    }
+}
+
+impl UpdateGameStatusRequest {
+    /// 验证更新游戏状态请求的参数
+    pub fn validate(&self) -> Result<(), String> {
+        if self.password.trim().is_empty() {
+            return Err("导演密码不能为空".to_string());
+        }
+        
+        if self.password.len() < 6 || self.password.len() > 50 {
+            return Err("导演密码长度必须在6-50字符之间".to_string());
+        }
+        
+        Ok(())
+    }
+}
+
+impl GetPlayerMessagesRequest {
+    /// 验证获取玩家消息记录请求的参数
+    pub fn validate(&self) -> Result<(), String> {
+        if self.password.trim().is_empty() {
+            return Err("玩家密码不能为空".to_string());
+        }
+        
+        if self.password.len() < 6 || self.password.len() > 50 {
+            return Err("玩家密码长度必须在6-50字符之间".to_string());
         }
         
         Ok(())

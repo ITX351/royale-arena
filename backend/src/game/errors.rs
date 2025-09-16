@@ -26,6 +26,15 @@ pub enum GameError {
     
     #[error("数据库错误: {0}")]
     DatabaseError(#[from] sqlx::Error),
+    
+    #[error("其他错误: {0}")]
+    OtherError(String),
+}
+
+impl From<String> for GameError {
+    fn from(error: String) -> Self {
+        GameError::OtherError(error)
+    }
 }
 
 impl IntoResponse for GameError {
@@ -37,6 +46,7 @@ impl IntoResponse for GameError {
             GameError::InvalidGameState => (StatusCode::BAD_REQUEST, "游戏状态不允许此操作"),
             GameError::ValidationError(ref msg) => (StatusCode::BAD_REQUEST, msg.as_str()),
             GameError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "数据库操作失败"),
+            GameError::OtherError(ref msg) => (StatusCode::BAD_REQUEST, msg.as_str()),
         };
         
         let body = Json(json!({
