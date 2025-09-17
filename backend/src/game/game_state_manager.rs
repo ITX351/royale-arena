@@ -1,13 +1,13 @@
 //! 全局游戏状态管理器
 //! 负责管理所有游戏的内存状态，与REST API服务分离
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde_json::Value as JsonValue;
 use sqlx::MySqlPool;
 use std::fs;
 use std::path::Path;
+use dashmap::DashMap;
 
 // 从websocket模块导入游戏模型
 use crate::websocket::models::{GameState, Player, Place};
@@ -18,7 +18,7 @@ pub struct GlobalGameStateManager {
     /// 数据库连接池
     pool: MySqlPool,
     /// 游戏状态存储（内存中）
-    game_states: Arc<RwLock<HashMap<String, GameState>>>,
+    game_states: Arc<DashMap<String, Arc<RwLock<GameState>>>>,
 }
 
 impl GlobalGameStateManager {
@@ -26,26 +26,22 @@ impl GlobalGameStateManager {
     pub fn new(pool: MySqlPool) -> Self {
         Self {
             pool,
-            game_states: Arc::new(RwLock::new(HashMap::new())),
+            game_states: Arc::new(DashMap::new()),
         }
     }
 
     /// 获取游戏状态（如果不存在则创建）
-    pub async fn get_game_state(&self, game_id: &str, rules_config: JsonValue) -> Result<GameState, String> {
+    pub async fn get_game_state(&self, game_id: &str, rules_config: JsonValue) -> Result<Arc<RwLock<GameState>>, String> {
         // 检查内存中是否已存在游戏状态
-        {
-            let game_states = self.game_states.read().await;
-            if let Some(game_state) = game_states.get(game_id) {
-                return Ok(game_state.clone());
-            }
+        if let Some(game_state) = self.game_states.get(game_id) {
+            return Ok(game_state.clone());
         }
 
         // 从磁盘加载或创建新的游戏状态
         match self.load_game_state_from_disk(game_id).await {
             Ok(()) => {
                 // 加载成功，返回内存中的状态
-                let game_states = self.game_states.read().await;
-                if let Some(game_state) = game_states.get(game_id) {
+                if let Some(game_state) = self.game_states.get(game_id) {
                     return Ok(game_state.clone());
                 }
             }
@@ -89,26 +85,24 @@ impl GlobalGameStateManager {
         }
 
         // 将新创建的游戏状态存储到内存中
-        {
-            let mut game_states = self.game_states.write().await;
-            game_states.insert(game_id.to_string(), game_state.clone());
-        }
-
-        Ok(game_state)
+        let game_state_arc = Arc::new(RwLock::new(game_state));
+        self.game_states.insert(game_id.to_string(), game_state_arc.clone());
+        
+        Ok(game_state_arc)
     }
 
     /// 更新游戏状态
     pub async fn update_game_state(&self, game_id: &str, game_state: GameState) -> Result<(), String> {
-        let mut game_states = self.game_states.write().await;
-        game_states.insert(game_id.to_string(), game_state);
+        let game_state_arc = Arc::new(RwLock::new(game_state));
+        self.game_states.insert(game_id.to_string(), game_state_arc);
         Ok(())
     }
 
     /// 保存游戏状态到磁盘
     pub async fn save_game_state_to_disk(&self, game_id: &str) -> Result<(), String> {
-        let game_states = self.game_states.read().await;
-        if let Some(game_state) = game_states.get(game_id) {
-            let serialized = serde_json::to_string(game_state)
+        if let Some(game_state) = self.game_states.get(game_id) {
+            let game_state_guard = game_state.read().await;
+            let serialized = serde_json::to_string(&*game_state_guard)
                 .map_err(|e| format!("Failed to serialize game state: {}", e))?;
 
             let file_path = format!("game_states/{}.json", game_id);
@@ -139,8 +133,8 @@ impl GlobalGameStateManager {
         let game_state: GameState = serde_json::from_str(&serialized)
             .map_err(|e| format!("Failed to deserialize game state: {}", e))?;
 
-        let mut game_states = self.game_states.write().await;
-        game_states.insert(game_id.to_string(), game_state);
+        let game_state_arc = Arc::new(RwLock::new(game_state));
+        self.game_states.insert(game_id.to_string(), game_state_arc);
 
         Ok(())
     }
@@ -148,32 +142,34 @@ impl GlobalGameStateManager {
     /// 获取玩家信息
     pub async fn get_player(&self, game_id: &str, player_id: &str, rules_config: JsonValue) -> Result<Player, String> {
         let game_state = self.get_game_state(game_id, rules_config).await?;
-        Ok(game_state.players.get(player_id).cloned().unwrap_or_else(|| {
+        let game_state_guard = game_state.read().await;
+        Ok(game_state_guard.players.get(player_id).cloned().unwrap_or_else(|| {
             Player::new(player_id.to_string(), "Unknown".to_string(), 0)
         }))
     }
 
     /// 更新玩家信息
     pub async fn update_player(&self, game_id: &str, player_id: &str, player: Player, rules_config: JsonValue) -> Result<(), String> {
-        let mut game_state = self.get_game_state(game_id, rules_config).await?;
-        game_state.players.insert(player_id.to_string(), player);
-        self.update_game_state(game_id, game_state).await?;
+        let game_state = self.get_game_state(game_id, rules_config).await?;
+        let mut game_state_guard = game_state.write().await;
+        game_state_guard.players.insert(player_id.to_string(), player);
         Ok(())
     }
 
     /// 获取地点信息
     pub async fn get_place(&self, game_id: &str, place_name: &str, rules_config: JsonValue) -> Result<Place, String> {
         let game_state = self.get_game_state(game_id, rules_config).await?;
-        Ok(game_state.places.get(place_name).cloned().unwrap_or_else(|| {
+        let game_state_guard = game_state.read().await;
+        Ok(game_state_guard.places.get(place_name).cloned().unwrap_or_else(|| {
             Place::new(place_name.to_string())
         }))
     }
 
     /// 更新地点信息
     pub async fn update_place(&self, game_id: &str, place_name: &str, place: Place, rules_config: JsonValue) -> Result<(), String> {
-        let mut game_state = self.get_game_state(game_id, rules_config).await?;
-        game_state.places.insert(place_name.to_string(), place);
-        self.update_game_state(game_id, game_state).await?;
+        let game_state = self.get_game_state(game_id, rules_config).await?;
+        let mut game_state_guard = game_state.write().await;
+        game_state_guard.places.insert(place_name.to_string(), place);
         Ok(())
     }
 }
