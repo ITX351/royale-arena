@@ -3,6 +3,7 @@ use axum::{
     response::Json,
 };
 use serde_json::json;
+use std::collections::HashMap;
 
 use crate::routes::AppState;
 use crate::admin::models::JwtClaims;
@@ -111,10 +112,26 @@ pub async fn get_player_messages(
     request.validate().map_err(GameError::ValidationError)?;
     
     // 获取玩家消息记录
-    let messages = state.game_service.get_player_messages(&game_id, &player_id, &request.password).await?;
+    let messages = state.game_log_service.get_player_messages(&game_id, &player_id, &request.password).await?;
     
     Ok(Json(json!({
         "success": true,
         "data": messages
     })))
+}
+
+/// 游戏身份验证处理函数
+pub async fn authenticate_game(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<String>, GameError> {
+    let password = params.get("password").ok_or_else(|| {
+        GameError::ValidationError("Password is required".to_string())
+    })?;
+    
+    let result = state.director_service.authenticate_game(&game_id, password).await
+        .map_err(|e| GameError::OtherError(format!("Authentication failed: {}", e)))?;
+    
+    Ok(Json(result))
 }

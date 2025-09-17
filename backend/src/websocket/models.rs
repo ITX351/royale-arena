@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use crate::game::models::MessageType;
 
 /// WebSocket连接类型
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -210,6 +211,54 @@ pub struct SearchResult {
 pub enum SearchResultType {
     Player,
     Item,
+}
+
+/// 动作处理结果，包含广播信息
+#[derive(Debug, Clone)]
+pub struct ActionResult {
+    /// 动作处理结果数据
+    pub data: serde_json::Value,
+    /// 需要广播消息的玩家ID列表（包括发起者本人）
+    pub broadcast_players: Vec<String>,
+    /// 日志消息（必须提供）
+    pub log_message: String,
+    /// 消息类型
+    pub message_type: MessageType,
+    /// 动作处理时间戳
+    pub timestamp: DateTime<Utc>,
+}
+
+impl ActionResult {
+    /// 创建新的动作处理结果
+    fn new(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, log_type: MessageType) -> Self {
+        Self {
+            data,
+            broadcast_players,
+            log_message,
+            message_type: log_type,
+            timestamp: Utc::now(),
+        }
+    }
+    
+    /// 创建新的动作处理结果（带系统日志消息）
+    pub fn new_system_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String) -> Self {
+        ActionResult::new(data, broadcast_players, log_message, MessageType::SystemNotice)
+    }
+    
+    /// 创建新的动作处理结果（带用户定向日志消息）
+    pub fn new_user_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String) -> Self {
+        ActionResult::new(data, broadcast_players, log_message, MessageType::UserDirected)
+    }
+    
+    /// 创建用于返回给前端的数据结构，排除`broadcast_players`字段
+    pub fn to_client_response(&self) -> serde_json::Value {
+        serde_json::json!({
+            "data": self.data,
+            "log_message": self.log_message,
+            "message_type": self.message_type,
+            "timestamp": self.timestamp
+        })
+    }
 }
 
 impl GameState {

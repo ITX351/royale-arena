@@ -39,6 +39,39 @@ impl DirectorService {
         }
     }
 
+    /// 游戏身份验证
+    pub async fn authenticate_game(&self, game_id: &str, password: &str) -> Result<String, DirectorError> {
+        // 首先检查是否是演员密码
+        let actor = sqlx::query!(
+            "SELECT id FROM actors WHERE game_id = ? AND password = ?",
+            game_id,
+            password
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(DirectorError::DatabaseError)?;
+        
+        if actor.is_some() {
+            return Ok("actor".to_string());
+        }
+        
+        // 然后检查是否是导演密码
+        let game = sqlx::query!(
+            "SELECT id, director_password FROM games WHERE id = ?",
+            game_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(DirectorError::DatabaseError)?;
+        
+        match game {
+            Some(game) if game.director_password == password => {
+                Ok("director".to_string())
+            },
+            _ => Ok("invalid".to_string())
+        }
+    }
+
     /// 检查游戏状态是否允许删除演员
     async fn check_game_status_for_deletion(&self, game_id: &str) -> Result<(), DirectorError> {
         let row = sqlx::query(

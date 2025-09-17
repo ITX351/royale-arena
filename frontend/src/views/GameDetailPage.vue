@@ -69,16 +69,6 @@
                 {{ formatDateTime(gameDetail.created_at) }}
               </div>
             </div>
-
-            <div class="info-item" v-if="gameDetail.rule_template">
-              <div class="info-label">
-                <el-icon><Document /></el-icon>
-                规则模版
-              </div>
-              <div class="info-value">
-                {{ gameDetail.rule_template.template_name }}
-              </div>
-            </div>
           </div>
         </el-card>
 
@@ -144,7 +134,6 @@ import {
   InfoFilled, 
   User, 
   Clock, 
-  Document, 
   Key, 
   Lock, 
   Right, 
@@ -155,6 +144,7 @@ import type { GameWithRules } from '@/types/game'
 import { getGameStatusConfig, formatDateTime } from '@/utils/gameFilter'
 import { gameService } from '@/services/gameService'
 import { directorService } from '@/services/directorService'
+import { authenticateGame, handleAuthResult } from '@/services/authService'
 
 const route = useRoute()
 const router = useRouter()
@@ -213,23 +203,14 @@ const handleLogin = async () => {
   loginLoading.value = true
 
   try {
-    // 直接尝试导演身份验证
-    try {
-      await directorService.authenticateAndGetPlayers(gameDetail.value.id, loginPassword.value)
-      ElMessage.success('成功以导演身份进入控制台')
-      router.push(`/game/${gameDetail.value.id}/${encodeURIComponent(loginPassword.value)}`)
-      return
-    } catch (directorError) {
-      // 导演登录失败，显示错误信息
-      console.error('导演登录失败:', directorError)
-      ElMessage.error('密码错误或无权限')
-    }
-  } catch (error) {
-    console.error('登录失败:', error)
-    ElMessage.error('登录失败，请稍后重试')
+    // 使用统一的认证服务
+    const authResult = await authenticateGame(gameDetail.value.id, loginPassword.value)
+    handleAuthResult(authResult, gameDetail.value.id, loginPassword.value, router)
   } finally {
     loginLoading.value = false
-    loginPassword.value = ''
+    if (!loginPassword.value) {
+      loginPassword.value = ''
+    }
   }
 }
 

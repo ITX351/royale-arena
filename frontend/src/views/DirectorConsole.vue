@@ -448,7 +448,8 @@ const attemptAuthentication = async () => {
   state.authError = null
   
   try {
-    const response = await directorService.authenticateAndGetPlayers(
+    // 使用新的 getPlayers 方法获取演员列表
+    const response = await directorService.getPlayers(
       gameId.value,
       state.directorPassword
     )
@@ -489,7 +490,8 @@ const refreshPlayers = async () => {
   state.playersLoading = true
   
   try {
-    const response = await directorService.authenticateAndGetPlayers(
+    // 使用新的 getPlayers 方法获取演员列表
+    const response = await directorService.getPlayers(
       gameId.value,
       state.directorPassword
     )

@@ -311,48 +311,6 @@ impl GameService {
         Ok(())
     }
 
-    /// 获取玩家消息记录
-    pub async fn get_player_messages(&self, game_id: &str, player_id: &str, password: &str) -> Result<Vec<MessageRecord>, GameError> {
-        // 验证请求参数
-        let request = GetPlayerMessagesRequest {
-            password: password.to_string(),
-        };
-        request.validate().map_err(GameError::ValidationError)?;
-        
-        // 验证玩家是否存在且密码正确
-        let actor = sqlx::query!(
-            "SELECT id FROM actors WHERE id = ? AND game_id = ? AND password = ?",
-            player_id,
-            game_id,
-            password
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(GameError::DatabaseError)?;
-        
-        if actor.is_none() {
-            return Err(GameError::ValidationError("Invalid player credentials".to_string()));
-        }
-        
-        // 查询玩家相关的消息记录
-        let messages = sqlx::query_as!(
-            MessageRecord,
-            r#"
-            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp
-            FROM game_logs 
-            WHERE game_id = ? AND player_id = ?
-            ORDER BY timestamp ASC
-            "#,
-            game_id,
-            player_id
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(GameError::DatabaseError)?;
-        
-        Ok(messages)
-    }
-
     /// 获取游戏的玩家数量
     async fn get_player_count(&self, game_id: &str) -> Result<i32, GameError> {
         let count = sqlx::query!(

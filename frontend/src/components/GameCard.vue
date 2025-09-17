@@ -30,13 +30,6 @@
         <span class="info-label">创建时间：</span>
         <span class="info-value">{{ formatDateTime(game.created_at) }}</span>
       </div>
-      
-      <!-- 规则模版信息 -->
-      <div class="info-item" v-if="game.rule_template">
-        <el-icon><Document /></el-icon>
-        <span class="info-label">规则模版：</span>
-        <span class="info-value">{{ game.rule_template.template_name }}</span>
-      </div>
     </div>
     
     <!-- 游戏操作区域 -->
@@ -92,6 +85,7 @@ import { User, Clock, Document, View } from '@element-plus/icons-vue'
 import type { GameListItem } from '@/types/game'
 import { getGameStatusConfig, formatDateTime } from '@/utils/gameFilter'
 import { directorService } from '@/services/directorService'
+import { authenticateGame, handleAuthResult } from '@/services/authService'
 
 interface Props {
   game: GameListItem
@@ -113,31 +107,17 @@ const canQuickLogin = computed(() => {
 
 // 快捷登录处理
 const handleQuickLogin = async () => {
-  if (!loginPassword.value.trim()) {
-    ElMessage.error('请输入密码')
-    return
-  }
-  
   loginLoading.value = true
   
   try {
-    // 直接尝试导演身份验证
-    try {
-      await directorService.authenticateAndGetPlayers(props.game.id, loginPassword.value)
-      ElMessage.success('成功以导演身份进入控制台')
-      router.push(`/game/${props.game.id}/${encodeURIComponent(loginPassword.value)}`)
-      return
-    } catch (directorError) {
-      // 导演登录失败，显示错误信息
-      console.error('导演登录失败:', directorError)
-      ElMessage.error('密码错误或无权限')
-    }
-  } catch (error) {
-    console.error('登录失败:', error)
-    ElMessage.error('登录失败，请稍后重试')
+    // 使用统一的认证服务
+    const authResult = await authenticateGame(props.game.id, loginPassword.value)
+    handleAuthResult(authResult, props.game.id, loginPassword.value, router)
   } finally {
     loginLoading.value = false
-    loginPassword.value = ''
+    if (!loginPassword.value) {
+      loginPassword.value = ''
+    }
   }
 }
 

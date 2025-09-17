@@ -13,23 +13,33 @@ use serde_json::json;
 use crate::routes::AppState;
 use super::models::*;
 use crate::game::models::GameStatus;
-
 use crate::websocket::models::GameState;
-use crate::websocket::game_state_director_actions::*;
-use crate::websocket::game_state_player_actions::*;
+
+use crate::websocket::connection_manager::{ConnectionManager, ConnectionType as WebSocketConnectionType};
+use crate::websocket::models::ConnectionType;
+use crate::websocket::broadcaster::MessageBroadcaster;
 
 /// WebSocket服务
 #[derive(Clone)]
 pub struct WebSocketService {
     /// 应用状态
     app_state: AppState,
+    /// 连接管理器
+    connection_manager: ConnectionManager,
+    /// 消息广播器
+    message_broadcaster: MessageBroadcaster,
 }
 
 impl WebSocketService {
     /// 创建新的WebSocket服务
     pub fn new(app_state: AppState) -> Self {
+        let connection_manager = ConnectionManager::new();
+        let message_broadcaster = MessageBroadcaster::new(connection_manager.clone());
+        
         Self {
             app_state,
+            connection_manager,
+            message_broadcaster,
         }
     }
 
@@ -72,10 +82,10 @@ impl WebSocketService {
                 // 根据用户类型处理连接
                 match user_type {
                     ConnectionType::Player => {
-                        self.handle_player_connection(&mut socket, &game_id, &auth_request.password).await;
+                        self.handle_player_connection(socket, game_id, auth_request.password).await;
                     }
                     ConnectionType::Director => {
-                        self.handle_director_connection(&mut socket, &game_id, &auth_request.password).await;
+                        self.handle_director_connection(socket, game_id, auth_request.password).await;
                     }
                 }
             }
@@ -150,10 +160,10 @@ impl WebSocketService {
 
     /// 处理玩家WebSocket连接
     async fn handle_player_connection(
-        &self,
-        socket: &mut WebSocket,
-        game_id: &str,
-        player_password: &str,
+        self,
+        socket: WebSocket,
+        game_id: String,
+        player_password: String,
     ) {
         // 获取玩家信息
         let actor = sqlx::query!(
@@ -166,8 +176,8 @@ impl WebSocketService {
         .unwrap(); // 已经验证过密码，这里不会失败
 
         // 获取游戏状态
-        let game = self.app_state.game_service.get_game_by_id(game_id).await.unwrap();
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await.unwrap();
+        let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
+        let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
         let game_state_guard = game_state_ref.read().await;
 
         // 构建玩家初始状态信息
@@ -197,45 +207,56 @@ impl WebSocketService {
             "data": player_state
         });
         
-        if socket.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
+        let (mut sender, mut receiver) = socket.split();
+        if sender.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
             return;
         }
 
+        // 创建消息通道用于连接管理
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<serde_json::Value>();
+        
+        // 添加连接到连接管理器
+        let connection_handle = self.connection_manager.add_connection(
+            actor.id.clone(),
+            WebSocketConnectionType::Player,
+            tx
+        ).await;
+
+        // 处理来自连接管理器的消息
+        let handle_messages = tokio::spawn(async move {
+            while let Some(message) = rx.recv().await {
+                let message_str = serde_json::to_string(&message).unwrap();
+                if sender.send(Message::Text(Utf8Bytes::from(message_str))).await.is_err() {
+                    break;
+                }
+            }
+        });
+
         // 处理玩家消息
-        while let Some(Ok(msg)) = socket.next().await {
+        while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
-                match self.handle_player_message(game_id, &actor.id, &text).await {
-                    Ok(response) => {
-                        if socket.send(Message::Text(Utf8Bytes::from(response))).await.is_err() {
-                            break;
-                        }
-                    }
-                    Err(error_msg) => {
-                        let error_response = json!({
-                            "type": "error",
-                            "data": {
-                                "message": error_msg
-                            }
-                        });
-                        if socket.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&error_response).unwrap()))).await.is_err() {
-                            break;
-                        }
-                    }
+                if let Err(error_msg) = self.handle_player_message(&game_id, &actor.id, &text).await {
+                    // 记录错误日志，方便后续排查调试
+                    eprintln!("[WebSocket] Player message processing error: {}", error_msg);
                 }
             }
         }
+
+        // 连接断开时移除连接
+        self.connection_manager.remove_connection(&connection_handle).await;
+        handle_messages.abort();
     }
 
     /// 处理导演WebSocket连接
     async fn handle_director_connection(
-        &self,
-        socket: &mut WebSocket,
-        game_id: &str,
-        _director_password: &str,
+        self,
+        socket: WebSocket,
+        game_id: String,
+        _director_password: String,
     ) {
         // 获取游戏状态
-        let game = self.app_state.game_service.get_game_by_id(game_id).await.unwrap();
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await.unwrap();
+        let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
+        let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
         let game_state_guard = game_state_ref.read().await;
 
         // 构建导演初始状态信息
@@ -253,33 +274,44 @@ impl WebSocketService {
             "data": director_state
         });
         
-        if socket.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
+        let (mut sender, mut receiver) = socket.split();
+        if sender.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
             return;
         }
 
+        // 创建消息通道用于连接管理
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<serde_json::Value>();
+        
+        // 添加连接到连接管理器
+        let connection_handle = self.connection_manager.add_connection(
+            "director".to_string(), // 导演使用固定ID
+            WebSocketConnectionType::Director,
+            tx
+        ).await;
+
+        // 处理来自连接管理器的消息
+        let handle_messages = tokio::spawn(async move {
+            while let Some(message) = rx.recv().await {
+                let message_str = serde_json::to_string(&message).unwrap();
+                if sender.send(Message::Text(Utf8Bytes::from(message_str))).await.is_err() {
+                    break;
+                }
+            }
+        });
+
         // 处理导演消息
-        while let Some(Ok(msg)) = socket.next().await {
+        while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
-                match self.handle_director_message(game_id, &text).await {
-                    Ok(response) => {
-                        if socket.send(Message::Text(Utf8Bytes::from(response))).await.is_err() {
-                            break;
-                        }
-                    }
-                    Err(error_msg) => {
-                        let error_response = json!({
-                            "type": "error",
-                            "data": {
-                                "message": error_msg
-                            }
-                        });
-                        if socket.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&error_response).unwrap()))).await.is_err() {
-                            break;
-                        }
-                    }
+                if let Err(error_msg) = self.handle_director_message(&game_id, &text).await {
+                    // 记录错误日志，方便后续排查调试
+                    eprintln!("[WebSocket] Director message processing error: {}", error_msg);
                 }
             }
         }
+
+        // 连接断开时移除连接
+        self.connection_manager.remove_connection(&connection_handle).await;
+        handle_messages.abort();
     }
 
     /// 处理玩家消息
@@ -397,8 +429,45 @@ impl WebSocketService {
             _ => Err("Unknown action".to_string()),
         };
 
+        // 根据动作结果进行广播
+        match &result {
+            Ok(action_result) => {
+                // 获取更新后的游戏状态
+                let updated_game_state = game_state_ref.read().await;
+                
+                // 使用新的广播器广播消息给相关玩家
+                let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
+                
+                // 使用新的广播器广播给所有导演
+                let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                
+                // 使用显式的消息类型而不是通过字符串内容判断
+                let message_type = action_result.message_type.clone();
+                
+                // 为每个相关玩家创建日志记录
+                for broadcast_player_id in &action_result.broadcast_players {
+                    let log_result = self.app_state.game_log_service.create_log(
+                        game_id,
+                        broadcast_player_id,
+                        &action_result.log_message,
+                        message_type.clone(),
+                        action_result.timestamp,  // 传递ActionResult中的时间戳
+                    ).await;
+                    
+                    // 忽略日志记录错误，但记录日志
+                    if let Err(e) = log_result {
+                        eprintln!("Failed to create log record: {}", e);
+                    }
+                }
+            }
+            Err(error_msg) => {
+                // 记录错误日志，方便后续排查调试
+                eprintln!("[WebSocket] Player action processing error: {}", error_msg);
+            }
+        }
+
         // 序列化结果
-        result.map(|v| v.to_string())
+        result.map(|action_result| serde_json::to_string(&action_result.to_client_response()).unwrap_or_default())
     }
 
     /// 处理导演控制
@@ -426,8 +495,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_set_night_start_time(timestamp)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to set night start time: {}", e))
             }
             "set_night_end_time" => {
                 // 设置夜晚结束时间
@@ -436,8 +503,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_set_night_end_time(timestamp)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to set night end time: {}", e))
             }
             "modify_place" => {
                 // 调整地点状态
@@ -448,8 +513,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_modify_place(place_name, is_destroyed)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to modify place: {}", e))
             }
             "set_destroy_places" => {
                 // 设置缩圈地点
@@ -458,8 +521,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_set_destroy_places(places)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to set destroy places: {}", e))
             }
             "drop" => {
                 // 空投
@@ -473,8 +534,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_drop(place_name, item)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to drop item: {}", e))
             }
             "weather" => {
                 // 调整天气
@@ -483,8 +542,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_weather(weather)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to set weather: {}", e))
             }
             "life" => {
                 // 调整生命值
@@ -495,8 +552,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_life(player_id, life_change)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to adjust life: {}", e))
             }
             "strength" => {
                 // 调整体力值
@@ -507,8 +562,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_strength(player_id, strength_change)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to adjust strength: {}", e))
             }
             "move_player" => {
                 // 移动角色
@@ -519,8 +572,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_move_player(player_id, target_place)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to move player: {}", e))
             }
             "give" => {
                 // 增减道具
@@ -535,8 +586,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_give(target_type, item, player_id.as_deref(), place_name.as_deref())
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to give item: {}", e))
             }
             "rope" | "unrope" => {
                 // 捆绑/松绑
@@ -547,8 +596,6 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_rope_action(player_id, action_type)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to rope/unrope player: {}", e))
             }
             "broadcast" => {
                 // 广播消息
@@ -557,13 +604,59 @@ impl WebSocketService {
                 
                 let mut game_state = game_state_ref.write().await;
                 game_state.handle_broadcast(message)
-                    .map(|v| v.to_string())
-                    .map_err(|e| format!("Failed to broadcast message: {}", e))
+            }
+            "director_message_to_player" => {
+                // 导演向特定玩家发送消息
+                let player_id = action_data.get("player_id").and_then(|v| v.as_str())
+                    .ok_or("Missing player_id field")?;
+                let message = action_data.get("message").and_then(|v| v.as_str())
+                    .ok_or("Missing message field")?;
+                
+                let mut game_state = game_state_ref.write().await;
+                game_state.handle_director_message_to_player(player_id, message)
             }
             _ => Err("Unknown director action".to_string()),
         };
 
-        result
+        // 根据动作结果进行广播
+        match &result {
+            Ok(action_result) => {
+                // 获取更新后的游戏状态
+                let updated_game_state = game_state_ref.read().await;
+                
+                // 使用新的广播器广播消息给相关玩家
+                let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
+                
+                // 使用新的广播器广播给所有导演
+                let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                
+                // 使用显式的消息类型而不是通过字符串内容判断
+                let message_type = action_result.message_type.clone();
+                
+                // 为每个相关玩家创建日志记录
+                for broadcast_player_id in &action_result.broadcast_players {
+                    let log_result = self.app_state.game_log_service.create_log(
+                        game_id,
+                        broadcast_player_id,
+                        &action_result.log_message,
+                        message_type.clone(),
+                        action_result.timestamp,  // 传递ActionResult中的时间戳
+                    ).await;
+                    
+                    // 忽略日志记录错误，但记录日志
+                    if let Err(e) = log_result {
+                        eprintln!("Failed to create log record: {}", e);
+                    }
+                }
+            }
+            Err(error_msg) => {
+                // 记录错误日志，方便后续排查调试
+                eprintln!("[WebSocket] Director action processing error: {}", error_msg);
+            }
+        }
+
+        // 序列化结果
+        result.map(|action_result| serde_json::to_string(&action_result.to_client_response()).unwrap_or_default())
     }
 
     /// 获取游戏状态（如果不存在则创建）

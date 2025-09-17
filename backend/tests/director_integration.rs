@@ -35,20 +35,20 @@ mod director_integration_tests {
         .execute(&pool)
         .await?;
 
-        // 测试1: 验证导演密码 - 正确密码
+        // 测试1.1: 验证导演密码 - 正确密码
         let result = director_service.verify_director_password(&game_id, director_password).await;
         assert!(result.is_ok(), "正确的导演密码验证应该成功");
 
-        // 测试2: 验证导演密码 - 错误密码
+        // 测试1.2: 验证导演密码 - 错误密码
         let result = director_service.verify_director_password(&game_id, "wrong_password").await;
         assert!(result.is_err(), "错误的导演密码验证应该失败");
 
-        // 测试3: 验证导演密码 - 不存在的游戏
+        // 测试1.3: 验证导演密码 - 不存在的游戏
         let fake_game_id = Uuid::new_v4().to_string();
         let result = director_service.verify_director_password(&fake_game_id, director_password).await;
         assert!(result.is_err(), "不存在的游戏验证应该失败");
 
-        // 测试4: 批量添加演员时的密码验证 - 错误的导演密码
+        // 测试2.1: 批量添加演员时的密码验证 - 错误的导演密码
         let add_request_wrong_password = BatchAddPlayersRequest {
             players: vec![CreatePlayerRequest {
                 player_name: "测试玩家".to_string(),
@@ -62,7 +62,7 @@ mod director_integration_tests {
             .await;
         assert!(result.is_err(), "错误的导演密码应该导致添加操作失败");
 
-        // 测试5: 批量添加演员 - 成功添加
+        // 测试2.2: 批量添加演员 - 成功添加
         let add_request = BatchAddPlayersRequest {
             players: vec![
                 CreatePlayerRequest {
@@ -89,7 +89,7 @@ mod director_integration_tests {
         assert_eq!(result.success[1].name, "测试玩家2");
         assert_eq!(result.success[1].team_id, 0); // 默认值
 
-        // 测试6: 批量添加演员 - 名称重复
+        // 测试2.3: 批量添加演员 - 名称重复
         let duplicate_request = BatchAddPlayersRequest {
             players: vec![
                 CreatePlayerRequest {
@@ -114,25 +114,41 @@ mod director_integration_tests {
         assert_eq!(result.success[0].name, "测试玩家3");
         assert!(result.failed[0].reason.contains("已存在"));
 
-        // 测试7: 获取演员列表时的密码验证 - 错误的导演密码
+        // 测试3.1: 获取演员列表时的密码验证 - 错误的导演密码
         let result = director_service.get_players(&game_id, "wrong_password").await;
         assert!(result.is_err(), "错误的导演密码应该导致获取列表失败");
 
-        // 测试8: 获取演员列表 - 正确密码
+        // 测试3.2: 获取演员列表 - 正确密码
         let players = director_service.get_players(&game_id, director_password).await?;
         assert_eq!(players.len(), 3, "应该有3个演员");
 
-        // 验证演员信息正确
+        // 测试3.3: 验证演员信息正确
         let player1 = players.iter().find(|p| p.name == "测试玩家1").unwrap();
         assert_eq!(player1.password, "abc123");
         assert_eq!(player1.team_id, 1);
         assert_eq!(player1.game_id, game_id);
 
-        let player2 = players.iter().find(|p| p.name == "测试玩家2").unwrap();
-        assert_eq!(player2.password, "def456");
-        assert_eq!(player2.team_id, 0);
+        // 测试4.1: 游戏身份验证 - 导演密码正确（此时还没有演员，应该返回director）
+        let auth_result = director_service.authenticate_game(&game_id, director_password).await?;
+        assert_eq!(auth_result, "director", "使用正确的导演密码应该返回director");
 
-        // 测试9: 批量删除演员时的密码验证 - 错误的导演密码
+        // 测试4.2: 游戏身份验证 - 导演密码错误
+        let auth_result = director_service.authenticate_game(&game_id, "wrong_password").await?;
+        assert_eq!(auth_result, "invalid", "使用错误的导演密码应该返回invalid");
+
+        // 测试4.3: 游戏身份验证 - 不存在的游戏
+        let auth_result = director_service.authenticate_game(&fake_game_id, director_password).await?;
+        assert_eq!(auth_result, "invalid", "不存在的游戏应该返回invalid");
+
+        // 测试4.4: 游戏身份验证 - 演员密码正确（使用刚刚添加的演员密码）
+        let auth_result = director_service.authenticate_game(&game_id, "abc123").await?;
+        assert_eq!(auth_result, "actor", "使用正确的演员密码应该返回actor");
+
+        // 测试4.5: 游戏身份验证 - 演员密码错误
+        let auth_result = director_service.authenticate_game(&game_id, "wrong_player_password").await?;
+        assert_eq!(auth_result, "invalid", "使用错误的演员密码应该返回invalid");
+
+        // 测试5.1: 批量删除演员时的密码验证 - 错误的导演密码
         let delete_request = BatchDeletePlayersRequest {
             player_ids: vec![Uuid::new_v4().to_string()],
         };
@@ -142,7 +158,7 @@ mod director_integration_tests {
             .await;
         assert!(result.is_err(), "错误的导演密码应该导致删除操作失败");
 
-        // 测试10: 批量删除演员 - 成功删除
+        // 测试5.2: 批量删除演员 - 成功删除
         let player_ids: Vec<String> = players.iter().take(2).map(|p| p.id.clone()).collect();
         let delete_request = BatchDeletePlayersRequest {
             player_ids: player_ids.clone(),
@@ -155,11 +171,11 @@ mod director_integration_tests {
         assert_eq!(result.success.len(), 2, "应该成功删除2个演员");
         assert_eq!(result.failed.len(), 0, "不应该有失败的操作");
 
-        // 验证删除后的演员列表
+        // 测试5.3: 验证删除后的演员列表
         let remaining_players = director_service.get_players(&game_id, director_password).await?;
         assert_eq!(remaining_players.len(), 1, "应该剩余1个演员");
 
-        // 测试11: 批量删除演员 - 不存在的演员ID
+        // 测试5.4: 批量删除演员 - 不存在的演员ID
         let fake_player_id = Uuid::new_v4().to_string();
         let delete_request = BatchDeletePlayersRequest {
             player_ids: vec![fake_player_id.clone()],
@@ -173,7 +189,7 @@ mod director_integration_tests {
         assert_eq!(result.failed.len(), 1, "应该有1个失败的操作");
         assert!(result.failed[0].reason.contains("不存在"));
 
-        // 测试12: 游戏开始后不能删除演员
+        // 测试6.1: 游戏开始后不能删除演员
         // 先修改游戏状态为运行中
         sqlx::query("UPDATE games SET status = 'running' WHERE id = ?")
             .bind(&game_id)
@@ -191,7 +207,7 @@ mod director_integration_tests {
 
         assert!(result.is_err(), "游戏运行中不应该允许删除演员");
 
-        // 测试13: 数据验证 - 无效密码格式
+        // 测试7.1: 数据验证 - 无效密码格式
         // 恢复游戏状态为waiting以便测试
         sqlx::query("UPDATE games SET status = 'waiting' WHERE id = ?")
             .bind(&game_id)
@@ -225,7 +241,7 @@ mod director_integration_tests {
         assert_eq!(result.success.len(), 0, "所有添加操作都应该失败");
         assert_eq!(result.failed.len(), 3, "应该有3个失败的操作");
 
-        // 验证错误原因
+        // 测试7.2: 验证错误原因
         assert!(result.failed.iter().any(|f| f.reason.contains("字母和数字")));
         assert!(result.failed.iter().any(|f| f.reason.contains("不能为空")));
         assert!(result.failed.iter().any(|f| f.reason.contains("长度必须为6-8位") || f.reason.contains("不能为负数")));

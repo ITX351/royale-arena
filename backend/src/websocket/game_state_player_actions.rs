@@ -1,12 +1,10 @@
 //! GameState 玩家行动实现
 
 use super::models::*;
-use serde_json::Value as JsonValue;
-use chrono::{DateTime, Utc};
 
 impl GameState {
     /// 处理玩家出生行动
-    pub fn handle_born_action(&mut self, player_id: &str, place_name: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_born_action(&mut self, player_id: &str, place_name: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
@@ -36,14 +34,21 @@ impl GameState {
                 }
             });
             
-            Ok(response)
+            // 创建动作结果，只广播给发起者本人
+            let action_result = ActionResult::new_system_message(
+                response, 
+                vec![player_id.to_string()], 
+                format!("玩家{}在地点{}出生", player.name, place_name)
+            );
+            
+            Ok(action_result)
         } else {
             Err("Place not found".to_string())
         }
     }
 
     /// 处理玩家移动行动
-    pub fn handle_move_action(&mut self, player_id: &str, target_place: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_move_action(&mut self, player_id: &str, target_place: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
@@ -88,14 +93,21 @@ impl GameState {
                 }
             });
             
-            Ok(response)
+            // 创建动作结果，只广播给发起者本人
+            let action_result = ActionResult::new_system_message(
+                response, 
+                vec![player_id.to_string()], 
+                format!("玩家{}移动到地点{}", player.name, target_place)
+            );
+            
+            Ok(action_result)
         } else {
             Err("Target place not found".to_string())
         }
     }
 
     /// 处理搜索行动
-    pub fn handle_search_action(&mut self, player_id: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_search_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
         // 获取玩家状态信息（避免借用冲突）
         let (player_location, player_alive, player_strength, player_last_search_time) = {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
@@ -215,7 +227,15 @@ impl GameState {
                         }
                     });
                     
-                    return Ok(response);
+                    // 创建动作结果，只广播给发起者本人
+                    let action_result = ActionResult::new_system_message(
+                        response, 
+                        vec![player_id.to_string()], 
+                        format!("玩家{}搜索并发现了玩家{}", 
+                            self.players.get(player_id).unwrap().name, target_player_name)
+                    );
+                    
+                    return Ok(action_result);
                 }
                 
                 // 如果没有其他玩家，返回空结果
@@ -238,7 +258,15 @@ impl GameState {
                         "last_search_time": player_last_search_time
                     }
                 });
-                Ok(response)
+                
+                // 创建动作结果，只广播给发起者本人
+                let action_result = ActionResult::new_system_message(
+                    response, 
+                    vec![player_id.to_string()], 
+                    format!("玩家{}搜索但没有发现任何东西", 
+                        self.players.get(player_id).unwrap().name)
+                );
+                Ok(action_result)
             }
             1 => {
                 // 搜索到物品
@@ -294,7 +322,14 @@ impl GameState {
                         }
                     });
                     
-                    Ok(response)
+                    // 创建动作结果，只广播给发起者本人
+                    let action_result = ActionResult::new_system_message(
+                        response, 
+                        vec![player_id.to_string()], 
+                        format!("玩家{}搜索并发现了物品{}", 
+                            self.players.get(player_id).unwrap().name, item_name)
+                    );
+                    Ok(action_result)
                 } else {
                     // 地点没有物品，返回空结果
                     {
@@ -316,7 +351,14 @@ impl GameState {
                             "last_search_time": player_last_search_time
                         }
                     });
-                    Ok(response)
+                    
+                    // 创建动作结果，只广播给发起者本人
+                    let action_result = ActionResult::new_system_message(
+                        response, 
+                        vec![player_id.to_string()], 
+                        format!("玩家{}搜索但没有发现任何东西", 
+                            self.players.get(player_id).unwrap().name));
+                    Ok(action_result)
                 }
             }
             _ => {
@@ -340,13 +382,20 @@ impl GameState {
                         "last_search_time": player_last_search_time
                     }
                 });
-                Ok(response)
+                
+                // 创建动作结果，只广播给发起者本人
+                let action_result = ActionResult::new_system_message(
+                    response, 
+                    vec![player_id.to_string()], 
+                    format!("玩家{}搜索但没有发现任何东西", 
+                            self.players.get(player_id).unwrap().name));
+                Ok(action_result)
             }
         }
     }
 
     /// 处理捡拾行动
-    pub fn handle_pick_action(&mut self, player_id: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_pick_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
         // 检查玩家是否存在且处于存活状态，上一次搜索结果为物品
         {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
@@ -405,7 +454,14 @@ impl GameState {
                     }
                 });
                 
-                Ok(response)
+                // 创建动作结果，只广播给发起者本人
+                let action_result = ActionResult::new_system_message(
+                    response, 
+                    vec![player_id.to_string()], 
+                    format!("玩家{}捡起了一个物品", 
+                        self.players.get(player_id).unwrap().name)
+                );
+                Ok(action_result)
             } else {
                 // 物品不存在，向该玩家发送捡拾失败消息
                 let response = serde_json::json!({
@@ -414,7 +470,15 @@ impl GameState {
                         "message": "Item no longer exists"
                     }
                 });
-                Ok(response)
+                
+                // 创建动作结果，只广播给发起者本人
+                let action_result = ActionResult::new_system_message(
+                    response, 
+                    vec![player_id.to_string()], 
+                    format!("玩家{}试图捡起一个物品但该物品已不存在", 
+                        self.players.get(player_id).unwrap().name)
+                );
+                Ok(action_result)
             }
         } else {
             Err("Player location not found".to_string())
@@ -422,7 +486,7 @@ impl GameState {
     }
 
     /// 处理攻击行动
-    pub fn handle_attack_action(&mut self, player_id: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_attack_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
         // 检查前置条件：玩家处于存活状态，上一次搜索结果为玩家，玩家装备了武器
         {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
@@ -481,7 +545,15 @@ impl GameState {
                     "message": "Target player has left the location"
                 }
             });
-            return Ok(response);
+            
+            // 创建动作结果，只广播给发起者本人
+            let action_result = ActionResult::new_system_message(
+                response, 
+                vec![player_id.to_string()], 
+                format!("玩家{}试图攻击但目标玩家已离开该地点", 
+                    self.players.get(player_id).unwrap().name)
+            );
+            return Ok(action_result);
         }
         
         // 检查目标玩家是否已死亡
@@ -493,7 +565,15 @@ impl GameState {
                     "message": "Target player is already dead"
                 }
             });
-            return Ok(response);
+            
+            // 创建动作结果，只广播给发起者本人
+            let action_result = ActionResult::new_system_message(
+                response, 
+                vec![player_id.to_string()], 
+                format!("玩家{}试图攻击但目标玩家已经死亡", 
+                    self.players.get(player_id).unwrap().name)
+            );
+            return Ok(action_result);
         }
         
         // 根据武器属性计算伤害（简化处理）
@@ -528,7 +608,6 @@ impl GameState {
         });
         
         // 向被攻击者发送被攻击通知（不包括攻击者身份）
-        // 注意：这里我们不实际发送消息，只是构造响应
         let _target_response = serde_json::json!({
             "type": "system_message",
             "data": {
@@ -547,12 +626,19 @@ impl GameState {
             }
         } // 释放对攻击者的可变借用
         
-        // 返回攻击者响应
-        Ok(attacker_response)
+        // 创建动作结果，广播给攻击者和被攻击者
+        let action_result = ActionResult::new_system_message(
+            attacker_response, 
+            vec![player_id.to_string(), target_player_id.clone()], 
+            format!("玩家{}攻击玩家{}造成{}点伤害", 
+                self.players.get(player_id).unwrap().name, target_player_id, damage)
+        );
+        
+        Ok(action_result)
     }
 
     /// 处理装备行动
-    pub fn handle_equip_action(&mut self, player_id: &str, item_id: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_equip_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
@@ -574,14 +660,20 @@ impl GameState {
                 }
             });
             
-            Ok(response)
+            // 创建动作结果，只广播给发起者本人
+            let action_result = ActionResult::new_system_message(
+                response, 
+                vec![player_id.to_string()], 
+                format!("玩家{}装备了物品{}", player.name, item_id)
+            );
+            Ok(action_result)
         } else {
             Err("Item not found in player's inventory".to_string())
         }
     }
 
     /// 处理使用道具行动
-    pub fn handle_use_action(&mut self, player_id: &str, item_id: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_use_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
@@ -629,7 +721,13 @@ impl GameState {
                         }
                     });
                     
-                    Ok(response)
+                    // 创建动作结果，只广播给发起者本人
+                    let action_result = ActionResult::new_system_message(
+                        response, 
+                        vec![player_id.to_string()], 
+                        format!("玩家{}使用了消耗品{}", player.name, item_id)
+                    );
+                    Ok(action_result)
                 }
                 ItemType::Weapon => {
                     // 如果是装备类：装备到对应位置，替换原有装备
@@ -644,7 +742,13 @@ impl GameState {
                         }
                     });
                     
-                    Ok(response)
+                    // 创建动作结果，只广播给发起者本人
+                    let action_result = ActionResult::new_system_message(
+                        response, 
+                        vec![player_id.to_string()], 
+                        format!("玩家{}装备了武器{}", player.name, item_id)
+                    );
+                    Ok(action_result)
                 }
                 ItemType::Equipment => {
                     // 其他装备类型处理
@@ -658,7 +762,13 @@ impl GameState {
                         }
                     });
                     
-                    Ok(response)
+                    // 创建动作结果，只广播给发起者本人
+                    let action_result = ActionResult::new_system_message(
+                        response, 
+                        vec![player_id.to_string()], 
+                        format!("玩家{}装备了物品{}", player.name, item_id)
+                    );
+                    Ok(action_result)
                 }
             }
         } else {
@@ -667,7 +777,7 @@ impl GameState {
     }
 
     /// 处理丢弃道具行动
-    pub fn handle_throw_action(&mut self, player_id: &str, item_id: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_throw_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
@@ -700,14 +810,20 @@ impl GameState {
                 }
             });
             
-            Ok(response)
+            // 创建动作结果，只广播给发起者本人
+            let action_result = ActionResult::new_system_message(
+                response, 
+                vec![player_id.to_string()], 
+                format!("玩家{}丢弃了物品{}", player.name, item_id)
+            );
+            Ok(action_result)
         } else {
             Err("Item not found in player's inventory".to_string())
         }
     }
 
     /// 处理传音行动
-    pub fn handle_deliver_action(&mut self, player_id: &str, target_player_id: &str, message: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_deliver_action(&mut self, player_id: &str, target_player_id: &str, message: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
@@ -731,17 +847,23 @@ impl GameState {
         let response = serde_json::json!({
             "type": "system_message",
             "data": {
-                "message": format!("Delivered message to player {}: {}", target_player_id, message)
+                "message": format!("玩家{}向您传音: {}", player.name, message)
             }
         });
         
-        Ok(response)
+        // 创建动作结果，广播给发送者和接收者
+        let action_result = ActionResult::new_user_message(
+            response, 
+            vec![player_id.to_string(), target_player_id.to_string()], 
+            format!("玩家{}向玩家{}发送消息: {}", player.name, target_player_id, message)
+        );
+        Ok(action_result)
     }
 
     /// 处理发送消息给导演行动
-    pub fn handle_send_action(&mut self, player_id: &str, message: &str) -> Result<serde_json::Value, String> {
+    pub fn handle_send_action(&mut self, player_id: &str, message: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
-        let _player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
         // 将消息转发给导演客户端
         // 在实际实现中，这里需要找到导演的连接并发送消息
@@ -750,10 +872,16 @@ impl GameState {
         let response = serde_json::json!({
             "type": "system_message",
             "data": {
-                "message": format!("Message sent to director: {}", message)
+                "message": format!("玩家{}向导演发送消息: {}", player.name, message)
             }
         });
         
-        Ok(response)
+        // 创建动作结果，只广播给发起者本人（导演会收到所有消息）
+        let action_result = ActionResult::new_user_message(
+            response, 
+            vec![player_id.to_string()], 
+            format!("玩家{}向导演发送消息: {}", player.name, message)
+        );
+        Ok(action_result)
     }
 }

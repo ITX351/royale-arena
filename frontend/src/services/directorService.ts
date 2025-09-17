@@ -14,14 +14,28 @@ import type {
 
 export class DirectorService {
   /**
-   * 验证导演身份并获取演员列表
+   * 获取演员列表
    */
-  async authenticateAndGetPlayers(
+  async getPlayers(
     gameId: string, 
     password: string
   ): Promise<DirectorAuthResponse> {
     const response = await apiClient.get(
       API_ENDPOINTS.DIRECTOR_PLAYERS(gameId),
+      { params: { password } }
+    )
+    return response.data
+  }
+
+  /**
+   * 游戏身份验证
+   */
+  async authenticateGame(
+    gameId: string,
+    password: string
+  ): Promise<string> {
+    const response = await apiClient.get(
+      API_ENDPOINTS.GAME_AUTH(gameId),
       { params: { password } }
     )
     return response.data

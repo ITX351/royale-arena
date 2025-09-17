@@ -172,6 +172,22 @@ pub enum MessageType {
     UserDirected,
 }
 
+impl MessageType {
+    /// 将消息类型转换为字符串表示
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MessageType::SystemNotice => "SystemNotice",
+            MessageType::UserDirected => "UserDirected",
+        }
+    }
+}
+
+impl fmt::Display for MessageType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// 消息记录模型
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct MessageRecord {
