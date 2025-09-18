@@ -8,6 +8,7 @@ use serde_json::json;
 use crate::routes::AppState;
 use super::errors::DirectorError;
 use super::models::*;
+use crate::game::models::GameStatus;
 
 /// 导演密码查询参数
 #[derive(Debug, Deserialize)]
@@ -64,6 +65,41 @@ pub async fn batch_delete_players(
     Ok(Json(json!({
         "success": true,
         "data": response
+    })))
+}
+
+/// 导演更新游戏状态
+pub async fn update_game_status(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Json(request): Json<UpdateGameStatusRequest>,
+) -> Result<Json<serde_json::Value>, DirectorError> {
+    // 验证导演密码
+    state.director_service.verify_director_password(&game_id, &request.password).await?;
+    
+    // 根据目标状态调用对应的导演服务方法
+    let result = match request.status {
+        GameStatus::Running => {
+            // 检查当前状态是否允许转换到Running
+            let game = state.game_service.get_game_by_id(&game_id).await
+                .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
+            
+            match game.status {
+                GameStatus::Waiting => state.director_service.start_game(&state, &game_id).await,
+                GameStatus::Paused => state.director_service.resume_game(&state, &game_id).await,
+                _ => return Err(DirectorError::InvalidGameStateTransition),
+            }
+        },
+        GameStatus::Paused => state.director_service.pause_game(&state, &game_id).await,
+        GameStatus::Ended => state.director_service.end_game(&state, &game_id).await,
+        _ => return Err(DirectorError::InvalidGameStateTransition),
+    };
+    
+    result?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "message": "Game status updated successfully"
     })))
 }
 

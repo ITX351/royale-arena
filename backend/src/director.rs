@@ -5,6 +5,6 @@ pub mod service;
 
 // 导出主要的公共接口
 pub use errors::DirectorError;
-pub use handlers::{batch_add_players, batch_delete_players, get_players};
+pub use handlers::{batch_add_players, batch_delete_players, get_players, update_game_status};
 pub use models::*;
 pub use service::DirectorService;

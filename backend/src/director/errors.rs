@@ -36,6 +36,12 @@ pub enum DirectorError {
     #[error("Game_id mismatch: expected {expected}, got {actual}")]
     GameIdMismatch { expected: String, actual: String },
     
+    #[error("Invalid game state transition")]
+    InvalidGameStateTransition,
+    
+    #[error("Other error: {message}")]
+    OtherError { message: String },
+    
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
     
@@ -58,6 +64,8 @@ impl IntoResponse for DirectorError {
             DirectorError::InvalidPlayerName { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::InvalidTeamId { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::GameIdMismatch { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
+            DirectorError::InvalidGameStateTransition => (StatusCode::BAD_REQUEST, self.to_string()),
+            DirectorError::OtherError { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::ValidationError { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error occurred".to_string()),
             DirectorError::UuidError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "UUID generation error".to_string()),

@@ -8,11 +8,12 @@ use axum::{
 use crate::admin::{admin_login, create_admin, delete_admin, list_admins, update_admin};
 use crate::auth::{jwt_auth_middleware, super_admin_middleware, AuthService};
 use crate::admin::service::AdminService;
-use crate::director::{batch_add_players, batch_delete_players, get_players, DirectorService};
-use crate::game::{create_game, delete_game, get_game_with_rules, get_games, get_player_messages, update_game, update_game_status, authenticate_game, GameService, GameLogService};
+use crate::director::{batch_add_players, batch_delete_players, get_players, update_game_status, DirectorService};
+use crate::game::{create_game, delete_game, get_game_with_rules, get_games, get_player_messages, update_game, authenticate_game, GameService, GameLogService};
 use crate::game::game_state_manager::GlobalGameStateManager;
 use crate::rule_template::{create_template, get_templates, update_template, RuleTemplateService};
 use crate::websocket::service::WebSocketService;
+use crate::websocket::global_connection_manager::GlobalConnectionManager;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -23,6 +24,7 @@ pub struct AppState {
     pub game_log_service: GameLogService,
     pub game_state_manager: GlobalGameStateManager,
     pub rule_template_service: RuleTemplateService,
+    pub global_connection_manager: GlobalConnectionManager,
 }
 
 pub fn create_routes(
@@ -35,6 +37,7 @@ pub fn create_routes(
     api_prefix: &str
 ) -> Router {
     let game_log_service = GameLogService::new(director_service.pool.clone());
+    let global_connection_manager = GlobalConnectionManager::new();
     
     let app_state = AppState {
         auth_service: auth_service.clone(),
@@ -44,6 +47,7 @@ pub fn create_routes(
         game_log_service,
         game_state_manager,
         rule_template_service,
+        global_connection_manager,
     };
 
     // 公开路由（不需要认证）
@@ -134,7 +138,7 @@ pub fn create_routes(
         .merge(rule_template_admin_routes)
         .merge(director_routes)
         .merge(player_routes)
-        .merge(auth_routes)  // 添加这一行
+        .merge(auth_routes)
 }
 
 // 健康检查端点

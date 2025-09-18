@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use crate::game::models::GameStatus;
 
 /// 批量添加演员请求
 #[derive(Debug, Deserialize)]
@@ -58,6 +59,15 @@ pub struct DeleteSuccessInfo {
     pub id: String,
     pub name: String,
     pub message: String,
+}
+
+/// 导演更新游戏状态请求
+#[derive(Debug, Deserialize)]
+pub struct UpdateGameStatusRequest {
+    /// 导演密码
+    pub password: String,
+    /// 目标游戏状态
+    pub status: GameStatus,
 }
 
 impl CreatePlayerRequest {

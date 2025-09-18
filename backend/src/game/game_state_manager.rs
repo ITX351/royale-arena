@@ -11,6 +11,7 @@ use dashmap::DashMap;
 
 // 从websocket模块导入游戏模型
 use crate::websocket::models::{GameState, Player, Place};
+use crate::game::models::GameStatus;
 
 /// 全局游戏状态管理器
 #[derive(Clone)]
@@ -19,6 +20,8 @@ pub struct GlobalGameStateManager {
     pool: MySqlPool,
     /// 游戏状态存储（内存中）
     game_states: Arc<DashMap<String, Arc<RwLock<GameState>>>>,
+    /// 游戏状态映射：游戏ID -> 游戏状态
+    game_status_map: Arc<DashMap<String, GameStatus>>,
 }
 
 impl GlobalGameStateManager {
@@ -27,6 +30,7 @@ impl GlobalGameStateManager {
         Self {
             pool,
             game_states: Arc::new(DashMap::new()),
+            game_status_map: Arc::new(DashMap::new()),
         }
     }
 
@@ -171,5 +175,28 @@ impl GlobalGameStateManager {
         let mut game_state_guard = game_state.write().await;
         game_state_guard.places.insert(place_name.to_string(), place);
         Ok(())
+    }
+    
+    /// 更新游戏状态
+    pub async fn update_game_status(&self, game_id: &str, status: GameStatus) {
+        self.game_status_map.insert(game_id.to_string(), status);
+    }
+    
+    /// 获取游戏状态
+    pub async fn get_game_status(&self, game_id: &str) -> Option<GameStatus> {
+        self.game_status_map.get(game_id).map(|status| status.clone())
+    }
+    
+    /// 检查游戏是否接受连接
+    pub async fn is_game_accepting_connections(&self, game_id: &str) -> bool {
+        if let Some(status) = self.game_status_map.get(game_id) {
+            match *status {
+                GameStatus::Running | GameStatus::Paused => true,
+                _ => false,
+            }
+        } else {
+            // 如果游戏状态未知，默认不接受连接
+            false
+        }
     }
 }

@@ -9,14 +9,14 @@ use axum::{
 };
 use futures::{sink::SinkExt, stream::StreamExt};
 use serde_json::json;
+use std::sync::Arc;
 
 use crate::routes::AppState;
 use super::models::*;
 use crate::game::models::GameStatus;
 use crate::websocket::models::GameState;
 
-use crate::websocket::connection_manager::{ConnectionManager, ConnectionType as WebSocketConnectionType};
-use crate::websocket::models::ConnectionType;
+use crate::websocket::game_connection_manager::GameConnectionManager;
 use crate::websocket::broadcaster::MessageBroadcaster;
 
 /// WebSocket服务
@@ -24,17 +24,17 @@ use crate::websocket::broadcaster::MessageBroadcaster;
 pub struct WebSocketService {
     /// 应用状态
     app_state: AppState,
+
     /// 连接管理器
-    connection_manager: ConnectionManager,
+    connection_manager: Arc<GameConnectionManager>,
     /// 消息广播器
     message_broadcaster: MessageBroadcaster,
 }
 
 impl WebSocketService {
     /// 创建新的WebSocket服务
-    pub fn new(app_state: AppState) -> Self {
-        let connection_manager = ConnectionManager::new();
-        let message_broadcaster = MessageBroadcaster::new(connection_manager.clone());
+    pub fn new(app_state: AppState, connection_manager: Arc<GameConnectionManager>) -> Self {
+        let message_broadcaster = MessageBroadcaster::new(connection_manager.as_ref().clone());
         
         Self {
             app_state,
@@ -50,8 +50,10 @@ impl WebSocketService {
         Path(game_id): Path<String>,
         Query(query): Query<WebSocketAuthRequest>,
     ) -> Response {
+        // 获取游戏对应的连接管理器
+        let game_connection_manager = state.global_connection_manager.get_manager(game_id.clone());
         // 创建WebSocket服务实例
-        let ws_service = WebSocketService::new(state);
+        let ws_service = WebSocketService::new(state, game_connection_manager);
         
         // 升级WebSocket连接
         ws.on_upgrade(move |socket| ws_service.handle_websocket_connection(socket, game_id, query))
@@ -111,12 +113,18 @@ impl WebSocketService {
         game_id: &str,
         auth_request: &WebSocketAuthRequest,
     ) -> Result<ConnectionType, String> {
-        // 检查游戏是否存在且处于运行状态
+        // 检查游戏是否存在
         let game = self.app_state.game_service.get_game_by_id(game_id).await
             .map_err(|_| "Game not found".to_string())?;
         
-        if game.status != GameStatus::Running {
-            return Err("Game is not running".to_string());
+        // 检查游戏是否接受连接（只在游戏处于"进行时"或"暂停时"接受客户端连接）
+        if !self.app_state.game_state_manager.is_game_accepting_connections(game_id).await {
+            // 检查游戏状态是否为等待中或已结束
+            match game.status {
+                GameStatus::Waiting => return Err("Game is waiting for start".to_string()),
+                GameStatus::Ended => return Err("Game has ended".to_string()),
+                _ => return Err("Game is not accepting connections".to_string()),
+            }
         }
 
         // 根据用户类型验证密码
@@ -180,32 +188,11 @@ impl WebSocketService {
         let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
         let game_state_guard = game_state_ref.read().await;
 
-        // 构建玩家初始状态信息
-        let player_state = if let Some(player) = game_state_guard.players.get(&actor.id) {
-            json!({
-                "location": player.location,
-                "life": player.life,
-                "strength": player.strength,
-                "inventory": player.inventory,
-                "equipped_item": player.equipped_item,
-                "hand_item": player.hand_item,
-                "votes": player.votes,
-                "night_start_time": game_state_guard.night_start_time,
-                "night_end_time": game_state_guard.night_end_time,
-                "places": game_state_guard.places.keys().collect::<Vec<_>>(),
-                "next_night_destroyed_places": game_state_guard.next_night_destroyed_places
-            })
-        } else {
-            json!({
-                "error": "Player not found in game state"
-            })
-        };
+        // 检查玩家是否在游戏状态中
+        let player = game_state_guard.players.get(&actor.id).unwrap();
 
-        // 发送玩家初始状态
-        let init_msg = json!({
-            "type": "player_update",
-            "data": player_state
-        });
+        // 生成玩家初始状态消息
+        let init_msg = MessageBroadcaster::generate_player_message(&game_state_guard, player, None);
         
         let (mut sender, mut receiver) = socket.split();
         if sender.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
@@ -218,7 +205,7 @@ impl WebSocketService {
         // 添加连接到连接管理器
         let connection_handle = self.connection_manager.add_connection(
             actor.id.clone(),
-            WebSocketConnectionType::Player,
+            ConnectionType::Player,
             tx
         ).await;
 
@@ -259,20 +246,8 @@ impl WebSocketService {
         let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
         let game_state_guard = game_state_ref.read().await;
 
-        // 构建导演初始状态信息
-        let director_state = json!({
-            "game_status": "running", // 已经验证过游戏状态为running
-            "night_start_time": game_state_guard.night_start_time,
-            "night_end_time": game_state_guard.night_end_time,
-            "players": game_state_guard.players.clone(),
-            "places": game_state_guard.places.clone()
-        });
-
-        // 发送导演初始状态
-        let init_msg = json!({
-            "type": "game_state",
-            "data": director_state
-        });
+        // 生成导演初始状态消息，action_result为空
+        let init_msg = MessageBroadcaster::generate_director_message(&game_state_guard, None);
         
         let (mut sender, mut receiver) = socket.split();
         if sender.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
@@ -285,7 +260,7 @@ impl WebSocketService {
         // 添加连接到连接管理器
         let connection_handle = self.connection_manager.add_connection(
             "director".to_string(), // 导演使用固定ID
-            WebSocketConnectionType::Director,
+            ConnectionType::Director,
             tx
         ).await;
 
@@ -665,122 +640,5 @@ impl WebSocketService {
         let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await.unwrap();
         let game_state_guard = game_state_ref.read().await;
         game_state_guard.clone()
-    }
-
-    /// 保存游戏状态到磁盘
-    pub async fn save_game_state_to_disk(&self, game_id: &str) -> Result<(), String> {
-        self.app_state.game_state_manager.save_game_state_to_disk(game_id).await
-    }
-
-    /// 从磁盘恢复游戏状态
-    pub async fn load_game_state_from_disk(&self, game_id: &str) -> Result<(), String> {
-        self.app_state.game_state_manager.load_game_state_from_disk(game_id).await
-    }
-
-    /// 开始游戏（等待中 → 进行中）
-    pub async fn start_game(&self, game_id: &str) -> Result<(), String> {
-        // 更新数据库中游戏状态为 "running"
-        let result = sqlx::query!(
-            "UPDATE games SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            game_id
-        )
-        .execute(&self.app_state.director_service.pool)
-        .await
-        .map_err(|e| format!("Failed to update game status: {}", e))?;
-        
-        if result.rows_affected() == 0 {
-            return Err("Game not found".to_string());
-        }
-        
-        // 初始化游戏内存状态
-        let game = self.app_state.game_service.get_game_by_id(game_id).await
-            .map_err(|e| format!("Failed to get game: {}", e))?;
-        self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
-            .map_err(|e| format!("Failed to initialize game state: {}", e))?;
-        
-        // 启动 WebSocket 监听器（已在连接处理中实现）
-        
-        Ok(())
-    }
-
-    /// 暂停游戏（进行中 → 暂停）
-    pub async fn pause_game(&self, game_id: &str) -> Result<(), String> {
-        // 更新数据库中游戏状态为 "paused"
-        let result = sqlx::query!(
-            "UPDATE games SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            game_id
-        )
-        .execute(&self.app_state.director_service.pool)
-        .await
-        .map_err(|e| format!("Failed to update game status: {}", e))?;
-        
-        if result.rows_affected() == 0 {
-            return Err("Game not found".to_string());
-        }
-        
-        // 将当前游戏状态序列化并保存到磁盘文件
-        self.app_state.game_state_manager.save_game_state_to_disk(game_id).await
-            .map_err(|e| format!("Failed to save game state to disk: {}", e))?;
-        
-        // 关闭 WebSocket 监听器（连接会自动断开）
-        
-        // 通知所有连接的客户端
-        // 这里可以实现广播消息给所有连接的客户端
-        
-        Ok(())
-    }
-
-    /// 结束游戏（进行中 → 结束）
-    pub async fn end_game(&self, game_id: &str) -> Result<(), String> {
-        // 更新数据库中游戏状态为 "ended"
-        let result = sqlx::query!(
-            "UPDATE games SET status = 'ended', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            game_id
-        )
-        .execute(&self.app_state.director_service.pool)
-        .await
-        .map_err(|e| format!("Failed to update game status: {}", e))?;
-        
-        if result.rows_affected() == 0 {
-            return Err("Game not found".to_string());
-        }
-        
-        // 将当前游戏状态序列化并保存到磁盘文件
-        self.save_game_state_to_disk(game_id).await
-            .map_err(|e| format!("Failed to save game state to disk: {}", e))?;
-        
-        // 关闭 WebSocket 监听器（连接会自动断开）
-        
-        // 通知所有连接的客户端
-        // 这里可以实现广播消息给所有连接的客户端
-        
-        Ok(())
-    }
-
-    /// 恢复游戏（暂停 → 进行中）
-    pub async fn resume_game(&self, game_id: &str) -> Result<(), String> {
-        // 更新数据库中游戏状态为 "running"
-        let result = sqlx::query!(
-            "UPDATE games SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            game_id
-        )
-        .execute(&self.app_state.director_service.pool)
-        .await
-        .map_err(|e| format!("Failed to update game status: {}", e))?;
-        
-        if result.rows_affected() == 0 {
-            return Err("Game not found".to_string());
-        }
-        
-        // 从磁盘文件中恢复游戏状态
-        self.app_state.game_state_manager.load_game_state_from_disk(game_id).await
-            .map_err(|e| format!("Failed to load game state from disk: {}", e))?;
-        
-        // 启动 WebSocket 监听器（已在连接处理中实现）
-        
-        // 通知所有连接的客户端
-        // 这里可以实现广播消息给所有连接的客户端
-        
-        Ok(())
     }
 }

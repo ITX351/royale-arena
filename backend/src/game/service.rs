@@ -264,53 +264,6 @@ impl GameService {
         game.ok_or(GameError::GameNotFound)
     }
 
-    /// 导演更新游戏状态
-    pub async fn update_game_status(&self, game_id: &str, request: UpdateGameStatusRequest) -> Result<(), GameError> {
-        // 验证请求参数
-        request.validate().map_err(GameError::ValidationError)?;
-        
-        // 验证游戏是否存在
-        let game = self.get_game_by_id(game_id).await?;
-        
-        // 验证导演密码
-        if game.director_password != request.password {
-            return Err(GameError::ValidationError("Invalid director password".to_string()));
-        }
-        
-        // 验证状态转换是否合法
-        let current_status = game.status;
-        let target_status = request.status;
-        
-        // 检查状态转换是否合法
-        let is_valid_transition = match (&current_status, &target_status) {
-            // 从等待中状态可以开始游戏
-            (GameStatus::Waiting, GameStatus::Running) => true,
-            // 从进行中状态可以暂停或结束游戏
-            (GameStatus::Running, GameStatus::Paused) => true,
-            (GameStatus::Running, GameStatus::Ended) => true,
-            // 从暂停状态可以恢复游戏
-            (GameStatus::Paused, GameStatus::Running) => true,
-            // 其他转换都是非法的
-            _ => false,
-        };
-        
-        if !is_valid_transition {
-            return Err(GameError::InvalidGameState);
-        }
-        
-        // 更新游戏状态
-        sqlx::query!(
-            "UPDATE games SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            target_status,
-            game_id
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(GameError::DatabaseError)?;
-        
-        Ok(())
-    }
-
     /// 获取游戏的玩家数量
     async fn get_player_count(&self, game_id: &str) -> Result<i32, GameError> {
         let count = sqlx::query!(

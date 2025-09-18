@@ -84,24 +84,6 @@ pub async fn get_game_with_rules(
     })))
 }
 
-/// 导演更新游戏状态 (导演接口)
-pub async fn update_game_status(
-    State(state): State<AppState>,
-    Path(game_id): Path<String>,
-    Json(request): Json<UpdateGameStatusRequest>,
-) -> Result<Json<serde_json::Value>, GameError> {
-    // 验证请求参数
-    request.validate().map_err(GameError::ValidationError)?;
-    
-    // 验证导演密码并更新游戏状态
-    state.game_service.update_game_status(&game_id, request).await?;
-    
-    Ok(Json(json!({
-        "success": true,
-        "message": "Game status updated successfully"
-    })))
-}
-
 /// 获取玩家消息记录 (玩家接口)
 pub async fn get_player_messages(
     State(state): State<AppState>,

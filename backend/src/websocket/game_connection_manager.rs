@@ -1,10 +1,11 @@
-//! WebSocket连接管理器
-//! 负责管理所有WebSocket连接，包括玩家和导演连接
+//! WebSocket游戏连接管理器
+//! 负责管理单个游戏的所有WebSocket连接，包括玩家和导演连接
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::Value as JsonValue;
+use serde_json::{json, Value as JsonValue};
+use crate::websocket::models::ConnectionType;
 
 /// 连接句柄，用于标识每个WebSocket连接
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -17,18 +18,10 @@ pub struct ConnectionHandle {
     pub connection_type: ConnectionType,
 }
 
-/// 连接类型枚举
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConnectionType {
-    /// 玩家连接
-    Player,
-    /// 导演连接
-    Director,
-}
-
-/// WebSocket连接管理器
+/// WebSocket游戏连接管理器
+/// 管理单个游戏的所有WebSocket连接
 #[derive(Clone)]
-pub struct ConnectionManager {
+pub struct GameConnectionManager {
     /// 玩家连接映射：玩家ID -> [连接句柄]
     player_connections: Arc<RwLock<HashMap<String, Vec<ConnectionHandle>>>>,
     /// 导演连接列表
@@ -37,8 +30,8 @@ pub struct ConnectionManager {
     connections: Arc<RwLock<HashMap<ConnectionHandle, tokio::sync::mpsc::UnboundedSender<JsonValue>>>>,
 }
 
-impl ConnectionManager {
-    /// 创建新的连接管理器
+impl GameConnectionManager {
+    /// 创建新的游戏连接管理器
     pub fn new() -> Self {
         Self {
             player_connections: Arc::new(RwLock::new(HashMap::new())),
@@ -153,5 +146,23 @@ impl ConnectionManager {
             let _ = self.send_message_to_connection(&handle, message.clone()).await;
         }
         Ok(())
+    }
+
+    /// 断开所有连接并向客户端发送断开消息
+    pub async fn disconnect_all_connections(&self) {
+        let disconnect_message = json!({
+            "type": "system_message",
+            "data": {
+                "message": "Game has ended. Connection closed."
+            }
+        });
+
+        // 向所有连接广播断开消息
+        let _ = self.broadcast_to_all(disconnect_message).await;
+
+        // 清理所有连接数据
+        self.connections.write().await.clear();
+        self.player_connections.write().await.clear();
+        self.director_connections.write().await.clear();
     }
 }

@@ -1,6 +1,7 @@
 use sqlx::{MySqlPool, Row};
 use uuid::Uuid;
 use crate::director::{DirectorError, models::*};
+use crate::routes::AppState;
 
 /// 导演服务层
 #[derive(Clone)]
@@ -322,5 +323,110 @@ impl DirectorService {
         }
 
         Ok(BatchOperationResponse { success, failed })
+    }
+
+    /// 开始游戏（等待中 → 进行中）
+    pub async fn start_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+        // 更新数据库中游戏状态为 "running"
+        let result = sqlx::query!(
+            "UPDATE games SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            game_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DirectorError::DatabaseError(e))?;
+        
+        if result.rows_affected() == 0 {
+            return Err(DirectorError::GameNotFound);
+        }
+        
+        // 更新游戏状态管理器中的游戏状态
+        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Running).await;
+        
+        // 初始化游戏内存状态
+        let game = app_state.game_service.get_game_by_id(game_id).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
+        app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to initialize game state: {}", e) })?;
+        
+        Ok(())
+    }
+
+    /// 暂停游戏（进行中 → 暂停）
+    pub async fn pause_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+        // 更新数据库中游戏状态为 "paused"
+        let result = sqlx::query!(
+            "UPDATE games SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            game_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DirectorError::DatabaseError(e))?;
+        
+        if result.rows_affected() == 0 {
+            return Err(DirectorError::GameNotFound);
+        }
+        
+        // 更新游戏状态管理器中的游戏状态
+        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Paused).await;
+        
+        // 将当前游戏状态序列化并保存到磁盘文件
+        app_state.game_state_manager.save_game_state_to_disk(game_id).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to save game state to disk: {}", e) })?;
+        
+        Ok(())
+    }
+
+    /// 结束游戏（进行中 → 结束）
+    pub async fn end_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+        // 更新数据库中游戏状态为 "ended"
+        let result = sqlx::query!(
+            "UPDATE games SET status = 'ended', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            game_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DirectorError::DatabaseError(e))?;
+        
+        if result.rows_affected() == 0 {
+            return Err(DirectorError::GameNotFound);
+        }
+        
+        // 更新游戏状态管理器中的游戏状态
+        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Ended).await;
+        
+        // 断开所有连接（调用全局连接管理器的实现）
+        app_state.global_connection_manager.remove_game_manager(game_id.to_string()).await;
+        
+        // 将当前游戏状态序列化并保存到磁盘文件
+        app_state.game_state_manager.save_game_state_to_disk(game_id).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to save game state to disk: {}", e) })?;
+        
+        Ok(())
+    }
+
+    /// 恢复游戏（暂停 → 进行中）
+    pub async fn resume_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+        // 更新数据库中游戏状态为 "running"
+        let result = sqlx::query!(
+            "UPDATE games SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            game_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DirectorError::DatabaseError(e))?;
+        
+        if result.rows_affected() == 0 {
+            return Err(DirectorError::GameNotFound);
+        }
+        
+        // 更新游戏状态管理器中的游戏状态
+        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Running).await;
+        
+        // 从磁盘文件中恢复游戏状态
+        app_state.game_state_manager.load_game_state_from_disk(game_id).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to load game state from disk: {}", e) })?;
+        
+        Ok(())
     }
 }

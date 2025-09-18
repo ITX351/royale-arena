@@ -146,14 +146,7 @@ pub struct UpdateGameRequest {
     pub rules_config: Option<serde_json::Value>,
 }
 
-/// 导演更新游戏状态请求
-#[derive(Debug, Deserialize)]
-pub struct UpdateGameStatusRequest {
-    /// 导演密码
-    pub password: String,
-    /// 目标游戏状态
-    pub status: GameStatus,
-}
+
 
 /// 获取玩家消息记录请求
 #[derive(Debug, Deserialize)]
@@ -305,20 +298,7 @@ impl UpdateGameRequest {
     }
 }
 
-impl UpdateGameStatusRequest {
-    /// 验证更新游戏状态请求的参数
-    pub fn validate(&self) -> Result<(), String> {
-        if self.password.trim().is_empty() {
-            return Err("导演密码不能为空".to_string());
-        }
-        
-        if self.password.len() < 6 || self.password.len() > 50 {
-            return Err("导演密码长度必须在6-50字符之间".to_string());
-        }
-        
-        Ok(())
-    }
-}
+
 
 impl GetPlayerMessagesRequest {
     /// 验证获取玩家消息记录请求的参数

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use crate::game::models::MessageType;
 
 /// WebSocket连接类型
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum ConnectionType {
     /// 玩家连接
     #[serde(rename = "player")]
@@ -276,5 +276,16 @@ impl GameState {
             night_end_time: None,
             next_night_destroyed_places: Vec::new(),
         }
+    }
+
+    /// 生成全局状态信息
+    pub fn generate_global_state_info(&self) -> serde_json::Value {
+        serde_json::json!({
+            "game_phase": self.game_phase,
+            "weather": self.weather,
+            "night_start_time": self.night_start_time,
+            "night_end_time": self.night_end_time,
+            "next_night_destroyed_places": self.next_night_destroyed_places,
+        })
     }
 }
