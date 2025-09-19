@@ -1,172 +1,110 @@
 <template>
-  <div class="director-console">
-    <!-- 页面头部 -->
-    <div class="console-header">
-      <div class="header-content">
-        <h2>导演控制台</h2>
-        <p class="game-info">游戏ID: {{ $route.params.id }}</p>
-        <el-button 
-          @click="goBack" 
-          :icon="ArrowLeft"
-          class="back-button"
-        >
-          返回游戏详情
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 导演控制台主界面 -->
-    <div v-if="!state.passwordFromURI || state.isAuthenticated" class="console-main">
-      <!-- 认证区域 -->
-      <el-card v-if="!state.passwordFromURI && !state.isAuthenticated" class="auth-card">
-        <template #header>
-          <div class="card-header">
-            <h3>导演身份验证</h3>
-          </div>
-        </template>
-        
-        <div class="auth-form">
-          <el-alert 
-            v-if="state.authError" 
-            :title="state.authError" 
-            type="error" 
-            show-icon 
-            :closable="false"
-            class="auth-error"
-          />
-          
-          <el-form @submit.prevent="handleAuthenticate">
-            <el-form-item label="导演密码">
-              <el-input
-                v-model="state.directorPassword"
-                type="password"
-                placeholder="请输入导演密码"
-                show-password
-                :disabled="state.authLoading"
-                @keyup.enter="handleAuthenticate"
-              />
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button 
-                type="primary" 
-                @click="handleAuthenticate"
-                :loading="state.authLoading"
-                style="width: 100%"
-              >
-                验证身份
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </div>
-      </el-card>
-      <!-- 演员管理区域 -->
-      <el-card class="players-card">
-        <template #header>
-          <div class="card-header">
-            <div class="header-left">
-              <el-button
-                :icon="state.playersTableCollapsed ? ArrowDown : ArrowUp"
-                @click="state.playersTableCollapsed = !state.playersTableCollapsed"
-                text
-                class="collapse-btn"
-              >
-                演员管理列表 ({{ state.players.length }}人)
-              </el-button>
-            </div>
-            <div class="header-right">
-              <el-button
-                type="primary"
-                :icon="Plus"
-                @click="openBatchAddDialog"
-              >
-                批量添加演员
-              </el-button>
-              <el-button
-                v-if="state.selectedPlayers.length > 0"
-                type="danger"
-                :icon="Delete"
-                @click="openBatchDeleteDialog"
-                :loading="state.batchDeleteLoading"
-              >
-                批量删除 ({{ state.selectedPlayers.length }})
-              </el-button>
-              <el-button
-                :icon="Refresh"
-                @click="refreshPlayers"
-                :loading="state.playersLoading"
-              >
-                刷新
-              </el-button>
-            </div>
-          </div>
-        </template>
-
-        <!-- 演员表格 -->
-        <el-collapse-transition>
-          <div v-show="!state.playersTableCollapsed">
-            <el-table
-              :data="state.players"
-              v-loading="state.playersLoading"
-              @selection-change="handleSelectionChange"
-              stripe
-              class="players-table"
+  <div class="actor-management">
+    <el-card class="players-card">
+      <template #header>
+        <div class="card-header">
+          <div class="header-left">
+            <el-button
+              :icon="playersTableCollapsed ? ArrowDown : ArrowUp"
+              @click="playersTableCollapsed = !playersTableCollapsed"
+              text
+              class="collapse-btn"
             >
-              <el-table-column type="selection" width="55" />
-              
-              <el-table-column prop="id" label="演员ID" width="280">
-                <template #default="{ row }">
-                  <el-text class="player-id">{{ row.id }}</el-text>
-                </template>
-              </el-table-column>
-              
-              <el-table-column prop="name" label="演员名称" min-width="120">
-                <template #default="{ row }">
-                  <el-text class="player-name">{{ row.name }}</el-text>
-                </template>
-              </el-table-column>
-              
-              <el-table-column prop="password" label="登录密码" width="120">
-                <template #default="{ row }">
-                  <el-text class="player-password">{{ row.password }}</el-text>
-                </template>
-              </el-table-column>
-              
-              <el-table-column prop="team_id" label="组队编号" width="100">
-                <template #default="{ row }">
-                  <el-tag v-if="row.team_id > 0" size="small">{{ row.team_id }}</el-tag>
-                  <el-text v-else class="no-team">无</el-text>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="操作" width="120" fixed="right">
-                <template #default="{ row }">
-                  <el-button
-                    size="small"
-                    type="primary"
-                    @click="switchToPlayerView(row.id)"
-                    :icon="View"
-                  >
-                    进入视角
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            
-            <!-- 空状态 -->
-            <el-empty 
-              v-if="state.players.length === 0 && !state.playersLoading"
-              description="暂无演员数据"
-              :image-size="80"
-            />
+              演员列表管理 ({{ players.length }}人)
+            </el-button>
           </div>
-        </el-collapse-transition>
-      </el-card>
-    </div>
+          <div class="header-right">
+            <el-button
+              type="primary"
+              :icon="Plus"
+              @click="openBatchAddDialog"
+            >
+              批量添加演员
+            </el-button>
+            <el-button
+              v-if="selectedPlayers.length > 0"
+              type="danger"
+              :icon="Delete"
+              @click="openBatchDeleteDialog"
+              :loading="batchDeleteLoading"
+            >
+              批量删除 ({{ selectedPlayers.length }})
+            </el-button>
+            <el-button
+              :icon="Refresh"
+              @click="refreshPlayers"
+              :loading="playersLoading"
+            >
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 演员表格 -->
+      <el-collapse-transition>
+        <div v-show="!playersTableCollapsed">
+          <el-table
+            :data="players"
+            v-loading="playersLoading"
+            @selection-change="handleSelectionChange"
+            stripe
+            class="players-table"
+          >
+            <el-table-column type="selection" width="55" />
+            
+            <el-table-column prop="id" label="演员ID" width="280">
+              <template #default="{ row }">
+                <el-text class="player-id">{{ row.id }}</el-text>
+              </template>
+            </el-table-column>
+            
+            <el-table-column prop="name" label="演员名称" min-width="120">
+              <template #default="{ row }">
+                <el-text class="player-name">{{ row.name }}</el-text>
+              </template>
+            </el-table-column>
+            
+            <el-table-column prop="password" label="登录密码" width="120">
+              <template #default="{ row }">
+                <el-text class="player-password">{{ row.password }}</el-text>
+              </template>
+            </el-table-column>
+            
+            <el-table-column prop="team_id" label="组队编号" width="100">
+              <template #default="{ row }">
+                <el-tag v-if="row.team_id > 0" size="small">{{ row.team_id }}</el-tag>
+                <el-text v-else class="no-team">无</el-text>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  size="small"
+                  type="primary"
+                  @click="switchToPlayerView(row.id)"
+                  :icon="View"
+                >
+                  进入视角
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <!-- 空状态 -->
+          <el-empty 
+            v-if="players.length === 0 && !playersLoading"
+            description="暂无演员数据"
+            :image-size="80"
+          />
+        </div>
+      </el-collapse-transition>
+    </el-card>
 
     <!-- 批量添加演员对话框 -->
     <el-dialog
-      v-model="state.batchAddDialogVisible"
+      v-model="batchAddDialogVisible"
       title="批量添加演员账户"
       width="800px"
       :close-on-click-modal="false"
@@ -194,7 +132,7 @@
           <div class="paste-column">
             <label class="paste-label">用户名列表</label>
             <el-input
-              v-model="state.pasteUsernames"
+              v-model="pasteUsernames"
               type="textarea"
               :rows="8"
               placeholder="每行一个用户名&#10;示例：&#10;张三&#10;李四&#10;王五"
@@ -205,7 +143,7 @@
           <div class="paste-column">
             <label class="paste-label">密码列表</label>
             <el-input
-              v-model="state.pastePasswords"
+              v-model="pastePasswords"
               type="textarea"
               :rows="8"
               placeholder="每行一个密码&#10;示例：&#10;abc123&#10;def456&#10;ghi789"
@@ -216,7 +154,7 @@
           <div class="paste-column">
             <label class="paste-label">组队编号（可选）</label>
             <el-input
-              v-model="state.pasteTeamIds"
+              v-model="pasteTeamIds"
               type="textarea"
               :rows="8"
               placeholder="每行一个组队编号&#10;示例：&#10;1&#10;2&#10;3&#10;（可留空或少于用户名数量）"
@@ -258,7 +196,7 @@
             type="primary"
             @click="handleBatchAdd"
             :disabled="pastePreviewData.length === 0 || !!pasteErrorMessage"
-            :loading="state.batchAddLoading"
+            :loading="batchAddLoading"
           >
             批量添加 ({{ pastePreviewData.length }}条)
           </el-button>
@@ -309,7 +247,7 @@
           <el-button
             type="danger"
             @click="handleBatchDelete"
-            :loading="state.batchDeleteLoading"
+            :loading="batchDeleteLoading"
           >
             确认删除
           </el-button>
@@ -321,10 +259,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  ArrowLeft,
   ArrowDown,
   ArrowUp,
   Plus,
@@ -334,51 +271,43 @@ import {
 } from '@element-plus/icons-vue'
 
 import { directorService } from '@/services/directorService'
-import type {
-  DirectorConsoleState,
-  PlayerInfo,
-  BatchPasteData
-} from '@/types/director'
+import type { PlayerInfo, BatchPasteData } from '@/types/director'
+
+// Props
+const props = defineProps<{
+  gameId: string
+  directorPassword: string
+}>()
+
+// Emits
+const emit = defineEmits<{
+  (e: 'refresh'): void
+}>()
 
 const router = useRouter()
-const route = useRoute()
 
 // 响应式状态
-const state = reactive<DirectorConsoleState>({
-  // URI参数相关
-  passwordFromURI: null,
-  autoAuthenticated: false,
-  
-  // 认证相关
-  isAuthenticated: false,
-  directorPassword: '',
-  authLoading: false,
-  authError: null,
-  
+const state = reactive({
   // 演员数据
-  players: [],
+  players: [] as PlayerInfo[],
   playersLoading: false,
   
   // UI状态
   playersTableCollapsed: false,
   
   // 批量操作状态
-  selectedPlayers: [],
-  batchAddDialogVisible: false,
+  selectedPlayers: [] as string[],
   batchDeleteLoading: false,
   batchAddLoading: false,
   
-  // 批量添加表单
-  addPlayersForm: [],
-  
   // 批量粘贴功能
-  batchPasteDialogVisible: false,
   pasteUsernames: '',
   pastePasswords: '',
   pasteTeamIds: ''
 })
 
-// 批量删除对话框状态
+// 对话框状态
+const batchAddDialogVisible = ref(false)
 const batchDeleteDialogVisible = ref(false)
 
 // 粘贴数据验证相关
@@ -390,7 +319,27 @@ const pasteValidationResult = ref<BatchPasteData>({
 })
 
 // 计算属性
-const gameId = computed(() => route.params.id as string)
+const players = computed(() => state.players)
+const playersLoading = computed(() => state.playersLoading)
+const playersTableCollapsed = computed({
+  get: () => state.playersTableCollapsed,
+  set: (value) => state.playersTableCollapsed = value
+})
+const selectedPlayers = computed(() => state.selectedPlayers)
+const batchDeleteLoading = computed(() => state.batchDeleteLoading)
+const batchAddLoading = computed(() => state.batchAddLoading)
+const pasteUsernames = computed({
+  get: () => state.pasteUsernames,
+  set: (value) => state.pasteUsernames = value
+})
+const pastePasswords = computed({
+  get: () => state.pastePasswords,
+  set: (value) => state.pastePasswords = value
+})
+const pasteTeamIds = computed({
+  get: () => state.pasteTeamIds,
+  set: (value) => state.pasteTeamIds = value
+})
 
 const selectedPlayersData = computed(() => {
   return state.players.filter(player => state.selectedPlayers.includes(player.id))
@@ -411,94 +360,23 @@ const pasteErrorMessage = computed(() => {
   return pasteValidationResult.value.errorMessage || null
 })
 
-// 生命周期和监听器
-onMounted(async () => {
-  // 检查是否从URI中获取密码
-  checkURIPassword()
-  
-  // 如果有URI密码，直接进行认证，跳过输入界面
-  if (state.passwordFromURI) {
-    state.directorPassword = state.passwordFromURI
-    state.isAuthenticated = true // 直接设置为已认证
-    await attemptAuthentication()
-  }
-})
-
-// 监听路由变化
-watch(() => route.fullPath, () => {
-  checkURIPassword()
+// 生命周期
+onMounted(() => {
+  refreshPlayers()
 })
 
 // 方法实现
-const checkURIPassword = () => {
-  const password = directorService.parsePasswordFromURI(route.fullPath)
-  if (password) {
-    state.passwordFromURI = password
-    state.autoAuthenticated = false
-  }
-}
-
-const attemptAuthentication = async () => {
-  if (!state.directorPassword.trim()) {
-    state.authError = '请输入导演密码'
-    return
-  }
-  
-  state.authLoading = true
-  state.authError = null
-  
-  try {
-    // 使用新的 getPlayers 方法获取演员列表
-    const response = await directorService.getPlayers(
-      gameId.value,
-      state.directorPassword
-    )
-    
-    if (response.success && response.data) {
-      state.isAuthenticated = true
-      state.players = response.data.players
-      state.autoAuthenticated = !!state.passwordFromURI
-      
-      ElMessage.success('导演身份验证成功')
-    } else {
-      throw new Error('认证失败')
-    }
-  } catch (error: any) {
-    console.error('导演认证失败:', error)
-    
-    if (error.response?.status === 401) {
-      state.authError = '导演密码错误'
-    } else if (error.response?.status === 404) {
-      state.authError = '游戏不存在'
-    } else {
-      state.authError = '认证失败，请稍后重试'
-    }
-    
-    state.isAuthenticated = false
-  } finally {
-    state.authLoading = false
-  }
-}
-
-const handleAuthenticate = async () => {
-  await attemptAuthentication()
-}
-
 const refreshPlayers = async () => {
-  if (!state.isAuthenticated) return
-  
   state.playersLoading = true
   
   try {
-    // 使用新的 getPlayers 方法获取演员列表
     const response = await directorService.getPlayers(
-      gameId.value,
-      state.directorPassword
+      props.gameId,
+      props.directorPassword
     )
     
     if (response.success && response.data) {
       state.players = response.data.players
-      ElMessage.success('演员列表刷新成功')
     }
   } catch (error) {
     console.error('刷新演员列表失败:', error)
@@ -513,7 +391,7 @@ const handleSelectionChange = (selection: PlayerInfo[]) => {
 }
 
 const openBatchAddDialog = () => {
-  state.batchAddDialogVisible = true
+  batchAddDialogVisible.value = true
   state.pasteUsernames = ''
   state.pastePasswords = ''
   state.pasteTeamIds = ''
@@ -526,7 +404,7 @@ const openBatchAddDialog = () => {
 }
 
 const closeBatchAddDialog = () => {
-  state.batchAddDialogVisible = false
+  batchAddDialogVisible.value = false
 }
 
 const validatePasteData = () => {
@@ -572,8 +450,8 @@ const handleBatchAdd = async () => {
   
   try {
     const response = await directorService.batchAddPlayers(
-      gameId.value,
-      state.directorPassword,
+      props.gameId,
+      props.directorPassword,
       pastePreviewData.value
     )
     
@@ -594,6 +472,7 @@ const handleBatchAdd = async () => {
       
       // 刷新列表
       await refreshPlayers()
+      emit('refresh')
       
       // 关闭对话框
       closeBatchAddDialog()
@@ -630,8 +509,8 @@ const handleBatchDelete = async () => {
   
   try {
     const response = await directorService.batchDeletePlayers(
-      gameId.value,
-      state.directorPassword,
+      props.gameId,
+      props.directorPassword,
       state.selectedPlayers
     )
     
@@ -653,6 +532,7 @@ const handleBatchDelete = async () => {
       // 清空选择并刷新列表
       state.selectedPlayers = []
       await refreshPlayers()
+      emit('refresh')
       
       // 关闭对话框
       batchDeleteDialogVisible.value = false
@@ -674,70 +554,14 @@ const handleBatchDelete = async () => {
 
 const switchToPlayerView = (_playerId: string) => {
   // 跳转到指定演员视角 - 可以根据需要实现
-  router.push(`/game/${gameId.value}/player`)
-}
-
-const goBack = () => {
-  router.push(`/game/${gameId.value}`)
+  router.push(`/game/${props.gameId}/player`)
 }
 </script>
 
 <style scoped>
-.director-console {
-  min-height: 100vh;
-  padding: 24px;
-  background-color: #f5f7fa;
-}
-
-/* 页面头部样式 */
-.console-header {
+.players-card {
   margin-bottom: 24px;
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-content h2 {
-  margin: 0;
-  color: #303133;
-  font-size: 24px;
-}
-
-.game-info {
-  margin: 8px 0 0 0;
-  color: #909399;
-  font-size: 14px;
-}
-
-.back-button {
-  margin-left: auto;
-}
-
-/* 认证卡片样式 */
-.auth-card {
-  max-width: 400px;
-  margin: 0 auto;
-}
-
-.auth-form {
-  padding: 20px 0;
-}
-
-.auth-error {
-  margin-bottom: 20px;
-}
-
-/* 控制台主界面 */
-.console-main {
-  max-width: 1200px;
-  margin: 0 auto;
+  min-width: 900px; /* 设置最小宽度以保持布局稳定 */
 }
 
 /* 卡片头部 */
@@ -764,11 +588,6 @@ const goBack = () => {
 }
 
 /* 演员表格样式 */
-.players-card {
-  margin-bottom: 24px;
-  min-width: 900px; /* 设置最小宽度以保持布局稳定 */
-}
-
 .players-table {
   margin-top: 16px;
 }
@@ -926,21 +745,6 @@ const goBack = () => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .director-console {
-    padding: 16px;
-  }
-  
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .back-button {
-    margin-left: 0;
-    align-self: flex-end;
-  }
-  
   .card-header {
     flex-direction: column;
     align-items: flex-start;
@@ -958,20 +762,12 @@ const goBack = () => {
     gap: 16px;
   }
   
-  .console-main {
-    margin: 0;
+  .players-card {
+    min-width: auto;
   }
 }
 
 @media (max-width: 480px) {
-  .director-console {
-    padding: 12px;
-  }
-  
-  .console-header {
-    padding: 16px;
-  }
-  
   .header-content h2 {
     font-size: 20px;
   }

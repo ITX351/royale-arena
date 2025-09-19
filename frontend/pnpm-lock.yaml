@@ -20,9 +20,15 @@ importers:
       pinia:
         specifier: ^3.0.3
         version: 3.0.3(typescript@5.8.3)(vue@3.5.20(typescript@5.8.3))
+      prismjs:
+        specifier: ^1.29.0
+        version: 1.30.0
       vue:
         specifier: ^3.5.18
         version: 3.5.20(typescript@5.8.3)
+      vue-prism-editor:
+        specifier: ^2.0.0-alpha.2
+        version: 2.0.0-alpha.2(vue@3.5.20(typescript@5.8.3))
       vue-router:
         specifier: ^4.5.1
         version: 4.5.1(vue@3.5.20(typescript@5.8.3))
@@ -678,6 +684,10 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  prismjs@1.30.0:
+    resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
+    engines: {node: '>=6'}
+
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
 
@@ -766,6 +776,12 @@ packages:
     peerDependenciesMeta:
       '@vue/composition-api':
         optional: true
+
+  vue-prism-editor@2.0.0-alpha.2:
+    resolution: {integrity: sha512-Gu42ba9nosrE+gJpnAEuEkDMqG9zSUysIR8SdXUw8MQKDjBnnNR9lHC18uOr/ICz7yrA/5c7jHJr9lpElODC7w==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      vue: ^3.0.0
 
   vue-router@4.5.1:
     resolution: {integrity: sha512-ogAF3P97NPm8fJsE4by9dwSYtDwXIY1nFY9T6DyQnGHd1E2Da94w9JIolpe42LJGIl0DwOHBi8TcRPlPGwbTtw==}
@@ -1332,6 +1348,8 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  prismjs@1.30.0: {}
+
   proxy-from-env@1.1.0: {}
 
   rfdc@1.4.1: {}
@@ -1394,6 +1412,10 @@ snapshots:
   vscode-uri@3.1.0: {}
 
   vue-demi@0.14.10(vue@3.5.20(typescript@5.8.3)):
+    dependencies:
+      vue: 3.5.20(typescript@5.8.3)
+
+  vue-prism-editor@2.0.0-alpha.2(vue@3.5.20(typescript@5.8.3)):
     dependencies:
       vue: 3.5.20(typescript@5.8.3)
 

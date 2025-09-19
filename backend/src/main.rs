@@ -19,7 +19,7 @@ use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
 use director::DirectorService;
-use game::{GameService, game_state_manager::GlobalGameStateManager};
+use game::{GameService, global_game_state_manager::GlobalGameStateManager};
 use routes::create_routes;
 use rule_template::RuleTemplateService;
 

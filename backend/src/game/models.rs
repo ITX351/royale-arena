@@ -111,7 +111,7 @@ impl From<GameQueryResult> for GameListItem {
 
 /// 带规则信息的游戏详情
 #[derive(Debug, Serialize)]
-pub struct GameWithRules {
+pub struct GameWithPlayerCounts {
     pub id: String,
     pub name: String,
     pub description: Option<String>,

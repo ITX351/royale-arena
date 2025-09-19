@@ -209,7 +209,7 @@ impl GameService {
     }
 
     /// 获取游戏详情（包含规则信息）
-    pub async fn get_game_with_rules(&self, game_id: &str, include_director_password: bool) -> Result<GameWithRules, GameError> {
+    pub async fn get_game_by_id_with_player_counts(&self, game_id: &str, include_director_password: bool) -> Result<GameWithPlayerCounts, GameError> {
         // 直接查询游戏表，无需JOIN规则模板表
         let game_info = sqlx::query!(
             r#"
@@ -229,7 +229,7 @@ impl GameService {
         let player_count = self.get_player_count(game_id).await?;
 
         // 构建响应
-        Ok(GameWithRules {
+        Ok(GameWithPlayerCounts {
             id: game_info.id,
             name: game_info.name,
             description: game_info.description,

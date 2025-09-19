@@ -10,7 +10,7 @@ use crate::auth::{jwt_auth_middleware, super_admin_middleware, AuthService};
 use crate::admin::service::AdminService;
 use crate::director::{batch_add_players, batch_delete_players, get_players, update_game_status, DirectorService};
 use crate::game::{create_game, delete_game, get_game_with_rules, get_games, get_player_messages, update_game, authenticate_game, GameService, GameLogService};
-use crate::game::game_state_manager::GlobalGameStateManager;
+use crate::game::global_game_state_manager::GlobalGameStateManager;
 use crate::rule_template::{create_template, get_templates, update_template, RuleTemplateService};
 use crate::websocket::service::WebSocketService;
 use crate::websocket::global_connection_manager::GlobalConnectionManager;

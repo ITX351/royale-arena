@@ -76,7 +76,7 @@ pub async fn get_game_with_rules(
     // 检查是否有管理员权限
     let has_admin_privileges = req.extensions().get::<JwtClaims>().is_some();
     
-    let game = state.game_service.get_game_with_rules(&game_id, has_admin_privileges).await?;
+    let game = state.game_service.get_game_by_id_with_player_counts(&game_id, has_admin_privileges).await?;
     
     Ok(Json(json!({
         "success": true,

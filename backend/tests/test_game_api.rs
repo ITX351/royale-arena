@@ -87,7 +87,7 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     }
     
     // 测试5: 获取游戏详情（包含规则）
-    let game_without_rules = service.get_game_with_rules(&updated_game.id, false).await?;
+    let game_without_rules = service.get_game_by_id_with_player_counts(&updated_game.id, false).await?;
     assert_eq!(game_without_rules.name, "updated_game_name");
     assert_eq!(game_without_rules.rules_config, template_rules_config);
     
@@ -96,7 +96,7 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     assert!(game_without_rules.director_password.is_none());
     
     // 有管理员权限时，应该返回导演密码
-    let game_with_password = service.get_game_with_rules(&game_with_template.id, true).await?;
+    let game_with_password = service.get_game_by_id_with_player_counts(&game_with_template.id, true).await?;
     assert!(game_with_password.director_password.is_some());
     assert_eq!(game_with_password.director_password.unwrap(), "newpassword");
 
@@ -144,7 +144,7 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     service.delete_game(&game_with_template.id).await?;
     
     // 验证游戏已删除
-    let result = service.get_game_with_rules(&game_with_template.id, false).await;
+    let result = service.get_game_by_id_with_player_counts(&game_with_template.id, false).await;
     assert!(result.is_err());
     
     // 清理测试数据

@@ -2,7 +2,7 @@ pub mod errors;
 pub mod handlers;
 pub mod models;
 pub mod service;
-pub mod game_state_manager;
+pub mod global_game_state_manager;
 pub mod log_service;
 
 pub use errors::GameError;
