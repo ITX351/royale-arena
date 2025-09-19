@@ -51,12 +51,12 @@ pub async fn super_admin_middleware(
     Ok(next.run(req).await)
 }
 
-/// 提取认证头的辅助函数（用于可选认证场景）
-pub fn extract_auth_header(req: &Request) -> Option<String> {
-    req.headers()
-        .get(AUTHORIZATION)?
-        .to_str()
-        .ok()?
-        .strip_prefix("Bearer ")
-        .map(|token| token.to_string())
-}
+// 提取认证头的辅助函数（用于可选认证场景）
+// pub fn extract_auth_header(req: &Request) -> Option<String> {
+//     req.headers()
+//         .get(AUTHORIZATION)?
+//         .to_str()
+//         .ok()?
+//         .strip_prefix("Bearer ")
+//         .map(|token| token.to_string())
+// }

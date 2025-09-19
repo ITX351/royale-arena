@@ -47,11 +47,11 @@ impl GlobalConnectionManager {
         }
     }
 
-    /// 获取所有游戏连接管理器
-    pub fn get_all_managers(&self) -> Vec<Arc<GameConnectionManager>> {
-        self.managers
-            .iter()
-            .map(|entry| entry.value().clone())
-            .collect()
-    }
+    // 获取所有游戏连接管理器
+    // pub fn get_all_managers(&self) -> Vec<Arc<GameConnectionManager>> {
+    //     self.managers
+    //         .iter()
+    //         .map(|entry| entry.value().clone())
+    //         .collect()
+    // }
 }

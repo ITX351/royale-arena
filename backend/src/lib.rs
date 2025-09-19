@@ -14,6 +14,6 @@ pub use config::AppConfig;
 pub use database::{create_pool, DatabasePool};
 pub use director::{DirectorService, DirectorError};
 pub use errors::{AppError, AuthError, ServiceError};
-pub use game::{GameService, GameError};
+pub use game::{GameService};
 pub use rule_template::{RuleTemplateService, RuleTemplateError};
 pub use websocket::service::WebSocketService;

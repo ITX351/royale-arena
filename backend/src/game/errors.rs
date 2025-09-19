@@ -8,6 +8,7 @@ use thiserror::Error;
 
 /// 游戏相关错误
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum GameError {
     #[error("游戏不存在")]
     GameNotFound,

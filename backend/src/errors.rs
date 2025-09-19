@@ -33,6 +33,7 @@ pub enum AuthError {
 
 /// 服务层错误
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum ServiceError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
@@ -58,6 +59,7 @@ pub enum ServiceError {
 
 /// 应用层错误
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum AppError {
     #[error("Service error: {0}")]
     Service(#[from] ServiceError),

@@ -7,6 +7,7 @@ use axum::{
 use serde_json::json;
 
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum RuleTemplateError {
     #[error("模版名称已存在")]
     NameAlreadyExists,

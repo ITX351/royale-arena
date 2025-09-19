@@ -8,6 +8,7 @@ use thiserror::Error;
 
 /// 导演模块错误类型
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum DirectorError {
     #[error("Game not found")]
     GameNotFound,

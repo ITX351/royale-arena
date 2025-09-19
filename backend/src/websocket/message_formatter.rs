@@ -26,11 +26,6 @@ pub fn game_state_message(data: JsonValue) -> Message {
     generate_message("game_state", data)
 }
 
-/// 生成玩家更新消息，直接返回可发送的WebSocket消息
-pub fn player_update_message(data: JsonValue) -> Message {
-    generate_message("player_update", data)
-}
-
 /// 生成错误消息，直接返回可发送的WebSocket消息
 pub fn error_message(data: JsonValue) -> Message {
     generate_message("error", data)

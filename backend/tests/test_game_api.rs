@@ -1,5 +1,5 @@
 use royale_arena_backend::{
-    game::{CreateGameRequest, GameService, UpdateGameRequest, GameListQuery, GameStatus, GameFilterType},
+    game::{CreateGameRequest, GameService, UpdateGameRequest, GameListQuery, GameFilterType},
 };
 use serde_json::json;
 use sqlx::MySqlPool;
