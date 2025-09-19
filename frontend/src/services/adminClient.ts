@@ -15,6 +15,16 @@ adminClient.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  
+  // 记录所有API请求
+  console.log('Admin API Request:', {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    baseURL: config.baseURL,
+    params: config.params,
+    data: config.data
+  })
+  
   return config
 })
 

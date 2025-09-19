@@ -340,9 +340,6 @@ impl DirectorService {
             return Err(DirectorError::GameNotFound);
         }
         
-        // 更新游戏状态管理器中的游戏状态
-        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Running).await;
-        
         // 初始化游戏内存状态
         let game = app_state.game_service.get_game_by_id(game_id).await
             .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
@@ -367,9 +364,6 @@ impl DirectorService {
             return Err(DirectorError::GameNotFound);
         }
         
-        // 更新游戏状态管理器中的游戏状态
-        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Paused).await;
-        
         // 将当前游戏状态序列化并保存到磁盘文件
         app_state.game_state_manager.save_game_state_to_disk(game_id).await
             .map_err(|e| DirectorError::OtherError { message: format!("Failed to save game state to disk: {}", e) })?;
@@ -391,9 +385,6 @@ impl DirectorService {
         if result.rows_affected() == 0 {
             return Err(DirectorError::GameNotFound);
         }
-        
-        // 更新游戏状态管理器中的游戏状态
-        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Ended).await;
         
         // 断开所有连接（调用全局连接管理器的实现）
         app_state.global_connection_manager.remove_game_manager(game_id.to_string()).await;
@@ -419,9 +410,6 @@ impl DirectorService {
         if result.rows_affected() == 0 {
             return Err(DirectorError::GameNotFound);
         }
-        
-        // 更新游戏状态管理器中的游戏状态
-        app_state.game_state_manager.update_game_status(game_id, crate::game::models::GameStatus::Running).await;
         
         // 从磁盘文件中恢复游戏状态
         app_state.game_state_manager.load_game_state_from_disk(game_id).await

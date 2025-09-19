@@ -12,7 +12,7 @@ export enum WebSocketStatus {
 
 // WebSocket事件类型
 export interface WebSocketEvent {
-  type: 'game_state' | 'system_message' | 'error'
+  type: 'state_update' | 'system_message' | 'action_result' | 'error'
   data: any
   timestamp: Date
 }
@@ -122,6 +122,7 @@ export class WebSocketService {
   sendMessage(message: any): void {
     if (this.ws && this.status === WebSocketStatus.CONNECTED) {
       try {
+        console.log('发送WebSocket消息:', message)
         this.ws.send(JSON.stringify(message))
       } catch (error) {
         console.error('发送WebSocket消息失败:', error)
@@ -139,7 +140,7 @@ export class WebSocketService {
       type: 'director_action',
       data: {
         action,
-        params
+        ...params
       }
     }
     this.sendMessage(message)
@@ -184,43 +185,52 @@ export class WebSocketService {
 
   // 处理接收到的消息
   private handleMessage(data: any): void {
-    if (data.type === 'system_message') {
-      // 系统消息
-      this.emitEvent({
-        type: 'system_message',
-        data: data.data,
-        timestamp: new Date()
-      })
-    } else if (data.global_state && data.game_data) {
-      // 游戏状态更新消息
-      const gameState: DirectorGameState = {
-        global_state: data.global_state,
-        game_data: data.game_data,
-        action_result: data.action_result || null
-      }
-      
-      this.emitEvent({
-        type: 'state_update',
-        data: gameState,
-        timestamp: new Date()
-      })
-      
-      // 如果有动作结果，也发送动作结果事件
-      if (data.action_result) {
+    console.log('收到WebSocket消息:', data);
+    
+    // 根据消息类型进行处理
+    switch (data.type) {
+      case 'system_message':
+        // 系统消息
         this.emitEvent({
-          type: 'action_result',
-          data: data.action_result,
+          type: 'system_message',
+          data: data.data,
           timestamp: new Date()
-        })
-      }
-    } else {
-      // 未知消息类型
-      console.warn('未知的WebSocket消息类型:', data)
-      this.emitEvent({
-        type: 'error',
-        data: { message: '未知消息类型', data },
-        timestamp: new Date()
-      })
+        });
+        break;
+        
+      case 'game_state':
+        // 游戏状态更新消息
+        const gameState: DirectorGameState = {
+          global_state: data.data.global_state,
+          game_data: data.data.game_data,
+          action_result: data.data.action_result || null
+        };
+        
+        this.emitEvent({
+          type: 'state_update',
+          data: gameState,
+          timestamp: new Date()
+        });
+        
+        // 如果有动作结果，也发送动作结果事件
+        if (data.data.action_result) {
+          this.emitEvent({
+            type: 'action_result',
+            data: data.data.action_result,
+            timestamp: new Date()
+          });
+        }
+        break;
+        
+      default:
+        // 未知消息类型
+        console.warn('未知的WebSocket消息类型:', data);
+        this.emitEvent({
+          type: 'error',
+          data: { message: '未知消息类型', data },
+          timestamp: new Date()
+        });
+        break;
     }
   }
 

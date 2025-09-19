@@ -103,15 +103,77 @@ export const useGameStateStore = defineStore('gameState', () => {
     webSocketService.sendDirectorAction(action, params)
   }
 
+  // 天气调节
   const updateWeather = (weather: number) => {
-    sendDirectorAction('weather', { value: weather })
+    // 验证天气值在有效范围内(0-2)
+    if (weather < 0 || weather > 2) {
+      console.error('天气值必须在0-2之间')
+      return
+    }
+    // 根据后端要求使用正确的参数格式
+    sendDirectorAction('weather', { weather: weather })
   }
 
+  // 夜晚时间设置
   const setNightTime = (startTime: string | null, endTime: string | null) => {
-    sendDirectorAction('set_time', { 
-      night_start_time: startTime, 
-      night_end_time: endTime 
+    // 根据后端要求使用正确的参数格式
+    if (startTime !== null) {
+      sendDirectorAction('set_night_start_time', { timestamp: startTime })
+    }
+    if (endTime !== null) {
+      sendDirectorAction('set_night_end_time', { timestamp: endTime })
+    }
+  }
+
+  // 缩圈地点设置
+  const setDestroyPlaces = (places: string[]) => {
+    // 根据后端要求使用正确的参数格式
+    sendDirectorAction('set_destroy_places', { places: places })
+  }
+
+  // 地点状态调整
+  const togglePlaceStatus = (placeName: string, isDestroyed: boolean) => {
+    // 根据后端要求使用正确的参数格式
+    sendDirectorAction('modify_place', { 
+      place_name: placeName, 
+      is_destroyed: isDestroyed 
     })
+  }
+
+  // 玩家生命值调整
+  const updatePlayerLife = (playerId: string, change: number) => {
+    sendDirectorAction('life', { player_id: playerId, life_change: change })
+  }
+
+  // 玩家体力值调整
+  const updatePlayerStrength = (playerId: string, change: number) => {
+    sendDirectorAction('strength', { player_id: playerId, strength_change: change })
+  }
+
+  // 玩家移动
+  const movePlayer = (playerId: string, targetPlace: string) => {
+    sendDirectorAction('move_player', { player_id: playerId, target_place: targetPlace })
+  }
+
+  // 玩家捆绑/松绑
+  const togglePlayerBinding = (playerId: string) => {
+    // 先获取玩家当前状态来决定是捆绑还是松绑
+    const player = players.value[playerId]
+    if (player) {
+      if (player.is_bound) {
+        // 松绑
+        sendDirectorAction('rope', { 
+          player_id: playerId, 
+          action_type: 'unrope' 
+        })
+      } else {
+        // 捆绑
+        sendDirectorAction('rope', { 
+          player_id: playerId, 
+          action_type: 'rope' 
+        })
+      }
+    }
   }
 
   const destroyPlace = (placeName: string) => {
@@ -128,9 +190,13 @@ export const useGameStateStore = defineStore('gameState', () => {
 
   const handleWebSocketEvent = (event: WebSocketEvent) => {
     switch (event.type) {
-      case 'game_state':
+      case 'state_update':
+        console.log('游戏状态更新:', event.data)
         updateGameState(event.data)
-        // TODO: addLogMessage(event.data)
+        break
+      case 'action_result':
+        console.log('追加日志:', event.data)
+        addLogMessage(event.data)
         break
       case 'system_message':
         // 处理系统消息
@@ -174,6 +240,12 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction,
     updateWeather,
     setNightTime,
+    setDestroyPlaces,
+    togglePlaceStatus,
+    updatePlayerLife,
+    updatePlayerStrength,
+    movePlayer,
+    togglePlayerBinding,
     destroyPlace,
     sendBroadcast,
     sendDirectorMessageToPlayer,

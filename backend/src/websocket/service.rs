@@ -11,10 +11,10 @@ use futures::{sink::SinkExt, stream::StreamExt};
 use serde_json::json;
 use std::sync::Arc;
 
+use tracing::debug;
 use crate::routes::AppState;
 use super::models::*;
 use crate::game::models::GameStatus;
-use crate::websocket::models::GameState;
 
 use crate::websocket::game_connection_manager::GameConnectionManager;
 use crate::websocket::broadcaster::MessageBroadcaster;
@@ -54,7 +54,6 @@ impl WebSocketService {
         let game_connection_manager = state.global_connection_manager.get_manager(game_id.clone());
         // 创建WebSocket服务实例
         let ws_service = WebSocketService::new(state, game_connection_manager);
-        
         // 升级WebSocket连接
         ws.on_upgrade(move |socket| ws_service.handle_websocket_connection(socket, game_id, query))
     }
@@ -106,7 +105,7 @@ impl WebSocketService {
             .map_err(|_| "Game not found".to_string())?;
         
         // 检查游戏是否接受连接（只在游戏处于"进行时"或"暂停时"接受客户端连接）
-        if !self.app_state.game_state_manager.is_game_accepting_connections(game_id).await {
+        if !crate::game::global_game_state_manager::GlobalGameStateManager::is_status_accepting_connections(&game.status).await {
             // 检查游戏状态是否为等待中或已结束
             match game.status {
                 GameStatus::Waiting => return Err("Game is waiting for start".to_string()),
@@ -201,6 +200,7 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
+                debug!("Player WS sending message: {:?}", &message);
                 let websocket_message = super::message_formatter::game_state_message(message);
                 if sender.send(websocket_message).await.is_err() {
                     break;
@@ -211,6 +211,7 @@ impl WebSocketService {
         // 处理玩家消息
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
+                debug!("Player WS received message: {}", &text);
                 if let Err(error_msg) = self.handle_player_message(&game_id, &actor.id, &text).await {
                     // 记录错误日志，方便后续排查调试
                     eprintln!("[WebSocket] Player message processing error: {}", error_msg);
@@ -257,6 +258,7 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
+                debug!("Director WS sending message: {:?}", &message);
                 let websocket_message = super::message_formatter::game_state_message(message);
                 if sender.send(websocket_message).await.is_err() {
                     break;
@@ -267,6 +269,7 @@ impl WebSocketService {
         // 处理导演消息
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
+                debug!("Director WS received message: {:?}", &text);
                 if let Err(error_msg) = self.handle_director_message(&game_id, &text).await {
                     // 记录错误日志，方便后续排查调试
                     eprintln!("[WebSocket] Director message processing error: {}", error_msg);

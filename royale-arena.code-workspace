@@ -63,6 +63,8 @@
           },
           "cwd": "${workspaceFolder}/backend"
         },
+        "program": "${workspaceFolder:Backend Service}/target/debug/royale-arena-backend",
+        "cwd": "${workspaceFolder:Backend Service}",
         "args": [],
         "sourceLanguages": [
           "rust"
