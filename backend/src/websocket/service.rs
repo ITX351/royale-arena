@@ -170,16 +170,17 @@ impl WebSocketService {
         .await
         .unwrap(); // 已经验证过密码，这里不会失败
 
-        // 获取游戏状态
-        let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
-        let game_state_guard = game_state_ref.read().await;
+        let init_msg = {
+            let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
+            let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
+            let game_state_guard = game_state_ref.read().await;
 
-        // 检查玩家是否在游戏状态中
-        let player = game_state_guard.players.get(&actor.id).unwrap();
+            // 检查玩家是否在游戏状态中
+            let player = game_state_guard.players.get(&actor.id).unwrap();
 
-        // 生成玩家初始状态消息
-        let init_msg = MessageBroadcaster::generate_player_message(&game_state_guard, player, None);
+            // 生成玩家初始状态消息
+            MessageBroadcaster::generate_player_message(&game_state_guard, player, None)
+        };
         let websocket_message = super::message_formatter::game_state_message(init_msg);
         
         let (mut sender, mut receiver) = socket.split();
@@ -200,7 +201,7 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                debug!("Player WS sending message: {:?}", &message);
+                // debug!("Player WS sending message: {:?}", &message);
                 let websocket_message = super::message_formatter::game_state_message(message);
                 if sender.send(websocket_message).await.is_err() {
                     break;
@@ -231,13 +232,14 @@ impl WebSocketService {
         game_id: String,
         _director_password: String,
     ) {
-        // 获取游戏状态
-        let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
-        let game_state_guard = game_state_ref.read().await;
+        let init_msg = {
+            let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
+            let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
+            let game_state_guard = game_state_ref.read().await;
 
-        // 生成导演初始状态消息，action_result为空
-        let init_msg = MessageBroadcaster::generate_director_message(&game_state_guard, None);
+            // 生成导演初始状态消息，action_result为空
+            MessageBroadcaster::generate_director_message(&game_state_guard, None)
+        };
         let websocket_message = super::message_formatter::game_state_message(init_msg);
         
         let (mut sender, mut receiver) = socket.split();
@@ -258,7 +260,7 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                debug!("Director WS sending message: {:?}", &message);
+                // debug!("Director WS sending message: {:?}", &message);
                 let websocket_message = super::message_formatter::game_state_message(message);
                 if sender.send(websocket_message).await.is_err() {
                     break;
@@ -336,65 +338,60 @@ impl WebSocketService {
         let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
 
-        // 根据行动类型处理
-        let result = match action {
-            "born" => {
-                let place_name = action_data.get("place_name").and_then(|v| v.as_str())
-                    .ok_or("Missing place_name field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_born_action(player_id, place_name)
+        // 获取可写的游戏状态锁
+        let result = {
+            let mut game_state = game_state_ref.write().await;
+
+            // 根据行动类型处理
+            match action {
+                "born" => {
+                    let place_name = action_data.get("place_name").and_then(|v| v.as_str())
+                        .ok_or("Missing place_name field")?;
+                    game_state.handle_born_action(player_id, place_name)
+                }
+                "move" => {
+                    let target_place = action_data.get("target_place").and_then(|v| v.as_str())
+                        .ok_or("Missing target_place field")?;
+                    game_state.handle_move_action(player_id, target_place)
+                }
+                "search" => {
+                    game_state.handle_search_action(player_id)
+                }
+                "pick" => {
+                    game_state.handle_pick_action(player_id)
+                }
+                "attack" => {
+                    game_state.handle_attack_action(player_id)
+                }
+                "equip" => {
+                    let item_id = action_data.get("item_id").and_then(|v| v.as_str())
+                        .ok_or("Missing item_id field")?;
+                    game_state.handle_equip_action(player_id, item_id)
+                }
+                "use" => {
+                    let item_id = action_data.get("item_id").and_then(|v| v.as_str())
+                        .ok_or("Missing item_id field")?;
+                    game_state.handle_use_action(player_id, item_id)
+                }
+                "throw" => {
+                    let item_id = action_data.get("item_id").and_then(|v| v.as_str())
+                        .ok_or("Missing item_id field")?;
+                    game_state.handle_throw_action(player_id, item_id)
+                }
+                "deliver" => {
+                    let target_player_id = action_data.get("target_player_id").and_then(|v| v.as_str())
+                        .ok_or("Missing target_player_id field")?;
+                    let message = action_data.get("message").and_then(|v| v.as_str())
+                        .ok_or("Missing message field")?;
+                    game_state.handle_deliver_action(player_id, target_player_id, message)
+                }
+                "send" => {
+                    let message = action_data.get("message").and_then(|v| v.as_str())
+                        .ok_or("Missing message field")?;
+                    game_state.handle_send_action(player_id, message)
+                }
+                _ => Err("Unknown action".to_string()),
             }
-            "move" => {
-                let target_place = action_data.get("target_place").and_then(|v| v.as_str())
-                    .ok_or("Missing target_place field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_move_action(player_id, target_place)
-            }
-            "search" => {
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_search_action(player_id)
-            }
-            "pick" => {
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_pick_action(player_id)
-            }
-            "attack" => {
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_attack_action(player_id)
-            }
-            "equip" => {
-                let item_id = action_data.get("item_id").and_then(|v| v.as_str())
-                    .ok_or("Missing item_id field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_equip_action(player_id, item_id)
-            }
-            "use" => {
-                let item_id = action_data.get("item_id").and_then(|v| v.as_str())
-                    .ok_or("Missing item_id field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_use_action(player_id, item_id)
-            }
-            "throw" => {
-                let item_id = action_data.get("item_id").and_then(|v| v.as_str())
-                    .ok_or("Missing item_id field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_throw_action(player_id, item_id)
-            }
-            "deliver" => {
-                let target_player_id = action_data.get("target_player_id").and_then(|v| v.as_str())
-                    .ok_or("Missing target_player_id field")?;
-                let message = action_data.get("message").and_then(|v| v.as_str())
-                    .ok_or("Missing message field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_deliver_action(player_id, target_player_id, message)
-            }
-            "send" => {
-                let message = action_data.get("message").and_then(|v| v.as_str())
-                    .ok_or("Missing message field")?;
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_send_action(player_id, message)
-            }
-            _ => Err("Unknown action".to_string()),
         };
 
         // 根据动作结果进行广播
@@ -453,137 +450,112 @@ impl WebSocketService {
             .map_err(|e| format!("Failed to get game: {}", e))?;
         let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
-
-        // 根据行动类型处理
-        let result = match action {
-            "set_night_start_time" => {
-                // 设置夜晚开始时间
-                let timestamp = action_data.get("timestamp").and_then(|v| v.as_str())
-                    .ok_or("Missing timestamp field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_set_night_start_time(timestamp)
+        let result = {
+            let mut game_state = game_state_ref.write().await;
+            match action {
+                "set_night_start_time" => {
+                    // 设置夜晚开始时间
+                    let timestamp = action_data.get("timestamp").and_then(|v| v.as_str())
+                        .ok_or("Missing timestamp field")?;
+                    game_state.handle_set_night_start_time(timestamp)
+                }
+                "set_night_end_time" => {
+                    // 设置夜晚结束时间
+                    let timestamp = action_data.get("timestamp").and_then(|v| v.as_str())
+                        .ok_or("Missing timestamp field")?;
+                    game_state.handle_set_night_end_time(timestamp)
+                }
+                "modify_place" => {
+                    // 调整地点状态
+                    let place_name = action_data.get("place_name").and_then(|v| v.as_str())
+                        .ok_or("Missing place_name field")?;
+                    let is_destroyed = action_data.get("is_destroyed").and_then(|v| v.as_bool())
+                        .ok_or("Missing is_destroyed field")?;
+                    game_state.handle_modify_place(place_name, is_destroyed)
+                }
+                "set_destroy_places" => {
+                    // 设置缩圈地点
+                    let places = action_data.get("places").and_then(|v| v.as_array())
+                        .ok_or("Missing places field")?;
+                    game_state.handle_set_destroy_places(places)
+                }
+                "drop" => {
+                    // 空投
+                    let place_name = action_data.get("place_name").and_then(|v| v.as_str())
+                        .ok_or("Missing place_name field")?;
+                    
+                    // 获取物品信息
+                    let item_data = action_data.get("item").ok_or("Missing item field")?;
+                    let item: crate::websocket::models::Item = serde_json::from_value(item_data.clone())
+                        .map_err(|_| "Invalid item format".to_string())?;
+                    game_state.handle_drop(place_name, item)
+                }
+                "weather" => {
+                    // 调整天气
+                    let weather = action_data.get("weather").and_then(|v| v.as_f64())
+                        .ok_or("Missing weather field")?;
+                    game_state.handle_weather(weather)
+                }
+                "life" => {
+                    // 调整生命值
+                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
+                        .ok_or("Missing player_id field")?;
+                    let life_change = action_data.get("life_change").and_then(|v| v.as_i64())
+                        .ok_or("Missing life_change field")?;
+                    game_state.handle_life(player_id, life_change)
+                }
+                "strength" => {
+                    // 调整体力值
+                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
+                        .ok_or("Missing player_id field")?;
+                    let strength_change = action_data.get("strength_change").and_then(|v| v.as_i64())
+                        .ok_or("Missing strength_change field")?;
+                    game_state.handle_strength(player_id, strength_change)
+                }
+                "move_player" => {
+                    // 移动角色
+                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
+                        .ok_or("Missing player_id field")?;
+                    let target_place = action_data.get("target_place").and_then(|v| v.as_str())
+                        .ok_or("Missing target_place field")?;
+                    game_state.handle_move_player(player_id, target_place)
+                }
+                "give" => {
+                    // 增减道具
+                    let target_type = action_data.get("target_type").and_then(|v| v.as_str())
+                        .ok_or("Missing target_type field")?;
+                    let item_data = action_data.get("item").ok_or("Missing item field")?;
+                    let item: crate::websocket::models::Item = serde_json::from_value(item_data.clone())
+                        .map_err(|_| "Invalid item format".to_string())?;
+                    
+                    let player_id = action_data.get("player_id").and_then(|v| v.as_str());
+                    let place_name = action_data.get("place_name").and_then(|v| v.as_str());
+                    game_state.handle_give(target_type, item, player_id.as_deref(), place_name.as_deref())
+                }
+                "rope" | "unrope" => {
+                    // 捆绑/松绑
+                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
+                        .ok_or("Missing player_id field")?;
+                    let action_type = action_data.get("action_type").and_then(|v| v.as_str())
+                        .ok_or("Missing action_type field")?;
+                    game_state.handle_rope_action(player_id, action_type)
+                }
+                "broadcast" => {
+                    // 广播消息
+                    let message = action_data.get("message").and_then(|v| v.as_str())
+                        .ok_or("Missing message field")?;
+                    game_state.handle_broadcast(message)
+                }
+                "director_message_to_player" => {
+                    // 导演向特定玩家发送消息
+                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
+                        .ok_or("Missing player_id field")?;
+                    let message = action_data.get("message").and_then(|v| v.as_str())
+                        .ok_or("Missing message field")?;
+                    game_state.handle_director_message_to_player(player_id, message)
+                }
+                _ => Err("Unknown director action".to_string()),
             }
-            "set_night_end_time" => {
-                // 设置夜晚结束时间
-                let timestamp = action_data.get("timestamp").and_then(|v| v.as_str())
-                    .ok_or("Missing timestamp field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_set_night_end_time(timestamp)
-            }
-            "modify_place" => {
-                // 调整地点状态
-                let place_name = action_data.get("place_name").and_then(|v| v.as_str())
-                    .ok_or("Missing place_name field")?;
-                let is_destroyed = action_data.get("is_destroyed").and_then(|v| v.as_bool())
-                    .ok_or("Missing is_destroyed field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_modify_place(place_name, is_destroyed)
-            }
-            "set_destroy_places" => {
-                // 设置缩圈地点
-                let places = action_data.get("places").and_then(|v| v.as_array())
-                    .ok_or("Missing places field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_set_destroy_places(places)
-            }
-            "drop" => {
-                // 空投
-                let place_name = action_data.get("place_name").and_then(|v| v.as_str())
-                    .ok_or("Missing place_name field")?;
-                
-                // 获取物品信息
-                let item_data = action_data.get("item").ok_or("Missing item field")?;
-                let item: crate::websocket::models::Item = serde_json::from_value(item_data.clone())
-                    .map_err(|_| "Invalid item format".to_string())?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_drop(place_name, item)
-            }
-            "weather" => {
-                // 调整天气
-                let weather = action_data.get("weather").and_then(|v| v.as_f64())
-                    .ok_or("Missing weather field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_weather(weather)
-            }
-            "life" => {
-                // 调整生命值
-                let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                    .ok_or("Missing player_id field")?;
-                let life_change = action_data.get("life_change").and_then(|v| v.as_i64())
-                    .ok_or("Missing life_change field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_life(player_id, life_change)
-            }
-            "strength" => {
-                // 调整体力值
-                let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                    .ok_or("Missing player_id field")?;
-                let strength_change = action_data.get("strength_change").and_then(|v| v.as_i64())
-                    .ok_or("Missing strength_change field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_strength(player_id, strength_change)
-            }
-            "move_player" => {
-                // 移动角色
-                let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                    .ok_or("Missing player_id field")?;
-                let target_place = action_data.get("target_place").and_then(|v| v.as_str())
-                    .ok_or("Missing target_place field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_move_player(player_id, target_place)
-            }
-            "give" => {
-                // 增减道具
-                let target_type = action_data.get("target_type").and_then(|v| v.as_str())
-                    .ok_or("Missing target_type field")?;
-                let item_data = action_data.get("item").ok_or("Missing item field")?;
-                let item: crate::websocket::models::Item = serde_json::from_value(item_data.clone())
-                    .map_err(|_| "Invalid item format".to_string())?;
-                
-                let player_id = action_data.get("player_id").and_then(|v| v.as_str());
-                let place_name = action_data.get("place_name").and_then(|v| v.as_str());
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_give(target_type, item, player_id.as_deref(), place_name.as_deref())
-            }
-            "rope" | "unrope" => {
-                // 捆绑/松绑
-                let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                    .ok_or("Missing player_id field")?;
-                let action_type = action_data.get("action_type").and_then(|v| v.as_str())
-                    .ok_or("Missing action_type field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_rope_action(player_id, action_type)
-            }
-            "broadcast" => {
-                // 广播消息
-                let message = action_data.get("message").and_then(|v| v.as_str())
-                    .ok_or("Missing message field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_broadcast(message)
-            }
-            "director_message_to_player" => {
-                // 导演向特定玩家发送消息
-                let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                    .ok_or("Missing player_id field")?;
-                let message = action_data.get("message").and_then(|v| v.as_str())
-                    .ok_or("Missing message field")?;
-                
-                let mut game_state = game_state_ref.write().await;
-                game_state.handle_director_message_to_player(player_id, message)
-            }
-            _ => Err("Unknown director action".to_string()),
         };
 
         // 根据动作结果进行广播

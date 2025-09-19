@@ -14,34 +14,31 @@ impl GameState {
         }
         
         // 验证指定地点是否存在且未被摧毁
-        if let Some(place) = self.places.get(place_name) {
-            if place.is_destroyed {
-                return Err("Place is destroyed".to_string());
-            }
-            
-            // 更新玩家位置到指定地点
-            player.location = place_name.to_string();
-            
-            // 将玩家添加到地点的玩家列表中
-            let place_mut = self.places.get_mut(place_name).unwrap();
-            place_mut.players.push(player.id.clone());
-            
-            // 向该玩家发送位置更新结果
-            let data = serde_json::json!({
-                "location": place_name
-            });
-            
-            // 创建动作结果，只广播给发起者本人
-            let action_result = ActionResult::new_system_message(
-                data, 
-                vec![player_id.to_string()], 
-                format!("玩家{}在地点{}出生", player.name, place_name)
-            );
-            
-            Ok(action_result)
-        } else {
-            Err("Place not found".to_string())
+        let place = self.places.get(place_name).ok_or("Place not found".to_string())?;
+        if place.is_destroyed {
+            return Err("Place is destroyed".to_string());
         }
+        
+        // 更新玩家位置到指定地点
+        player.location = place_name.to_string();
+        
+        // 将玩家添加到地点的玩家列表中
+        let place_mut = self.places.get_mut(place_name).unwrap();
+        place_mut.players.push(player.id.clone());
+        
+        // 向该玩家发送位置更新结果
+        let data = serde_json::json!({
+            "location": place_name
+        });
+        
+        // 创建动作结果，只广播给发起者本人
+        let action_result = ActionResult::new_system_message(
+            data, 
+            vec![player_id.to_string()], 
+            format!("{} 在地点 {} 出生", player.name, place_name)
+        );
+        
+        Ok(action_result)
     }
 
     /// 处理玩家移动行动
@@ -55,49 +52,46 @@ impl GameState {
         }
         
         // 验证目标地点是否存在且未被摧毁
-        if let Some(place) = self.places.get(target_place) {
-            if place.is_destroyed {
-                return Err("Target place is destroyed".to_string());
-            }
-            
-            // 消耗体力值（根据规则配置）
-            // 这里我们简化处理，假设每次移动消耗5点体力
-            let move_cost = 5;
-            if player.strength < move_cost {
-                return Err("Not enough strength".to_string());
-            }
-            player.strength -= move_cost;
-            
-            // 从当前地点移除玩家
-            if let Some(current_place) = self.places.get_mut(&player.location) {
-                current_place.players.retain(|id| id != &player.id);
-            }
-            
-            // 更新玩家位置到目标地点
-            player.location = target_place.to_string();
-            
-            // 将玩家添加到目标地点的玩家列表中
-            if let Some(target_place_obj) = self.places.get_mut(target_place) {
-                target_place_obj.players.push(player.id.clone());
-            }
-            
-            // 向该玩家发送位置更新结果
-            let data = serde_json::json!({
-                "location": target_place,
-                "strength": player.strength
-            });
-            
-            // 创建动作结果，只广播给发起者本人
-            let action_result = ActionResult::new_system_message(
-                data, 
-                vec![player_id.to_string()], 
-                format!("玩家{}移动到地点{}", player.name, target_place)
-            );
-            
-            Ok(action_result)
-        } else {
-            Err("Target place not found".to_string())
+        let place = self.places.get(target_place).ok_or("Target place not found".to_string())?;
+        if place.is_destroyed {
+            return Err("Target place is destroyed".to_string());
         }
+        
+        // 消耗体力值（根据规则配置）
+        // 这里我们简化处理，假设每次移动消耗5点体力
+        let move_cost = 5;
+        if player.strength < move_cost {
+            return Err("Not enough strength".to_string());
+        }
+        player.strength -= move_cost;
+        
+        // 从当前地点移除玩家
+        if let Some(current_place) = self.places.get_mut(&player.location) {
+            current_place.players.retain(|id| id != &player.id);
+        }
+        
+        // 更新玩家位置到目标地点
+        player.location = target_place.to_string();
+        
+        // 将玩家添加到目标地点的玩家列表中
+        if let Some(target_place_obj) = self.places.get_mut(target_place) {
+            target_place_obj.players.push(player.id.clone());
+        }
+        
+        // 向该玩家发送位置更新结果
+        let data = serde_json::json!({
+            "location": target_place,
+            "strength": player.strength
+        });
+        
+        // 创建动作结果，只广播给发起者本人
+        let action_result = ActionResult::new_system_message(
+            data, 
+            vec![player_id.to_string()], 
+            format!("{} 移动到地点 {}", player.name, target_place)
+        );
+        
+        Ok(action_result)
     }
 
     /// 处理搜索行动
@@ -115,13 +109,13 @@ impl GameState {
         
         // 检查前置条件：玩家处于存活状态，有足够体力，未处于搜索冷却期
         if !player_alive {
-            return Err("Player is not alive".to_string());
+            return Err("玩家已出局".to_string());
         }
         
         // 检查体力
         let search_cost = 5; // 假设搜索消耗5点体力
         if player_strength < search_cost {
-            return Err("Not enough strength".to_string());
+            return Err("玩家体力不足".to_string());
         }
         
         // 检查搜索冷却期（简化处理，假设冷却期为30秒）
@@ -129,7 +123,7 @@ impl GameState {
         if let Some(last_search_time) = player_last_search_time {
             let elapsed = chrono::Utc::now().signed_duration_since(last_search_time);
             if elapsed.num_seconds() < search_cooldown {
-                return Err("Search is in cooldown period".to_string());
+                return Err("搜索冷却中".to_string());
             }
         }
         
@@ -222,7 +216,7 @@ impl GameState {
                     let action_result = ActionResult::new_system_message(
                         data, 
                         vec![player_id.to_string()], 
-                        format!("玩家{}搜索并发现了玩家{}", 
+                        format!("{} 搜索发现了玩家 {}", 
                             self.players.get(player_id).unwrap().name, target_player_name)
                     );
                     
@@ -251,7 +245,7 @@ impl GameState {
                 let action_result = ActionResult::new_system_message(
                     data, 
                     vec![player_id.to_string()], 
-                    format!("玩家{}搜索但没有发现任何东西", 
+                    format!("{} 搜索但没有发现任何东西", 
                         self.players.get(player_id).unwrap().name)
                 );
                 Ok(action_result)
@@ -311,7 +305,7 @@ impl GameState {
                     let action_result = ActionResult::new_system_message(
                         data, 
                         vec![player_id.to_string()], 
-                        format!("玩家{}搜索并发现了物品{}", 
+                        format!("{} 搜索并发现了物品 {}", 
                             self.players.get(player_id).unwrap().name, item_name)
                     );
                     Ok(action_result)
@@ -338,7 +332,7 @@ impl GameState {
                     let action_result = ActionResult::new_system_message(
                         data, 
                         vec![player_id.to_string()], 
-                        format!("玩家{}搜索但没有发现任何东西", 
+                        format!("{} 搜索但没有发现任何东西", 
                             self.players.get(player_id).unwrap().name));
                     Ok(action_result)
                 }
@@ -366,7 +360,7 @@ impl GameState {
                 let action_result = ActionResult::new_system_message(
                     data, 
                     vec![player_id.to_string()], 
-                    format!("玩家{}搜索但没有发现任何东西", 
+                    format!("{} 搜索但没有发现任何东西", 
                             self.players.get(player_id).unwrap().name));
                 Ok(action_result)
             }
@@ -377,10 +371,10 @@ impl GameState {
     pub fn handle_pick_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
         // 检查玩家是否存在且处于存活状态，上一次搜索结果为物品
         {
-            let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
+            let player = self.players.get(player_id).ok_or("玩家未找到".to_string())?;
             
             if !player.is_alive {
-                return Err("Player is not alive".to_string());
+                return Err("玩家已死亡".to_string());
             }
             
             let last_search_result_valid = if let Some(ref search_result) = player.last_search_result {
@@ -390,13 +384,13 @@ impl GameState {
             };
             
             if !last_search_result_valid {
-                return Err("Last search result is not an item".to_string());
+                return Err("上一次搜索结果不是物品".to_string());
             }
         }
         
         // 获取搜索结果信息和玩家位置
         let (player_last_search_result, player_location) = {
-            let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
+            let player = self.players.get(player_id).ok_or("玩家未找到".to_string())?;
             (player.last_search_result.clone(), player.location.clone())
         };
         
@@ -412,6 +406,7 @@ impl GameState {
             if let Some(item_index) = item_index {
                 // 从地点物品列表中移除物品
                 let item = place.items.remove(item_index);
+                let item_name = item.name.clone();
                 
                 // 将物品添加到玩家背包
                 {
@@ -434,8 +429,10 @@ impl GameState {
                 let action_result = ActionResult::new_system_message(
                     data, 
                     vec![player_id.to_string()], 
-                    format!("玩家{}捡起了一个物品", 
-                        self.players.get(player_id).unwrap().name)
+                    format!("玩家 {} 捡起了一个物品 {}", 
+                        self.players.get(player_id).unwrap().name,
+                        item_name
+                    )
                 );
                 Ok(action_result)
             } else {
@@ -448,7 +445,7 @@ impl GameState {
                 let action_result = ActionResult::new_system_message(
                     data, 
                     vec![player_id.to_string()], 
-                    format!("玩家{}试图捡起一个物品但该物品已不存在", 
+                    format!("玩家 {} 试图捡起一个物品但该物品已不存在", 
                         self.players.get(player_id).unwrap().name)
                 );
                 Ok(action_result)
@@ -520,8 +517,10 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("玩家{}试图攻击但目标玩家已离开该地点", 
-                    self.players.get(player_id).unwrap().name)
+                format!("玩家 {} 试图攻击 {} 但对方已离开", 
+                    self.players.get(player_id).unwrap().name,
+                    target_player_id
+                )
             );
             return Ok(action_result);
         }
@@ -537,8 +536,10 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("玩家{}试图攻击但目标玩家已经死亡", 
-                    self.players.get(player_id).unwrap().name)
+                format!("玩家 {} 试图攻击 {} 但对方已死亡", 
+                    self.players.get(player_id).unwrap().name,
+                    target_player_id
+                )
             );
             return Ok(action_result);
         }
@@ -591,7 +592,7 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![player_id.to_string(), target_player_id.clone()], 
-            format!("玩家{}攻击玩家{}造成{}点伤害", 
+            format!("玩家 {} 攻击玩家 {} 造成 {} 点伤害", 
                 self.players.get(player_id).unwrap().name, target_player_id, damage)
         );
         
@@ -622,7 +623,7 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("玩家{}装备了物品{}", player.name, item_id)
+                format!("玩家 {} 装备了物品 {}", player.name, item_id)
             );
             Ok(action_result)
         } else {
@@ -680,7 +681,7 @@ impl GameState {
                     let action_result = ActionResult::new_system_message(
                         data, 
                         vec![player_id.to_string()], 
-                        format!("玩家{}使用了消耗品{}", player.name, item_id)
+                        format!("玩家 {} 使用了消耗品 {}", player.name, item_id)
                     );
                     Ok(action_result)
                 }
@@ -698,7 +699,7 @@ impl GameState {
                     let action_result = ActionResult::new_system_message(
                         data, 
                         vec![player_id.to_string()], 
-                        format!("玩家{}装备了武器{}", player.name, item_id)
+                        format!("玩家 {} 装备了武器 {}", player.name, item_id)
                     );
                     Ok(action_result)
                 }
@@ -715,7 +716,7 @@ impl GameState {
                     let action_result = ActionResult::new_system_message(
                         data, 
                         vec![player_id.to_string()], 
-                        format!("玩家{}装备了物品{}", player.name, item_id)
+                        format!("玩家 {} 装备了物品 {}", player.name, item_id)
                     );
                     Ok(action_result)
                 }
@@ -760,7 +761,7 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("玩家{}丢弃了物品{}", player.name, item_id)
+                format!("玩家 {} 丢弃了物品 {}", player.name, item_id)
             );
             Ok(action_result)
         } else {
@@ -789,16 +790,18 @@ impl GameState {
         // 向目标玩家发送消息
         // 在实际实现中，这里需要找到目标玩家的连接并发送消息
         // 这里我们只是构造响应
+
+        let formatted_message = format!("玩家 {} 向玩家 {} 发送消息: {}", player.name, target_player_id, message);
         
         let data = serde_json::json!({
-            "message": format!("玩家{}向您传音: {}", player.name, message)
+            "message": formatted_message,
         });
         
         // 创建动作结果，广播给发送者和接收者
         let action_result = ActionResult::new_user_message(
             data, 
             vec![player_id.to_string(), target_player_id.to_string()], 
-            format!("玩家{}向玩家{}发送消息: {}", player.name, target_player_id, message)
+            formatted_message
         );
         Ok(action_result)
     }
@@ -813,14 +816,14 @@ impl GameState {
         // 这里我们只是构造响应
         
         let data = serde_json::json!({
-            "message": format!("玩家{}向导演发送消息: {}", player.name, message)
+            "message": format!("玩家 {} 向导演发送消息: {}", player.name, message)
         });
         
         // 创建动作结果，只广播给发起者本人（导演会收到所有消息）
         let action_result = ActionResult::new_user_message(
             data, 
             vec![player_id.to_string()], 
-            format!("玩家{}向导演发送消息: {}", player.name, message)
+            format!("玩家 {} 向导演发送消息: {}", player.name, message)
         );
         Ok(action_result)
     }

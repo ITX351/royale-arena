@@ -24,7 +24,7 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![], 
-            format!("导演设置夜晚开始时间至{}", timestamp)
+            format!("导演设置夜晚开始时间至 {}", timestamp)
         );
         
         Ok(action_result)
@@ -49,7 +49,7 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![], 
-            format!("导演设置夜晚结束时间至{}", timestamp)
+            format!("导演设置夜晚结束时间至 {}", timestamp)
         );
         
         Ok(action_result)
@@ -76,7 +76,7 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![], 
-                format!("导演调整地点{}状态为{}", place_name, if is_destroyed { "已摧毁" } else { "未摧毁" })
+                format!("导演调整地点 {} 状态为 {}", place_name, if is_destroyed { "已摧毁" } else { "未摧毁" })
             );
             
             Ok(action_result)
@@ -126,7 +126,7 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![], 
-                format!("导演在地点{}空投物品", place_name)
+                format!("导演在地点 {} 空投物品", place_name)
             );
             
             Ok(action_result)
@@ -149,7 +149,7 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![], 
-            format!("导演调整天气至{}", weather)
+            format!("导演调整天气至 {}", weather)
         );
         
         Ok(action_result)
@@ -180,7 +180,7 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("导演调整玩家{}生命值{}", player_id, if life_change > 0 { format!("+{}", life_change) } else { life_change.to_string() })
+                format!("导演调整玩家 {} 生命值 {}", player.name, if life_change > 0 { format!("+{}", life_change) } else { life_change.to_string() })
             );
             
             Ok(action_result)
@@ -210,7 +210,7 @@ impl GameState {
             let action_result = ActionResult::new_system_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("导演调整玩家{}体力值{}", player_id, if strength_change > 0 { format!("+{}", strength_change) } else { strength_change.to_string() })
+                format!("导演调整玩家 {} 体力值 {}", player.name, if strength_change > 0 { format!("+{}", strength_change) } else { strength_change.to_string() })
             );
             
             Ok(action_result)
@@ -231,26 +231,18 @@ impl GameState {
         }
         
         // 获取玩家位置信息
-        let player_location = {
-            if let Some(player) = self.players.get(player_id) {
-                player.location.clone()
-            } else {
-                return Err("Player not found".to_string());
-            }
-        };
+        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
         // 从当前地点移除玩家
-        if !player_location.is_empty() {
-            if let Some(current_place) = self.places.get_mut(&player_location) {
+        if !player.location.is_empty() {
+            if let Some(current_place) = self.places.get_mut(&player.location) {
                 current_place.players.retain(|id| id != player_id);
             }
         }
         
         // 更新玩家位置到目标地点
-        if let Some(player) = self.players.get_mut(player_id) {
-            player.location = target_place.to_string();
-        }
-        
+        player.location = target_place.to_string();
+
         // 将玩家添加到目标地点的玩家列表中
         if let Some(target_place_obj) = self.places.get_mut(target_place) {
             target_place_obj.players.push(player_id.to_string());
@@ -266,7 +258,7 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![player_id.to_string()], 
-            format!("导演将玩家{}移动至地点{}", player_id, target_place)
+            format!("导演将玩家 {} 移动至地点 {}", player.name, target_place)
         );
         
         Ok(action_result)
@@ -278,56 +270,50 @@ impl GameState {
             "player" => {
                 // 给玩家道具
                 let player_id = player_id.ok_or("Missing player_id".to_string())?;
+
+                let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+                // 将物品添加到指定玩家背包
+                player.inventory.push(item);
+
+                // 构造响应数据
+                let data = serde_json::json!({
+                    "player_id": player_id,
+                    "inventory": player.inventory.clone()
+                });
                 
-                if let Some(player) = self.players.get_mut(player_id) {
-                    // 将物品添加到指定玩家背包
-                    player.inventory.push(item);
-                    
-                    // 构造响应数据
-                    let data = serde_json::json!({
-                        "player_id": player_id,
-                        "inventory": player.inventory.clone()
-                    });
-                    
-                    // 创建动作结果，广播给该玩家和所有导演
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("导演给予玩家{}道具", player_id)
-                    );
-                    
-                    Ok(action_result)
-                } else {
-                    Err("Player not found".to_string())
-                }
+                // 创建动作结果，广播给该玩家和所有导演
+                let action_result = ActionResult::new_system_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("导演给予玩家 {} 道具", player.name)
+                );
+                
+                Ok(action_result)
             }
             "place" => {
                 // 在地点放置道具
                 let place_name = place_name.ok_or("Missing place_name".to_string())?;
                 
-                if let Some(place) = self.places.get_mut(place_name) {
-                    // 将物品添加到指定地点物品列表
-                    place.items.push(item);
-                    
-                    // 构造响应数据
-                    let data = serde_json::json!({
-                        "place": {
-                            "name": place_name,
-                            "items": place.items.clone()
-                        }
-                    });
-                    
-                    // 创建动作结果，只广播给导演（不需要通知玩家）
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![], 
-                        format!("导演在地点{}放置道具", place_name)
-                    );
-                    
-                    Ok(action_result)
-                } else {
-                    Err("Place not found".to_string())
-                }
+                let place = self.places.get_mut(place_name).ok_or("Place not found".to_string())?;
+                // 将物品添加到指定地点物品列表
+                place.items.push(item);
+                
+                // 构造响应数据
+                let data = serde_json::json!({
+                    "place": {
+                        "name": place_name,
+                        "items": place.items.clone()
+                    }
+                });
+                
+                // 创建动作结果，只广播给导演（不需要通知玩家）
+                let action_result = ActionResult::new_system_message(
+                    data, 
+                    vec![], 
+                    format!("导演在地点 {} 放置道具", place_name)
+                );
+                
+                Ok(action_result)
             }
             _ => Err("Invalid target type".to_string())
         }
@@ -336,36 +322,32 @@ impl GameState {
     /// 捆绑/松绑
     pub fn handle_rope_action(&mut self, player_id: &str, action_type: &str) -> Result<ActionResult, String> {
         // 更新指定玩家的绑定状态
-        if let Some(player) = self.players.get_mut(player_id) {
-            match action_type {
-                "rope" => {
-                    player.is_bound = true;
-                }
-                "unrope" => {
-                    player.is_bound = false;
-                }
-                _ => return Err("Invalid action type".to_string())
+        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+        match action_type {
+            "rope" => {
+                player.is_bound = true;
             }
-            
-            // 构造响应数据
-            let data = serde_json::json!({
-                "player_id": player_id,
-                "is_bound": player.is_bound
-            });
-            
-            // 创建动作结果，广播给该玩家和所有导演
-            let action_result = ActionResult::new_system_message(
-                data, 
-                vec![player_id.to_string()], 
-                format!("导演{}玩家{}", 
-                        if action_type == "rope" { "捆绑" } else { "松绑" }, 
-                        player_id)
-            );
-            
-            Ok(action_result)
-        } else {
-            Err("Player not found".to_string())
+            "unrope" => {
+                player.is_bound = false;
+            }
+            _ => return Err("Invalid action type".to_string())
         }
+        
+        // 构造响应数据
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "is_bound": player.is_bound
+        });
+        
+        // 创建动作结果，广播给该玩家和所有导演
+        let action_result = ActionResult::new_system_message(
+            data, 
+            vec![player_id.to_string()], 
+            format!("导演 {} 玩家 {}", 
+                    if action_type == "rope" { "捆绑" } else { "松绑" }, 
+                    player.name)
+        );
+        Ok(action_result)
     }
 
     /// 广播消息
@@ -389,9 +371,7 @@ impl GameState {
     /// 导演向特定玩家发送消息
     pub fn handle_director_message_to_player(&mut self, player_id: &str, message: &str) -> Result<ActionResult, String> {
         // 验证玩家是否存在
-        if !self.players.contains_key(player_id) {
-            return Err("Player not found".to_string());
-        }
+        let player_name = self.players.get_mut(player_id).ok_or("Player not found".to_string())?.name.clone();
         
         // 构造响应数据
         let data = serde_json::json!({
@@ -402,7 +382,7 @@ impl GameState {
         let action_result = ActionResult::new_user_message(
             data, 
             vec![player_id.to_string()], 
-            format!("导演向玩家{}发送消息: {}", player_id, message)
+            format!("导演向玩家 {} 发送消息: {}", player_name, message)
         );
         
         Ok(action_result)
