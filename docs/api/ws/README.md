@@ -32,14 +32,13 @@ const ws = new WebSocket('ws://localhost:8080/ws?game_id=123&password=secret&use
 ### 客户端发送消息
 | 类型 | 说明 | 发送者 |
 |------|------|--------|
-| player_action | 玩家行动指令 | 玩家 |
-| director_action | 导演控制指令 | 导演 |
+| player | 玩家行动指令 | 玩家 |
+| director | 导演控制指令 | 导演 |
 
 ### 服务端推送消息
 | 类型 | 说明 | 接收者 |
 |------|------|--------|
-| game_state | 游戏状态更新 | 所有连接者 |
-| player_update | 玩家状态更新 | 对应玩家 |
+| game_state | 游戏状态更新 | 所有连接者或对应玩家 |
 | system_message | 系统消息 | 所有连接者 |
 | error | 错误信息 | 对应连接者 |
 

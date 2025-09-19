@@ -8,3 +8,4 @@ pub mod game_state_player_actions;
 pub mod broadcaster;
 pub mod game_connection_manager;
 pub mod global_connection_manager;
+pub mod message_formatter;

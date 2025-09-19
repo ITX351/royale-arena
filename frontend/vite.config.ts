@@ -14,7 +14,8 @@ export default defineConfig({
     proxy: {
       '/royale-arena/api': {
         target: 'http://localhost:3000',
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true // 启用WebSocket代理
       }
     }
   }

@@ -15,17 +15,14 @@ impl GameState {
         // 更新游戏状态中的夜晚开始时间
         self.night_start_time = Some(time);
         
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "game_state",
-            "data": {
-                "night_start_time": time
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "night_start_time": time
         });
         
         // 创建动作结果，只广播给导演（不需要通知玩家）
         let action_result = ActionResult::new_system_message(
-            response, 
+            data, 
             vec![], 
             format!("导演设置夜晚开始时间至{}", timestamp)
         );
@@ -43,17 +40,14 @@ impl GameState {
         // 更新游戏状态中的夜晚结束时间
         self.night_end_time = Some(time);
         
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "game_state",
-            "data": {
-                "night_end_time": time
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "night_end_time": time
         });
         
         // 创建动作结果，只广播给导演（不需要通知玩家）
         let action_result = ActionResult::new_system_message(
-            response, 
+            data, 
             vec![], 
             format!("导演设置夜晚结束时间至{}", timestamp)
         );
@@ -70,20 +64,17 @@ impl GameState {
             // 检查地点内的玩家是否受影响
             // 如果地点被摧毁，需要处理在该地点的玩家
             
-            // 构造响应
-            let response = serde_json::json!({
-                "type": "game_state",
-                "data": {
-                    "place": {
-                        "name": place_name,
-                        "is_destroyed": is_destroyed
-                    }
+            // 构造响应数据
+            let data = serde_json::json!({
+                "place": {
+                    "name": place_name,
+                    "is_destroyed": is_destroyed
                 }
             });
             
             // 创建动作结果，只广播给导演（不需要通知玩家）
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![], 
                 format!("导演调整地点{}状态为{}", place_name, if is_destroyed { "已摧毁" } else { "未摧毁" })
             );
@@ -102,17 +93,14 @@ impl GameState {
             .map(|s| s.to_string())
             .collect();
         
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "game_state",
-            "data": {
-                "next_night_destroyed_places": self.next_night_destroyed_places.clone()
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "next_night_destroyed_places": self.next_night_destroyed_places.clone()
         });
         
         // 创建动作结果，只广播给导演（不需要通知玩家）
         let action_result = ActionResult::new_system_message(
-            response, 
+            data, 
             vec![], 
             format!("导演设置下一夜晚缩圈地点: {:?}", self.next_night_destroyed_places)
         );
@@ -126,20 +114,17 @@ impl GameState {
         if let Some(place) = self.places.get_mut(place_name) {
             place.items.push(item);
             
-            // 构造响应
-            let response = serde_json::json!({
-                "type": "game_state",
-                "data": {
-                    "place": {
-                        "name": place_name,
-                        "items": place.items.clone()
-                    }
+            // 构造响应数据
+            let data = serde_json::json!({
+                "place": {
+                    "name": place_name,
+                    "items": place.items.clone()
                 }
             });
             
             // 创建动作结果，只广播给导演（不需要通知玩家）
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![], 
                 format!("导演在地点{}空投物品", place_name)
             );
@@ -155,17 +140,14 @@ impl GameState {
         // 更新天气条件值
         self.weather = weather;
         
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "game_state",
-            "data": {
-                "weather": weather
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "weather": weather
         });
         
         // 创建动作结果，只广播给导演（不需要通知玩家）
         let action_result = ActionResult::new_system_message(
-            response, 
+            data, 
             vec![], 
             format!("导演调整天气至{}", weather)
         );
@@ -187,19 +169,16 @@ impl GameState {
                 player.is_alive = true;
             }
             
-            // 构造响应
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "player_id": player_id,
-                    "life": player.life,
-                    "is_alive": player.is_alive
-                }
+            // 构造响应数据
+            let data = serde_json::json!({
+                "player_id": player_id,
+                "life": player.life,
+                "is_alive": player.is_alive
             });
             
             // 创建动作结果，广播给该玩家和所有导演
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("导演调整玩家{}生命值{}", player_id, if life_change > 0 { format!("+{}", life_change) } else { life_change.to_string() })
             );
@@ -221,18 +200,15 @@ impl GameState {
                 player.strength = 0;
             }
             
-            // 构造响应
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "player_id": player_id,
-                    "strength": player.strength
-                }
+            // 构造响应数据
+            let data = serde_json::json!({
+                "player_id": player_id,
+                "strength": player.strength
             });
             
             // 创建动作结果，广播给该玩家和所有导演
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("导演调整玩家{}体力值{}", player_id, if strength_change > 0 { format!("+{}", strength_change) } else { strength_change.to_string() })
             );
@@ -280,18 +256,15 @@ impl GameState {
             target_place_obj.players.push(player_id.to_string());
         }
         
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "player_update",
-            "data": {
-                "player_id": player_id,
-                "location": target_place
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "location": target_place
         });
         
         // 创建动作结果，广播给该玩家和所有导演
         let action_result = ActionResult::new_system_message(
-            response, 
+            data, 
             vec![player_id.to_string()], 
             format!("导演将玩家{}移动至地点{}", player_id, target_place)
         );
@@ -310,18 +283,15 @@ impl GameState {
                     // 将物品添加到指定玩家背包
                     player.inventory.push(item);
                     
-                    // 构造响应
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "player_id": player_id,
-                            "inventory": player.inventory.clone()
-                        }
+                    // 构造响应数据
+                    let data = serde_json::json!({
+                        "player_id": player_id,
+                        "inventory": player.inventory.clone()
                     });
                     
                     // 创建动作结果，广播给该玩家和所有导演
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("导演给予玩家{}道具", player_id)
                     );
@@ -339,20 +309,17 @@ impl GameState {
                     // 将物品添加到指定地点物品列表
                     place.items.push(item);
                     
-                    // 构造响应
-                    let response = serde_json::json!({
-                        "type": "game_state",
-                        "data": {
-                            "place": {
-                                "name": place_name,
-                                "items": place.items.clone()
-                            }
+                    // 构造响应数据
+                    let data = serde_json::json!({
+                        "place": {
+                            "name": place_name,
+                            "items": place.items.clone()
                         }
                     });
                     
                     // 创建动作结果，只广播给导演（不需要通知玩家）
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![], 
                         format!("导演在地点{}放置道具", place_name)
                     );
@@ -380,18 +347,15 @@ impl GameState {
                 _ => return Err("Invalid action type".to_string())
             }
             
-            // 构造响应
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "player_id": player_id,
-                    "is_bound": player.is_bound
-                }
+            // 构造响应数据
+            let data = serde_json::json!({
+                "player_id": player_id,
+                "is_bound": player.is_bound
             });
             
             // 创建动作结果，广播给该玩家和所有导演
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("导演{}玩家{}", 
                         if action_type == "rope" { "捆绑" } else { "松绑" }, 
@@ -406,18 +370,15 @@ impl GameState {
 
     /// 广播消息
     pub fn handle_broadcast(&mut self, message: &str) -> Result<ActionResult, String> {
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "system_message",
-            "data": {
-                "message": message
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "message": message
         });
         
         // 创建动作结果，广播给所有玩家和导演
         let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
         let action_result = ActionResult::new_user_message(
-            response, 
+            data, 
             broadcast_players, 
             format!("导演向全部玩家广播消息: {}", message)
         );
@@ -432,17 +393,14 @@ impl GameState {
             return Err("Player not found".to_string());
         }
         
-        // 构造响应
-        let response = serde_json::json!({
-            "type": "system_message",
-            "data": {
-                "message": format!("导演向您发送消息: {}", message)
-            }
+        // 构造响应数据
+        let data = serde_json::json!({
+            "message": format!("导演向您发送消息: {}", message)
         });
         
         // 创建动作结果，广播给该玩家和所有导演
         let action_result = ActionResult::new_user_message(
-            response, 
+            data, 
             vec![player_id.to_string()], 
             format!("导演向玩家{}发送消息: {}", player_id, message)
         );

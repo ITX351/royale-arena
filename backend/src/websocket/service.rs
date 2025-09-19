@@ -2,7 +2,7 @@
 
 use axum::{
     extract::{
-        ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
         Path, Query, State,
     },
     response::Response,
@@ -70,14 +70,8 @@ impl WebSocketService {
         match self.authenticate_connection(&game_id, &auth_request).await {
             Ok(user_type) => {
                 // 发送连接成功消息
-                let success_msg = json!({
-                    "type": "system_message",
-                    "data": {
-                        "message": "WebSocket connection established successfully"
-                    }
-                });
-                
-                if socket.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&success_msg).unwrap()))).await.is_err() {
+                let websocket_message = super::message_formatter::system_message(json!({ "message": "WebSocket connection established successfully" }));
+                if socket.send(websocket_message).await.is_err() {
                     return;
                 }
 
@@ -93,14 +87,8 @@ impl WebSocketService {
             }
             Err(error_msg) => {
                 // 发送认证失败消息
-                let error_response = json!({
-                    "type": "error",
-                    "data": {
-                        "message": error_msg
-                    }
-                });
-                
-                let _ = socket.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&error_response).unwrap()))).await;
+                let websocket_message = super::message_formatter::error_message(json!({ "message": error_msg }));
+                let _ = socket.send(websocket_message).await;
                 // 关闭连接
                 let _ = socket.close().await;
             }
@@ -193,9 +181,10 @@ impl WebSocketService {
 
         // 生成玩家初始状态消息
         let init_msg = MessageBroadcaster::generate_player_message(&game_state_guard, player, None);
+        let websocket_message = super::message_formatter::game_state_message(init_msg);
         
         let (mut sender, mut receiver) = socket.split();
-        if sender.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
+        if sender.send(websocket_message).await.is_err() {
             return;
         }
 
@@ -212,8 +201,8 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                let message_str = serde_json::to_string(&message).unwrap();
-                if sender.send(Message::Text(Utf8Bytes::from(message_str))).await.is_err() {
+                let websocket_message = super::message_formatter::game_state_message(message);
+                if sender.send(websocket_message).await.is_err() {
                     break;
                 }
             }
@@ -248,9 +237,10 @@ impl WebSocketService {
 
         // 生成导演初始状态消息，action_result为空
         let init_msg = MessageBroadcaster::generate_director_message(&game_state_guard, None);
+        let websocket_message = super::message_formatter::game_state_message(init_msg);
         
         let (mut sender, mut receiver) = socket.split();
-        if sender.send(Message::Text(Utf8Bytes::from(serde_json::to_string(&init_msg).unwrap()))).await.is_err() {
+        if sender.send(websocket_message).await.is_err() {
             return;
         }
 
@@ -267,8 +257,8 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                let message_str = serde_json::to_string(&message).unwrap();
-                if sender.send(Message::Text(Utf8Bytes::from(message_str))).await.is_err() {
+                let websocket_message = super::message_formatter::game_state_message(message);
+                if sender.send(websocket_message).await.is_err() {
                     break;
                 }
             }
@@ -632,13 +622,5 @@ impl WebSocketService {
 
         // 序列化结果
         result.map(|action_result| serde_json::to_string(&action_result.to_client_response()).unwrap_or_default())
-    }
-
-    /// 获取游戏状态（如果不存在则创建）
-    async fn get_game_state(&self, game_id: &str) -> GameState {
-        let game = self.app_state.game_service.get_game_by_id(game_id).await.unwrap();
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await.unwrap();
-        let game_state_guard = game_state_ref.read().await;
-        game_state_guard.clone()
     }
 }

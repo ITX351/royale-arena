@@ -25,8 +25,8 @@ Royale Arena 是一个基于网页的大逃杀游戏，玩家在限定时间内�
 ```bash
 # 前端开发
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 
 # 后端开发
 cd backend

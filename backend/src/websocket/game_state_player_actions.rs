@@ -27,16 +27,13 @@ impl GameState {
             place_mut.players.push(player.id.clone());
             
             // 向该玩家发送位置更新结果
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "location": place_name
-                }
+            let data = serde_json::json!({
+                "location": place_name
             });
             
             // 创建动作结果，只广播给发起者本人
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("玩家{}在地点{}出生", player.name, place_name)
             );
@@ -85,17 +82,14 @@ impl GameState {
             }
             
             // 向该玩家发送位置更新结果
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "location": target_place,
-                    "strength": player.strength
-                }
+            let data = serde_json::json!({
+                "location": target_place,
+                "strength": player.strength
             });
             
             // 创建动作结果，只广播给发起者本人
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("玩家{}移动到地点{}", player.name, target_place)
             );
@@ -213,23 +207,20 @@ impl GameState {
                     };
                     
                     // 向该玩家发送搜索结果
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "last_search_result": {
-                                "target_type": "player",
-                                "target_id": target_player_id_clone,
-                                "target_name": target_player_name,
-                                "is_visible": is_visible
-                            },
-                            "strength": player_strength,
-                            "last_search_time": player_last_search_time
-                        }
+                    let data = serde_json::json!({
+                        "last_search_result": {
+                            "target_type": "player",
+                            "target_id": target_player_id_clone,
+                            "target_name": target_player_name,
+                            "is_visible": is_visible
+                        },
+                        "strength": player_strength,
+                        "last_search_time": player_last_search_time
                     });
                     
                     // 创建动作结果，只广播给发起者本人
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("玩家{}搜索并发现了玩家{}", 
                             self.players.get(player_id).unwrap().name, target_player_name)
@@ -250,18 +241,15 @@ impl GameState {
                     (player.strength, player.last_search_time)
                 };
                 
-                let response = serde_json::json!({
-                    "type": "player_update",
-                    "data": {
-                        "last_search_result": null,
-                        "strength": player_strength,
-                        "last_search_time": player_last_search_time
-                    }
+                let data = serde_json::json!({
+                    "last_search_result": null,
+                    "strength": player_strength,
+                    "last_search_time": player_last_search_time
                 });
                 
                 // 创建动作结果，只广播给发起者本人
                 let action_result = ActionResult::new_system_message(
-                    response, 
+                    data, 
                     vec![player_id.to_string()], 
                     format!("玩家{}搜索但没有发现任何东西", 
                         self.players.get(player_id).unwrap().name)
@@ -308,23 +296,20 @@ impl GameState {
                     };
                     
                     // 向该玩家发送搜索结果
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "last_search_result": {
-                                "target_type": "item",
-                                "target_id": item_id,
-                                "target_name": item_name,
-                                "is_visible": is_visible
-                            },
-                            "strength": player_strength,
-                            "last_search_time": player_last_search_time
-                        }
+                    let data = serde_json::json!({
+                        "last_search_result": {
+                            "target_type": "item",
+                            "target_id": item_id,
+                            "target_name": item_name,
+                            "is_visible": is_visible
+                        },
+                        "strength": player_strength,
+                        "last_search_time": player_last_search_time
                     });
                     
                     // 创建动作结果，只广播给发起者本人
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("玩家{}搜索并发现了物品{}", 
                             self.players.get(player_id).unwrap().name, item_name)
@@ -343,18 +328,15 @@ impl GameState {
                         (player.strength, player.last_search_time)
                     };
                     
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "last_search_result": null,
-                            "strength": player_strength,
-                            "last_search_time": player_last_search_time
-                        }
+                    let data = serde_json::json!({
+                        "last_search_result": null,
+                        "strength": player_strength,
+                        "last_search_time": player_last_search_time
                     });
                     
                     // 创建动作结果，只广播给发起者本人
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("玩家{}搜索但没有发现任何东西", 
                             self.players.get(player_id).unwrap().name));
@@ -374,18 +356,15 @@ impl GameState {
                     (player.strength, player.last_search_time)
                 };
                 
-                let response = serde_json::json!({
-                    "type": "player_update",
-                    "data": {
-                        "last_search_result": null,
-                        "strength": player_strength,
-                        "last_search_time": player_last_search_time
-                    }
+                let data = serde_json::json!({
+                    "last_search_result": null,
+                    "strength": player_strength,
+                    "last_search_time": player_last_search_time
                 });
                 
                 // 创建动作结果，只广播给发起者本人
                 let action_result = ActionResult::new_system_message(
-                    response, 
+                    data, 
                     vec![player_id.to_string()], 
                     format!("玩家{}搜索但没有发现任何东西", 
                             self.players.get(player_id).unwrap().name));
@@ -447,16 +426,13 @@ impl GameState {
                 };
                 
                 // 向该玩家发送背包更新
-                let response = serde_json::json!({
-                    "type": "player_update",
-                    "data": {
-                        "inventory": player_inventory
-                    }
+                let data = serde_json::json!({
+                    "inventory": player_inventory
                 });
                 
                 // 创建动作结果，只广播给发起者本人
                 let action_result = ActionResult::new_system_message(
-                    response, 
+                    data, 
                     vec![player_id.to_string()], 
                     format!("玩家{}捡起了一个物品", 
                         self.players.get(player_id).unwrap().name)
@@ -464,16 +440,13 @@ impl GameState {
                 Ok(action_result)
             } else {
                 // 物品不存在，向该玩家发送捡拾失败消息
-                let response = serde_json::json!({
-                    "type": "error",
-                    "data": {
-                        "message": "Item no longer exists"
-                    }
+                let data = serde_json::json!({
+                    "message": "Item no longer exists"
                 });
                 
                 // 创建动作结果，只广播给发起者本人
                 let action_result = ActionResult::new_system_message(
-                    response, 
+                    data, 
                     vec![player_id.to_string()], 
                     format!("玩家{}试图捡起一个物品但该物品已不存在", 
                         self.players.get(player_id).unwrap().name)
@@ -539,16 +512,13 @@ impl GameState {
         // 验证目标玩家是否在同一地点
         if target_player_location != player_location {
             // 目标玩家已离开
-            let response = serde_json::json!({
-                "type": "error",
-                "data": {
-                    "message": "Target player has left the location"
-                }
+            let data = serde_json::json!({
+                "message": "Target player has left the location"
             });
             
             // 创建动作结果，只广播给发起者本人
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("玩家{}试图攻击但目标玩家已离开该地点", 
                     self.players.get(player_id).unwrap().name)
@@ -559,16 +529,13 @@ impl GameState {
         // 检查目标玩家是否已死亡
         if !target_player_alive {
             // 目标玩家已死亡
-            let response = serde_json::json!({
-                "type": "error",
-                "data": {
-                    "message": "Target player is already dead"
-                }
+            let data = serde_json::json!({
+                "message": "Target player is already dead"
             });
             
             // 创建动作结果，只广播给发起者本人
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("玩家{}试图攻击但目标玩家已经死亡", 
                     self.players.get(player_id).unwrap().name)
@@ -598,21 +565,15 @@ impl GameState {
         };
         
         // 向攻击者发送攻击结果（仅包括主目标）
-        let attacker_response = serde_json::json!({
-            "type": "player_update",
-            "data": {
-                "message": format!("Attacked player {} for {} damage", target_player_id, damage),
-                "target_player_life": target_player_life,
-                "target_player_is_alive": target_player_is_alive
-            }
+        let data = serde_json::json!({
+            "message": format!("Attacked player {} for {} damage", target_player_id, damage),
+            "target_player_life": target_player_life,
+            "target_player_is_alive": target_player_is_alive
         });
         
         // 向被攻击者发送被攻击通知（不包括攻击者身份）
-        let _target_response = serde_json::json!({
-            "type": "system_message",
-            "data": {
-                "message": format!("You were attacked for {} damage", damage)
-            }
+        let _target_data = serde_json::json!({
+            "message": format!("You were attacked for {} damage", damage)
         });
         
         // 消耗体力值（根据规则配置，假设攻击消耗10点体力）
@@ -628,7 +589,7 @@ impl GameState {
         
         // 创建动作结果，广播给攻击者和被攻击者
         let action_result = ActionResult::new_system_message(
-            attacker_response, 
+            data, 
             vec![player_id.to_string(), target_player_id.clone()], 
             format!("玩家{}攻击玩家{}造成{}点伤害", 
                 self.players.get(player_id).unwrap().name, target_player_id, damage)
@@ -653,16 +614,13 @@ impl GameState {
             player.hand_item = Some(item_id.to_string());
             
             // 向该玩家发送手持物品状态更新
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "hand_item": item_id
-                }
+            let data = serde_json::json!({
+                "hand_item": item_id
             });
             
             // 创建动作结果，只广播给发起者本人
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("玩家{}装备了物品{}", player.name, item_id)
             );
@@ -712,18 +670,15 @@ impl GameState {
                     player.hand_item = None;
                     
                     // 更新玩家状态
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "life": player.life,
-                            "inventory": player.inventory,
-                            "hand_item": null
-                        }
+                    let data = serde_json::json!({
+                        "life": player.life,
+                        "inventory": player.inventory,
+                        "hand_item": null
                     });
                     
                     // 创建动作结果，只广播给发起者本人
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("玩家{}使用了消耗品{}", player.name, item_id)
                     );
@@ -735,16 +690,13 @@ impl GameState {
                     player.equipped_item = Some(item_id.to_string());
                     
                     // 更新玩家状态
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "equipped_item": item_id
-                        }
+                    let data = serde_json::json!({
+                        "equipped_item": item_id
                     });
                     
                     // 创建动作结果，只广播给发起者本人
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("玩家{}装备了武器{}", player.name, item_id)
                     );
@@ -755,16 +707,13 @@ impl GameState {
                     player.equipped_item = Some(item_id.to_string());
                     
                     // 更新玩家状态
-                    let response = serde_json::json!({
-                        "type": "player_update",
-                        "data": {
-                            "equipped_item": item_id
-                        }
+                    let data = serde_json::json!({
+                        "equipped_item": item_id
                     });
                     
                     // 创建动作结果，只广播给发起者本人
                     let action_result = ActionResult::new_system_message(
-                        response, 
+                        data, 
                         vec![player_id.to_string()], 
                         format!("玩家{}装备了物品{}", player.name, item_id)
                     );
@@ -802,17 +751,14 @@ impl GameState {
             }
             
             // 向该玩家发送背包更新
-            let response = serde_json::json!({
-                "type": "player_update",
-                "data": {
-                    "inventory": player.inventory,
-                    "hand_item": player.hand_item
-                }
+            let data = serde_json::json!({
+                "inventory": player.inventory,
+                "hand_item": player.hand_item
             });
             
             // 创建动作结果，只广播给发起者本人
             let action_result = ActionResult::new_system_message(
-                response, 
+                data, 
                 vec![player_id.to_string()], 
                 format!("玩家{}丢弃了物品{}", player.name, item_id)
             );
@@ -844,16 +790,13 @@ impl GameState {
         // 在实际实现中，这里需要找到目标玩家的连接并发送消息
         // 这里我们只是构造响应
         
-        let response = serde_json::json!({
-            "type": "system_message",
-            "data": {
-                "message": format!("玩家{}向您传音: {}", player.name, message)
-            }
+        let data = serde_json::json!({
+            "message": format!("玩家{}向您传音: {}", player.name, message)
         });
         
         // 创建动作结果，广播给发送者和接收者
         let action_result = ActionResult::new_user_message(
-            response, 
+            data, 
             vec![player_id.to_string(), target_player_id.to_string()], 
             format!("玩家{}向玩家{}发送消息: {}", player.name, target_player_id, message)
         );
@@ -869,16 +812,13 @@ impl GameState {
         // 在实际实现中，这里需要找到导演的连接并发送消息
         // 这里我们只是构造响应
         
-        let response = serde_json::json!({
-            "type": "system_message",
-            "data": {
-                "message": format!("玩家{}向导演发送消息: {}", player.name, message)
-            }
+        let data = serde_json::json!({
+            "message": format!("玩家{}向导演发送消息: {}", player.name, message)
         });
         
         // 创建动作结果，只广播给发起者本人（导演会收到所有消息）
         let action_result = ActionResult::new_user_message(
-            response, 
+            data, 
             vec![player_id.to_string()], 
             format!("玩家{}向导演发送消息: {}", player.name, message)
         );

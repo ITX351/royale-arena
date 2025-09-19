@@ -21,6 +21,20 @@
           </template>
         </el-alert>
         
+        <!-- 空投设置面板 -->
+        <AirdropPanel 
+          :game-id="game.id"
+          :places="placeList"
+          @airdrop-sent="handleAirdropSent"
+        />
+        
+        <!-- 广播消息面板 -->
+        <BroadcastMessage 
+          :game-id="game.id"
+          :players="playerList"
+          @message-sent="handleMessageSent"
+        />
+        
         <div class="management-actions">
           <el-button type="warning" size="large" @click="$emit('request-pause')">
             暂停游戏
@@ -49,11 +63,48 @@
 </template>
 
 <script setup lang="ts">
-// Emits
-defineEmits<{
+import { computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import type { GameWithRules } from '@/types/game'
+import AirdropPanel from '../components/AirdropPanel.vue'
+import BroadcastMessage from '../components/BroadcastMessage.vue'
+
+// 定义组件属性
+const props = defineProps<{
+  game: GameWithRules
+  directorPassword: string
+}>()
+
+// 定义事件发射
+const emit = defineEmits<{
   (e: 'request-pause'): void
   (e: 'request-end'): void
 }>()
+
+// 计算属性
+const playerList = computed(() => {
+  return Object.values(props.game.players || {})
+})
+
+const placeList = computed(() => {
+  return Object.values(props.game.rules_config?.map_config?.places || {})
+})
+
+// 方法实现
+const handleAirdropSent = (items: string[], place: string) => {
+  ElMessage.success(`空投已发送到地点: ${place}`)
+  console.log('空投发送:', { items, place })
+}
+
+const handleMessageSent = (message: string, targetType: 'all' | 'player', targetPlayer?: string) => {
+  if (targetType === 'all') {
+    ElMessage.success('消息已广播给所有玩家')
+  } else {
+    const targetPlayerName = props.game.players?.[targetPlayer || '']?.name || targetPlayer
+    ElMessage.success(`消息已发送给玩家: ${targetPlayerName}`)
+  }
+  console.log('消息发送:', { message, targetType, targetPlayer })
+}
 </script>
 
 <style scoped>
