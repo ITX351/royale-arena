@@ -177,7 +177,23 @@ const confirmStartGame = () => {
 }
 
 const pauseGame = () => {
-  updateGameStatus(GameStatus.PAUSED)
+  ElMessageBox.confirm(
+    '确定要暂停游戏吗？',
+    '暂停游戏',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    // 更新游戏状态为暂停
+    updateGameStatus(GameStatus.PAUSED)
+    // 发送暂停游戏指令
+    // 注意：这里我们不直接断开WebSocket连接，而是在DirectorMain中监听状态变化
+    ElMessage.success('游戏已暂停')
+  }).catch(() => {
+    // 用户取消操作
+  })
 }
 
 const resumeGame = () => {
@@ -195,6 +211,7 @@ const confirmEndGame = () => {
     }
   ).then(() => {
     updateGameStatus(GameStatus.ENDED)
+    ElMessage.success('游戏已结束')
   }).catch(() => {
     // 用户取消操作
   })

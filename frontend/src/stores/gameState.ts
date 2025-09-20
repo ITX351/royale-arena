@@ -196,7 +196,7 @@ export const useGameStateStore = defineStore('gameState', () => {
         break
       case 'action_result':
         console.log('追加日志:', event.data)
-        addLogMessage(event.data)
+        //addLogMessage(event.data)
         break
       case 'system_message':
         // 处理系统消息

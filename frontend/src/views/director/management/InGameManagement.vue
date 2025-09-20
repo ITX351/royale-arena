@@ -8,7 +8,7 @@
       </template>
       
       <div class="management-content">
-        <el-alert
+        <!--<el-alert
           title="游戏中管理功能"
           type="info"
           show-icon
@@ -19,7 +19,7 @@
             <p>游戏正在进行中，您可以在此管理游戏进程。</p>
             <p>目前支持的操作包括暂停游戏和结束游戏。</p>
           </template>
-        </el-alert>
+        </el-alert>-->
         
         <!-- 横向排列的控制面板 -->
         <div class="horizontal-controls">
@@ -149,29 +149,6 @@
           :players="playerList"
           @message-sent="handleMessageSent"
         />
-        
-        <div class="management-actions">
-          <el-button type="warning" size="large" @click="$emit('request-pause')">
-            暂停游戏
-          </el-button>
-          <el-button type="danger" size="large" @click="$emit('request-end')">
-            结束游戏
-          </el-button>
-        </div>
-        
-        <div class="management-note">
-          <el-alert
-            title="注意"
-            type="warning"
-            show-icon
-            :closable="false"
-          >
-            <template #default>
-              <p>游戏状态变更需要在导演控制台主界面进行操作。</p>
-              <p>请使用页面顶部的状态控制按钮来管理游戏。</p>
-            </template>
-          </el-alert>
-        </div>
       </div>
     </el-card>
   </div>

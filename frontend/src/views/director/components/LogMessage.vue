@@ -250,6 +250,9 @@ onUnmounted(() => {
 <style scoped>
 .log-message {
   margin-bottom: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header h3 {
@@ -261,6 +264,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .filter-panel {
@@ -288,7 +293,7 @@ onUnmounted(() => {
 
 .log-list {
   flex: 1;
-  max-height: 400px;
+  max-height: none; /* 移除固定最大高度 */
   overflow-y: auto;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
@@ -301,6 +306,7 @@ onUnmounted(() => {
   border-radius: 4px;
   transition: all 0.3s ease;
   animation: fadeIn 0.5s ease;
+  text-align: left;
 }
 
 .log-item:last-child {
@@ -360,6 +366,7 @@ onUnmounted(() => {
   font-size: 14px;
   line-height: 1.5;
   color: #606266;
+  text-align: left;
 }
 
 .empty-state {
