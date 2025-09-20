@@ -67,7 +67,7 @@ export interface GameData {
 }
 
 // 消息类型枚举
-export type MessageType = 'system_notice' | 'user_directed';
+export type MessageType = 'SystemNotice' | 'UserDirected';
 
 // 动作结果接口
 export interface ActionResult {

@@ -48,6 +48,10 @@
           </el-form-item>
           
           <el-form-item>
+            <el-checkbox v-model="filterForm.showOnlyUserMessages" label="只显示用户消息" />
+          </el-form-item>
+          
+          <el-form-item>
             <el-button type="primary" @click="applyFilter">应用筛选</el-button>
             <el-button @click="resetFilter">重置</el-button>
           </el-form-item>
@@ -59,7 +63,7 @@
         <div 
           v-for="message in displayedMessages" 
           :key="message.timestamp"
-          :class="['log-item', message.message_type]"
+          :class="['log-item', message.message_type, isNewMessage(message.timestamp) ? 'fade-effect' : '']"
           :data-timestamp="message.timestamp"
         >
           <div class="log-header">
@@ -113,6 +117,7 @@ const props = defineProps<{
 // 响应式状态
 const filterForm = ref({
   dateRange: [] as string[],
+  showOnlyUserMessages: false,
   selectedPlayer: '',
   keyword: ''
 })
@@ -120,6 +125,8 @@ const filterForm = ref({
 const visibleCount = ref(20)
 const showAll = ref(false)
 const logListRef = ref<HTMLElement | null>(null)
+const newMessages = ref<Set<string>>(new Set())
+const previousMessageTimestamps = ref<Set<string>>(new Set())
 
 // 计算属性
 const playerOptions = computed(() => {
@@ -139,6 +146,11 @@ const filteredMessages = computed(() => {
       const messageDate = message.timestamp.split('T')[0]
       return messageDate >= startDate && messageDate <= endDate
     })
+  }
+  
+  // 只显示用户消息筛选
+  if (filterForm.value.showOnlyUserMessages) {
+    result = result.filter(message => message.message_type === 'UserDirected')
   }
   
   // 演员筛选
@@ -175,8 +187,8 @@ const formatTimestamp = (timestamp: string) => {
 
 const getMessageTypeLabel = (type: string) => {
   const typeMap: Record<string, string> = {
-    'system_notice': '系统消息',
-    'user_directed': '用户消息'
+    'SystemNotice': '系统消息',
+    'UserDirected': '用户消息'
   }
   return typeMap[type] || type
 }
@@ -185,66 +197,76 @@ const applyFilter = () => {
   ElMessage.success('筛选条件已应用')
   // 重置显示状态
   showAll.value = false
-  scrollToTop()
 }
 
 const resetFilter = () => {
   filterForm.value.dateRange = []
+  filterForm.value.showOnlyUserMessages = false
   filterForm.value.selectedPlayer = ''
   filterForm.value.keyword = ''
   ElMessage.info('筛选条件已重置')
   // 重置显示状态
   showAll.value = false
-  scrollToTop()
 }
 
 const showAllMessages = () => {
   showAll.value = true
-  nextTick(() => {
-    scrollToBottom()
-  })
 }
 
 const hideExtraMessages = () => {
   showAll.value = false
-  nextTick(() => {
-    scrollToTop()
-  })
 }
 
-const scrollToTop = () => {
-  if (logListRef.value) {
-    logListRef.value.scrollTop = 0
-  }
+// 新增方法：检查消息是否为新消息
+const isNewMessage = (timestamp: string) => {
+  const result = newMessages.value.has(timestamp);
+  return result;
 }
 
-const scrollToBottom = () => {
-  if (logListRef.value) {
-    logListRef.value.scrollTop = logListRef.value.scrollHeight
+// 监听消息变化，标记新消息
+watch(() => props.messages, (newMessagesList) => {
+  // 如果没有消息，直接返回
+  if (!newMessagesList || newMessagesList.length === 0) {
+    return;
   }
-}
-
-// 监听消息变化，自动滚动到底部
-watch(() => props.messages, () => {
-  if (!showAll.value) {
-    nextTick(() => {
-      scrollToBottom()
-    })
+  
+  // 获取当前所有消息的时间戳
+  const currentTimestamps = new Set(newMessagesList.map(msg => msg.timestamp));
+  
+  // 找出新增的消息（在当前消息中但不在之前的消息中的）
+  const addedMessages = newMessagesList.filter(msg => !previousMessageTimestamps.value.has(msg.timestamp));
+  
+  // 标记新增的消息为新消息
+  addedMessages.forEach(msg => {
+    newMessages.value.add(msg.timestamp);
+  });
+  
+  // 更新之前消息的时间戳集合
+  previousMessageTimestamps.value = currentTimestamps;
+  
+  // 设置定时器在1秒后移除新消息标记（缩短一半时间）
+  if (addedMessages.length > 0) {
+    setTimeout(() => {
+      addedMessages.forEach(msg => {
+        newMessages.value.delete(msg.timestamp);
+      });
+    }, 1000);
   }
-}, { deep: true })
+}, { deep: true });
 
 // 组件挂载时的操作
 onMounted(() => {
-  // 初始滚动到底部
-  nextTick(() => {
-    scrollToBottom()
-  })
-})
+  // 初始化previousMessageTimestamps
+  if (props.messages && props.messages.length > 0) {
+    const initialTimestamps = new Set(props.messages.map(msg => msg.timestamp));
+    previousMessageTimestamps.value = initialTimestamps;
+  }
+});
 
 // 组件卸载时的操作
 onUnmounted(() => {
   // 清理操作（如果需要）
-})
+});
 </script>
 
 <style scoped>
@@ -324,14 +346,32 @@ onUnmounted(() => {
   }
 }
 
-.log-item.system_notice {
+.log-item.SystemNotice {
   background-color: #ecf5ff;
   border-left: 4px solid #409eff;
 }
 
-.log-item.user_directed {
+.log-item.UserDirected {
   background-color: #f0f9ff;
   border-left: 4px solid #67c23a;
+}
+
+/* 新增的淡入淡出效果样式 */
+.log-item.fade-effect {
+  background-color: #409eff !important;
+  color: white !important;
+  box-shadow: 0 0 15px rgba(64, 158, 255, 0.8) !important;
+  transform: scale(1.02);
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    box-shadow: 0 0 5px rgba(64, 158, 255, 0.5);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(64, 158, 255, 0.9);
+  }
 }
 
 .log-header {
@@ -340,6 +380,10 @@ onUnmounted(() => {
   margin-bottom: 5px;
   font-size: 12px;
   color: #909399;
+}
+
+.log-item.fade-effect .log-header {
+  color: white !important;
 }
 
 .log-timestamp {
@@ -352,14 +396,19 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.log-type.system_notice {
+.log-type.SystemNotice {
   background-color: #409eff;
   color: white;
 }
 
-.log-type.user_directed {
+.log-type.UserDirected {
   background-color: #67c23a;
   color: white;
+}
+
+.log-item.fade-effect .log-type {
+  background-color: white !important;
+  color: #409eff !important;
 }
 
 .log-content-text {
@@ -367,6 +416,10 @@ onUnmounted(() => {
   line-height: 1.5;
   color: #606266;
   text-align: left;
+}
+
+.log-item.fade-effect .log-content-text {
+  color: white !important;
 }
 
 .empty-state {

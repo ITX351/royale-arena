@@ -1,16 +1,17 @@
 <template>
   <div class="director-header">
-    <el-card class="header-card">
+    <el-card class="header-card" :class="{ 'hide-body': !showDetails }">
       <template #header>
         <div class="card-header">
-          <div class="header-info">
+          <div class="header-title">
             <h2>{{ game.name }}</h2>
-            <div class="game-status">
-              <el-tag :type="statusTagType" size="large">
-                {{ statusDisplayText }}
-              </el-tag>
-              <span class="game-id">游戏ID: {{ game.id }}</span>
-            </div>
+            <el-button 
+              type="primary" 
+              link 
+              @click="showDetails = !showDetails"
+              :icon="showDetails ? ArrowUp : ArrowDown"
+              class="toggle-button"
+            />
           </div>
           <div class="header-actions">
             <el-button 
@@ -45,19 +46,28 @@
             >
               结束游戏
             </el-button>
-            <el-button @click="goBack">
+            <!-- <el-button @click="goBack">
               返回游戏详情
+            </el-button> -->
+            <el-button @click="goHome">
+              返回首页
             </el-button>
           </div>
         </div>
+        <div class="game-status-line">
+          <el-tag :type="statusTagType" size="large">
+            {{ statusDisplayText }}
+          </el-tag>
+          <span>演员人数: {{ game.player_count }}</span>
+        </div>
       </template>
       
-      <div class="game-info">
+      <div v-show="showDetails" class="game-details">
         <p v-if="game.description">{{ game.description }}</p>
         <p v-else class="no-description">暂无游戏描述</p>
         <div class="game-stats">
-          <span>演员数量: {{ game.player_count }} / {{ game.max_players }}</span>
           <span>创建时间: {{ formatDate(game.created_at) }}</span>
+          <span class="game-id">游戏ID: {{ game.id }}</span>
         </div>
       </div>
     </el-card>
@@ -68,6 +78,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
 import apiClient from '@/services/client'
@@ -89,6 +100,7 @@ const router = useRouter()
 
 // 响应式状态
 const actionLoading = ref(false)
+const showDetails = ref(false)
 
 // 计算属性
 const statusDisplayText = computed(() => {
@@ -220,6 +232,10 @@ const confirmEndGame = () => {
 const goBack = () => {
   router.push(`/game/${props.game.id}`)
 }
+
+const goHome = () => {
+  router.push('/')
+}
 </script>
 
 <style scoped>
@@ -235,21 +251,42 @@ const goBack = () => {
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
-.header-info h2 {
-  margin: 0 0 8px 0;
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-title h2 {
+  margin: 0;
   color: #303133;
   font-size: 24px;
 }
 
-.game-status {
+.toggle-button {
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.game-status-line {
   display: flex;
   align-items: center;
   gap: 16px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
@@ -258,14 +295,8 @@ const goBack = () => {
   font-size: 14px;
 }
 
-.header-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.game-info p {
-  margin: 0 0 12px 0;
+.game-details p {
+  margin: 0 0 8px 0;
   color: #606266;
   line-height: 1.6;
 }
@@ -283,24 +314,29 @@ const goBack = () => {
   flex-wrap: wrap;
 }
 
+/* 当详情隐藏时，隐藏Card的body部分 */
+.header-card :deep(.el-card__body) {
+  display: block;
+}
+
+.header-card.hide-body :deep(.el-card__body) {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .card-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
   }
   
-  .header-actions {
-    justify-content: flex-end;
+  .header-title h2 {
+    font-size: 20px;
   }
   
-  .game-status {
+  .game-status-line {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-  }
-  
-  .header-info h2 {
-    font-size: 20px;
   }
 }
 </style>

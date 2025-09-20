@@ -8,7 +8,7 @@
             <el-icon><UserFilled /></el-icon>
             管理员登录
           </h1>
-          <p class="login-subtitle">Royale Arena 管理后台</p>
+          <p class="login-subtitle">雾雨小镇大逃杀 管理后台</p>
         </div>
 
         <!-- 登录表单 -->

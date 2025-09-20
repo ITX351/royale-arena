@@ -19,7 +19,7 @@ const routes = [
     name: 'Home',
     component: HomePage,
     meta: {
-      title: 'Royale Arena - 首页'
+      title: '雾雨小镇大逃杀 - 首页'
     }
   },
   {

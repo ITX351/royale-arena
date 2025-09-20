@@ -5,7 +5,7 @@
       <div class="container">
         <div class="header-content">
           <div class="logo-section">
-            <h1 class="logo">Royale Arena</h1>
+            <h1 class="logo">雾雨小镇大逃杀</h1>
           </div>
           
           <div class="search-section">
