@@ -64,7 +64,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ElMessage, ElForm } from 'element-plus'
-import type { Player } from '@/types/directorGameState'
+import type { Player } from '@/types/gameStateTypes'
 
 // 定义组件属性
 const props = defineProps<{

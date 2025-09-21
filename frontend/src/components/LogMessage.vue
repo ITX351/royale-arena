@@ -106,7 +106,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { ActionResult } from '@/types/directorGameState'
+import type { ActionResult } from '@/types/gameStateTypes'
 import { formatTimestamp } from '@/utils/gameUtils'
 
 // 定义组件属性

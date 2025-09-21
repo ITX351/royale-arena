@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { AirdropItem } from '@/types/directorGameState'
+import type { AirdropItem } from '@/types/gameStateTypes'
 
 // 定义组件属性
 const props = defineProps<{

@@ -32,11 +32,17 @@ export interface Player {
   votes: number;
 }
 
-// 地点接口
-export interface Place {
+// 导演视角的地点接口
+export interface DirectorPlace {
   name: string;
   players: string[]; // 玩家ID列表
   items: Item[];
+  is_destroyed: boolean;
+}
+
+// 玩家视角的地点接口（不包含其他玩家信息和物品信息）
+export interface ActorPlace {
+  name: string;
   is_destroyed: boolean;
 }
 
@@ -60,10 +66,16 @@ export interface GlobalState {
   next_night_destroyed_places: string[];
 }
 
-// 游戏数据接口
-export interface GameData {
+// 导演视角的游戏数据接口
+export interface DirectorGameData {
   players: Record<string, Player>;
-  places: Record<string, Place>;
+  places: Record<string, DirectorPlace>;
+}
+
+// 玩家视角的游戏数据接口
+export interface ActorGameData {
+  player: Player;
+  places: Record<string, ActorPlace>;
 }
 
 // 消息类型枚举
@@ -80,7 +92,14 @@ export interface ActionResult {
 // 导演视角的游戏状态接口
 export interface DirectorGameState {
   global_state: GlobalState;
-  game_data: GameData;
+  game_data: DirectorGameData;
+  action_result: ActionResult | null;
+}
+
+// 玩家视角的游戏状态接口
+export interface ActorGameState {
+  global_state: GlobalState;
+  game_data: ActorGameData;
   action_result: ActionResult | null;
 }
 

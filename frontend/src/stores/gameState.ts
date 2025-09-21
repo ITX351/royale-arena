@@ -2,17 +2,20 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { 
   DirectorGameState, 
+  ActorGameState,
   GlobalState, 
-  GameData, 
+  DirectorGameData, 
+  ActorGameData,
   Player, 
-  Place, 
+  DirectorPlace, 
+  ActorPlace, 
   ActionResult 
-} from '@/types/directorGameState'
+} from '@/types/gameStateTypes'
 import { webSocketService, type WebSocketEvent } from '@/services/webSocketService'
 
 export const useGameStateStore = defineStore('gameState', () => {
   // 状态
-  const gameState = ref<DirectorGameState | null>(null)
+  const gameState = ref<DirectorGameState | ActorGameState | null>(null)
   const connected = ref(false)
   const connecting = ref(false)
   const error = ref<string | null>(null)
@@ -24,16 +27,30 @@ export const useGameStateStore = defineStore('gameState', () => {
     return gameState.value?.global_state || null
   })
 
-  const gameData = computed<GameData | null>(() => {
+  const gameData = computed<DirectorGameData | ActorGameData | null>(() => {
     return gameState.value?.game_data || null
   })
 
-  const players = computed<Record<string, Player>>(() => {
-    return gameState.value?.game_data.players || {}
+  // 导演视角的计算属性
+  const directorPlayers = computed<Record<string, Player>>(() => {
+    if (!gameState.value || !('players' in gameState.value.game_data)) return {}
+    return gameState.value.game_data.players || {}
   })
 
-  const places = computed<Record<string, Place>>(() => {
-    return gameState.value?.game_data.places || {}
+  const directorPlaces = computed<Record<string, DirectorPlace>>(() => {
+    if (!gameState.value || !('players' in gameState.value.game_data)) return {}
+    return gameState.value.game_data.places || {}
+  })
+
+  // 玩家视角的计算属性
+  const actorPlayer = computed<Player | null>(() => {
+    if (!gameState.value || !('player' in gameState.value.game_data)) return null
+    return gameState.value.game_data.player || null
+  })
+
+  const actorPlaces = computed<Record<string, ActorPlace>>(() => {
+    if (!gameState.value || !('player' in gameState.value.game_data)) return {}
+    return gameState.value.game_data.places || {}
   })
 
   const actionResult = computed<ActionResult | null>(() => {
@@ -41,11 +58,15 @@ export const useGameStateStore = defineStore('gameState', () => {
   })
 
   const playerList = computed<Player[]>(() => {
-    return Object.values(players.value)
+    return Object.values(directorPlayers.value)
   })
 
-  const placeList = computed<Place[]>(() => {
-    return Object.values(places.value)
+  const directorPlaceList = computed<DirectorPlace[]>(() => {
+    return Object.values(directorPlaces.value)
+  })
+
+  const actorPlaceList = computed<ActorPlace[]>(() => {
+    return Object.values(actorPlaces.value)
   })
 
   // 操作
@@ -76,7 +97,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     connecting.value = false
   }
 
-  const updateGameState = (newState: DirectorGameState) => {
+  const updateGameState = (newState: DirectorGameState | ActorGameState) => {
     gameState.value = newState
     
     // 如果有动作结果，添加到日志消息中
@@ -101,6 +122,17 @@ export const useGameStateStore = defineStore('gameState', () => {
 
   const sendDirectorAction = (action: string, params: Record<string, any> = {}) => {
     webSocketService.sendDirectorAction(action, params)
+  }
+
+  const sendPlayerAction = (action: string, params: Record<string, any> = {}) => {
+    const message = {
+      type: 'player_action',
+      data: {
+        action,
+        ...params
+      }
+    }
+    webSocketService.sendMessage(message)
   }
 
   // 天气调节
@@ -158,7 +190,7 @@ export const useGameStateStore = defineStore('gameState', () => {
   // 玩家捆绑/松绑
   const togglePlayerBinding = (playerId: string) => {
     // 先获取玩家当前状态来决定是捆绑还是松绑
-    const player = players.value[playerId]
+    const player = directorPlayers.value[playerId]
     if (player) {
       if (player.is_bound) {
         // 松绑
@@ -225,11 +257,14 @@ export const useGameStateStore = defineStore('gameState', () => {
     // 计算属性
     globalState,
     gameData,
-    players,
-    places,
+    directorPlayers,
+    directorPlaces,
+    actorPlayer,
+    actorPlaces,
     actionResult,
     playerList,
-    placeList,
+    directorPlaceList,
+    actorPlaceList,
     
     // 操作
     connect,
@@ -238,6 +273,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     addLogMessage,
     clearLogMessages,
     sendDirectorAction,
+    sendPlayerAction,
     updateWeather,
     setNightTime,
     setDestroyPlaces,

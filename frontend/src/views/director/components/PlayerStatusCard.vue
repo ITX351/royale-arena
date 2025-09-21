@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
-import type { Player } from '@/types/directorGameState'
+import type { Player } from '@/types/gameStateTypes'
 
 // 定义组件属性
 const props = defineProps<{

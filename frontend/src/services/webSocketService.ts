@@ -1,5 +1,5 @@
 import { ElMessage } from 'element-plus'
-import type { DirectorGameState } from '@/types/directorGameState'
+import type { DirectorGameState } from '@/types/gameStateTypes'
 import { API_CONFIG } from './config'
 
 // WebSocket连接状态枚举
