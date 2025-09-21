@@ -76,7 +76,7 @@ impl WebSocketService {
 
                 // 根据用户类型处理连接
                 match user_type {
-                    ConnectionType::Player => {
+                    ConnectionType::Actor => {
                         self.handle_player_connection(socket, game_id, auth_request.password).await;
                     }
                     ConnectionType::Director => {
@@ -116,7 +116,7 @@ impl WebSocketService {
 
         // 根据用户类型验证密码
         match &auth_request.user_type {
-            ConnectionType::Player => {
+            ConnectionType::Actor => {
                 // 验证玩家密码
                 let actor = sqlx::query!(
                     "SELECT id FROM actors WHERE game_id = ? AND password = ?",
@@ -131,7 +131,7 @@ impl WebSocketService {
                     return Err("Invalid player password".to_string());
                 }
                 
-                Ok(ConnectionType::Player)
+                Ok(ConnectionType::Actor)
             }
             ConnectionType::Director => {
                 // 验证导演密码
@@ -194,7 +194,7 @@ impl WebSocketService {
         // 添加连接到连接管理器
         let connection_handle = self.connection_manager.add_connection(
             actor.id.clone(),
-            ConnectionType::Player,
+            ConnectionType::Actor,
             tx
         ).await;
 

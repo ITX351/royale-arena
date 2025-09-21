@@ -10,8 +10,8 @@ use crate::game::models::MessageType;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum ConnectionType {
     /// 玩家连接
-    #[serde(rename = "player")]
-    Player,
+    #[serde(rename = "actor")]
+    Actor,
     /// 导演连接
     #[serde(rename = "director")]
     Director,

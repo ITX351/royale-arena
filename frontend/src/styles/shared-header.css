@@ -1,0 +1,91 @@
+/* 导演和演员页面共享的Header组件样式 */
+
+.header-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-title h2 {
+  margin: 0;
+  color: #303133;
+  font-size: 24px;
+}
+
+.toggle-button {
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.game-status-line {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.game-id {
+  color: #909399;
+  font-size: 14px;
+}
+
+.game-details p {
+  margin: 0 0 8px 0;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.no-description {
+  font-style: italic;
+  color: #C0C4CC;
+}
+
+.game-stats {
+  display: flex;
+  gap: 24px;
+  color: #909399;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+/* 当详情隐藏时，隐藏Card的body部分 */
+.header-card :deep(.el-card__body) {
+  display: block;
+}
+
+.header-card.hide-body :deep(.el-card__body) {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .header-title h2 {
+    font-size: 20px;
+  }
+  
+  .game-status-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

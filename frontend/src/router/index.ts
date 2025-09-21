@@ -6,6 +6,7 @@ const HomePage = () => import('@/views/HomePage.vue')
 const GameDetailPage = () => import('@/views/GameDetailPage.vue')
 const PlayerInterface = () => import('@/views/PlayerInterface.vue')
 const DirectorMain = () => import('@/views/director/DirectorMain.vue')
+const ActorMain = () => import('@/views/actor/ActorMain.vue')
 const AdminLoginPage = () => import('@/views/admin/AdminLoginPage.vue')
 const AdminLayout = () => import('@/views/admin/AdminLayout.vue')
 const AdminGamesPage = () => import('@/views/admin/AdminGamesPage.vue')
@@ -47,11 +48,27 @@ const routes = [
     }
   },
   {
-    path: '/game/:id/:password',
-    name: 'GameDirectAccess',
+    path: '/game/:id/director/:password',
+    name: 'DirectorMainWithPassword',
     component: DirectorMain,
     meta: {
       title: '导演控制台'
+    }
+  },
+  {
+    path: '/game/:id/actor',
+    name: 'ActorMain',
+    component: ActorMain,
+    meta: {
+      title: '演员界面'
+    }
+  },
+  {
+    path: '/game/:id/actor/:password',
+    name: 'ActorMainWithPassword',
+    component: ActorMain,
+    meta: {
+      title: '演员界面'
     }
   },
   

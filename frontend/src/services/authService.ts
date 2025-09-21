@@ -75,12 +75,12 @@ export function handleAuthResult(
   if (authResult.role === 'director') {
     // 如果是导演身份，跳转到导演页面
     ElMessage.success('成功以导演身份进入控制台')
-    router.push(`/game/${gameId}/${encodeURIComponent(password)}`)
+    router.push(`/game/${gameId}/director/${encodeURIComponent(password)}`)
     return true
   } else if (authResult.role === 'actor') {
-    // 如果是演员身份，显示成功消息
+    // 如果是演员身份，跳转到演员页面
     ElMessage.success('成功以演员身份登录')
-    // 这里可以添加演员页面的跳转逻辑
+    router.push(`/game/${gameId}/actor/${encodeURIComponent(password)}`)
     return true
   }
   

@@ -31,8 +31,7 @@
           <!-- 题头组件 -->
           <Header 
             :game="game" 
-            :director-password="directorPassword"
-            @status-updated="handleStatusUpdated"
+            :actor-password="actorPassword"
           />
 
           <!-- WebSocket连接状态提示 -->
@@ -54,12 +53,11 @@
             class="shared-alert"
           />
 
-          <!-- 管理页面内容 -->
+          <!-- 状态页面内容 -->
           <component 
-            :is="currentManagementComponent" 
+            :is="currentStateComponent" 
             :game="gameWithData"
-            :director-password="directorPassword"
-            @refresh="refreshGame"
+            :actor-password="actorPassword"
           />
         </div>
 
@@ -80,18 +78,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { gameService } from '@/services/gameService'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
 
-// 组件导入 - 使用正确的相对路径
-import Header from './components/Header.vue'
-import PreGameManagement from './management/PreGameManagement.vue'
-import InGameManagement from './management/InGameManagement.vue'
-import PostGameManagement from './management/PostGameManagement.vue'
+// 组件导入
+import Header from '@/views/actor/components/Header.vue'
 import LogMessage from '@/components/LogMessage.vue'
+import PreGameState from './states/PreGameState.vue'
+import InGameState from './states/InGameState.vue'
+import OtherState from './states/OtherState.vue'
 
 // 引入公用样式
 import '@/styles/director-actor-layout.css'
@@ -104,7 +102,7 @@ const gameStateStore = useGameStateStore()
 const game = ref<GameWithRules | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
-const directorPassword = ref<string>('')
+const actorPassword = ref<string>('')
 
 // 计算属性
 const gameId = computed(() => route.params.id as string)
@@ -135,20 +133,21 @@ const gameWithData = computed(() => {
   return game.value
 })
 
-// 根据游戏状态映射到对应的管理组件
-const currentManagementComponent = computed(() => {
+// 根据游戏状态映射到对应的状态组件
+const currentStateComponent = computed(() => {
   if (!gameWithData.value) return null
   
+  // 状态组件映射关系
   const statusComponentMap: Record<string, any> = {
-    [GameStatus.WAITING]: PreGameManagement,
-    [GameStatus.RUNNING]: InGameManagement,
-    [GameStatus.PAUSED]: InGameManagement,
-    [GameStatus.ENDED]: PostGameManagement,
-    [GameStatus.HIDDEN]: PostGameManagement,
-    [GameStatus.DELETED]: PostGameManagement
+    [GameStatus.WAITING]: PreGameState,
+    [GameStatus.RUNNING]: InGameState,
+    [GameStatus.PAUSED]: InGameState,
+    [GameStatus.ENDED]: OtherState,
+    [GameStatus.HIDDEN]: OtherState,
+    [GameStatus.DELETED]: OtherState
   }
   
-  return statusComponentMap[gameWithData.value.status] || PostGameManagement
+  return statusComponentMap[gameWithData.value.status] || OtherState
 })
 
 // 判断是否应该显示日志消息组件
@@ -172,10 +171,10 @@ onUnmounted(() => {
 
 // 方法实现
 const checkURIPassword = () => {
-  // 匹配 /game/{gameId}/director/{password}
-  const match = route.fullPath.match(/\/game\/([^/]+)\/director\/([^/]+)$/)
-  if (match) {
-    directorPassword.value = decodeURIComponent(match[2])
+  // 匹配 /game/{gameId}/actor/{password} 或 /game/{gameId}/actor
+  const match = route.fullPath.match(/\/game\/([^/]+)\/actor\/?(.*)$/)
+  if (match && match[2]) {
+    actorPassword.value = decodeURIComponent(match[2])
   }
 }
 
@@ -189,17 +188,17 @@ const fetchGameDetail = async () => {
       game.value = response.data
       
       // 根据游戏状态处理WebSocket连接
-      if (response.data.status === GameStatus.RUNNING && directorPassword.value) {
-        // 如果游戏处于进行中状态，建立WebSocket连接（不阻塞页面加载）
+      if ((response.data.status === GameStatus.RUNNING || response.data.status === GameStatus.PAUSED) && actorPassword.value) {
+        // 如果游戏处于进行中或暂停状态，建立WebSocket连接（不阻塞页面加载）
         // 只有在之前没有连接时才连接
         if (!webSocketConnected.value) {
           // 异步连接WebSocket，不阻塞页面渲染
           connectWebSocket()
         }
-      } else if (response.data.status === GameStatus.PAUSED && webSocketConnected.value) {
-        // 如果游戏处于暂停状态且当前已连接，断开WebSocket连接
+      } else if (response.data.status !== GameStatus.RUNNING && response.data.status !== GameStatus.PAUSED && webSocketConnected.value) {
+        // 如果游戏不处于进行中或暂停状态且当前已连接，断开WebSocket连接
         gameStateStore.disconnect()
-        ElMessage.success('游戏已暂停，WebSocket连接已断开')
+        ElMessage.success('游戏状态已变更，WebSocket连接已断开')
       }
     } else {
       throw new Error(response.message || '获取游戏详情失败')
@@ -215,26 +214,18 @@ const fetchGameDetail = async () => {
 }
 
 const connectWebSocket = async () => {
-  if (!game.value || !directorPassword.value) return
+  if (!game.value || !actorPassword.value) return
   
   try {
-    await gameStateStore.connect(gameId.value, directorPassword.value, 'director')
+    // 连接时指定角色为玩家
+    await gameStateStore.connect(gameId.value, actorPassword.value, 'actor')
   } catch (err) {
     console.error('WebSocket连接失败:', err)
     ElMessage.error('连接游戏服务器失败')
   }
 }
 
-const refreshGame = async () => {
-  await fetchGameDetail()
-}
-
-const handleStatusUpdated = () => {
-  // 状态更新后刷新游戏信息
-  refreshGame()
-}
-
-// 监听WebSocket错误 - 修复类型问题
+// 监听WebSocket错误
 watch(webSocketError, (newError: string | null) => {
   if (newError) {
     ElMessage.error(`WebSocket错误: ${newError}`)

@@ -49,7 +49,7 @@ export const useGameStateStore = defineStore('gameState', () => {
   })
 
   // 操作
-  const connect = async (gameId: string, password: string) => {
+  const connect = async (gameId: string, password: string, userType: string) => {
     connecting.value = true
     error.value = null
     
@@ -57,8 +57,8 @@ export const useGameStateStore = defineStore('gameState', () => {
       // 添加WebSocket事件监听器
       webSocketService.addEventListener(handleWebSocketEvent)
       
-      // 连接到WebSocket
-      await webSocketService.connect(gameId, password)
+      // 连接到WebSocket，传递用户类型参数
+      await webSocketService.connect(gameId, password, userType)
       connected.value = true
     } catch (err) {
       console.error('连接WebSocket失败:', err)

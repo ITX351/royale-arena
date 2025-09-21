@@ -107,6 +107,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { ActionResult } from '@/types/directorGameState'
+import { formatTimestamp } from '@/utils/gameUtils'
 
 // 定义组件属性
 const props = defineProps<{
@@ -181,10 +182,6 @@ const displayedMessages = computed(() => {
 })
 
 // 方法实现
-const formatTimestamp = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString('zh-CN')
-}
-
 const getMessageTypeLabel = (type: string) => {
   const typeMap: Record<string, string> = {
     'SystemNotice': '系统消息',

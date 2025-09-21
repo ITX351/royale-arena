@@ -28,9 +28,10 @@ export class WebSocketService {
   private listeners: Array<(event: WebSocketEvent) => void> = []
   private gameId: string = ''
   private password: string = ''
+  private userType: string = '' // 默认为导演
 
   // 连接到WebSocket服务器
-  connect(gameId: string, password: string, timeout: number = API_CONFIG.TIMEOUT): Promise<void> {
+  connect(gameId: string, password: string, userType: string, timeout: number = API_CONFIG.TIMEOUT): Promise<void> {
     return new Promise((resolve, reject) => {
       // 如果已经连接，先断开
       if (this.ws) {
@@ -39,7 +40,8 @@ export class WebSocketService {
 
       this.gameId = gameId
       this.password = password
-      this.url = `${API_CONFIG.BASE_URL}/ws/${gameId}?user_type=director&password=${encodeURIComponent(password)}`
+      this.userType = userType // 保存用户类型
+      this.url = `${API_CONFIG.BASE_URL}/ws/${gameId}?user_type=${userType}&password=${encodeURIComponent(password)}`
       console.log('连接URL:', this.url)
       
       // 设置连接超时定时器
@@ -172,7 +174,7 @@ export class WebSocketService {
       ElMessage.warning(`连接断开，正在尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
 
       setTimeout(() => {
-        this.connect(this.gameId, this.password).catch(() => {
+        this.connect(this.gameId, this.password, this.userType).catch(() => {
           // 重连失败，继续尝试
           this.attemptReconnect()
         })

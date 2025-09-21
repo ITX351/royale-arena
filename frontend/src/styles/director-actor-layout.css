@@ -1,0 +1,96 @@
+/* 导演和演员页面共享的布局样式 */
+
+/* 主页面容器 */
+.shared-main {
+  min-height: 100vh;
+  padding: 24px;
+  background-color: #f5f7fa;
+}
+
+/* 加载容器 */
+.shared-loading-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 错误提示和连接提示 */
+.shared-alert {
+  max-width: 1200px;
+  margin: 0 auto 20px;
+}
+
+/* 内容容器 */
+.shared-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 主布局 */
+.shared-main-layout {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* 左右内容区域 */
+.shared-left-content {
+  flex: 7; /* 占70%宽度 */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.shared-right-content {
+  flex: 3; /* 占30%宽度 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 日志消息组件 */
+.shared-log-message {
+  height: auto; /* 高度自适应内容 */
+  min-height: 300px; /* 最小高度 */
+  max-height: 100%; /* 最大高度不超过父容器 */
+  flex: 1; /* 占据可用空间 */
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .shared-main {
+    padding: 16px;
+  }
+  
+  /* 移动端采用上下布局 */
+  .shared-main-layout {
+    flex-direction: column;
+  }
+  
+  .shared-left-content,
+  .shared-right-content {
+    flex: 1; /* 在移动端均分宽度 */
+  }
+  
+  .shared-log-message {
+    min-height: 250px; /* 移动端最小高度 */
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .shared-main-layout {
+    gap: 15px;
+  }
+  
+  .shared-log-message {
+    min-height: 280px; /* 平板设备最小高度 */
+  }
+}
+
+@media (min-width: 1025px) {
+  .shared-log-message {
+    min-height: 300px; /* 桌面端最小高度 */
+  }
+}

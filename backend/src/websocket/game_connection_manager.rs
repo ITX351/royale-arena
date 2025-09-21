@@ -59,7 +59,7 @@ impl GameConnectionManager {
 
         // 根据连接类型添加到对应的映射中
         match connection_type {
-            ConnectionType::Player => {
+            ConnectionType::Actor => {
                 let mut player_connections = self.player_connections.write().await;
                 player_connections.entry(user_id).or_insert_with(Vec::new).push(handle.clone());
             }
@@ -78,7 +78,7 @@ impl GameConnectionManager {
 
         // 从对应的用户连接列表中移除
         match handle.connection_type {
-            ConnectionType::Player => {
+            ConnectionType::Actor => {
                 let mut player_connections = self.player_connections.write().await;
                 if let Some(connections) = player_connections.get_mut(&handle.user_id) {
                     connections.retain(|conn| conn.id != handle.id);

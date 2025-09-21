@@ -83,6 +83,14 @@ import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
 import apiClient from '@/services/client'
 import { API_ENDPOINTS } from '@/services/config'
+import { 
+  formatGameStatus, 
+  getStatusTagType,
+  shouldShowStartButton,
+  shouldShowPauseButton,
+  shouldShowResumeButton,
+  shouldShowEndButton
+} from '@/utils/gameUtils'
 
 // Props
 const props = defineProps<{
@@ -104,36 +112,17 @@ const showDetails = ref(false)
 
 // 计算属性
 const statusDisplayText = computed(() => {
-  const statusMap: Record<string, string> = {
-    [GameStatus.WAITING]: '等待中',
-    [GameStatus.RUNNING]: '进行中',
-    [GameStatus.PAUSED]: '已暂停',
-    [GameStatus.ENDED]: '已结束',
-    [GameStatus.HIDDEN]: '已隐藏',
-    [GameStatus.DELETED]: '已删除'
-  }
-  return statusMap[props.game.status] || props.game.status
+  return formatGameStatus(props.game.status)
 })
 
 const statusTagType = computed(() => {
-  const typeMap: Record<string, 'info' | 'success' | 'warning' | 'danger'> = {
-    [GameStatus.WAITING]: 'info',
-    [GameStatus.RUNNING]: 'success',
-    [GameStatus.PAUSED]: 'warning',
-    [GameStatus.ENDED]: 'danger',
-    [GameStatus.HIDDEN]: 'danger',
-    [GameStatus.DELETED]: 'danger'
-  }
-  return typeMap[props.game.status] || 'info'
+  return getStatusTagType(props.game.status)
 })
 
-const showStartButton = computed(() => props.game.status === GameStatus.WAITING)
-const showPauseButton = computed(() => props.game.status === GameStatus.RUNNING)
-const showResumeButton = computed(() => props.game.status === GameStatus.PAUSED)
-const showEndButton = computed(() => 
-  props.game.status === GameStatus.RUNNING || 
-  props.game.status === GameStatus.PAUSED
-)
+const showStartButton = computed(() => shouldShowStartButton(props.game.status))
+const showPauseButton = computed(() => shouldShowPauseButton(props.game.status))
+const showResumeButton = computed(() => shouldShowResumeButton(props.game.status))
+const showEndButton = computed(() => shouldShowEndButton(props.game.status))
 
 // 方法实现
 const formatDate = (dateString: string) => {
@@ -239,40 +228,10 @@ const goHome = () => {
 </script>
 
 <style scoped>
+@import '@/styles/shared-header.css';
+
 .director-header {
   margin-bottom: 24px;
-}
-
-.header-card {
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-title h2 {
-  margin: 0;
-  color: #303133;
-  font-size: 24px;
-}
-
-.toggle-button {
-  font-size: 16px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
 }
 
 .header-actions {
@@ -280,63 +239,5 @@ const goHome = () => {
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
-}
-
-.game-status-line {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-
-.game-id {
-  color: #909399;
-  font-size: 14px;
-}
-
-.game-details p {
-  margin: 0 0 8px 0;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.no-description {
-  font-style: italic;
-  color: #C0C4CC;
-}
-
-.game-stats {
-  display: flex;
-  gap: 24px;
-  color: #909399;
-  font-size: 14px;
-  flex-wrap: wrap;
-}
-
-/* 当详情隐藏时，隐藏Card的body部分 */
-.header-card :deep(.el-card__body) {
-  display: block;
-}
-
-.header-card.hide-body :deep(.el-card__body) {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .header-title h2 {
-    font-size: 20px;
-  }
-  
-  .game-status-line {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
 }
 </style>
