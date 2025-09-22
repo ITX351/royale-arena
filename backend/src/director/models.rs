@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use crate::game::models::GameStatus;
+use crate::game::models::{GameStatus, SaveFileInfo};
 
 /// 批量添加演员请求
 #[derive(Debug, Deserialize)]
@@ -68,6 +68,48 @@ pub struct UpdateGameStatusRequest {
     pub password: String,
     /// 目标游戏状态
     pub status: GameStatus,
+    /// 存档文件名（可选，用于恢复游戏时指定从哪个存档恢复）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub save_file_name: Option<String>,
+}
+
+/// 手动存盘请求
+#[derive(Debug, Deserialize)]
+pub struct ManualSaveRequest {
+    /// 导演密码
+    pub password: String,
+}
+
+/// 手动存盘响应
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ManualSaveResponse {
+    /// 操作是否成功
+    pub success: bool,
+    /// 操作结果消息
+    pub message: String,
+    /// 存盘文件名
+    pub save_file_name: String,
+}
+
+/// 存档列表查询响应
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListSaveFilesResponse {
+    /// 操作是否成功
+    pub success: bool,
+    /// 存档文件信息列表
+    pub data: Vec<SaveFileInfo>,
+}
+
+/// 导演更新游戏状态响应
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateGameStatusResponse {
+    /// 操作是否成功
+    pub success: bool,
+    /// 操作结果消息
+    pub message: String,
+    /// 存盘文件名（仅在暂停游戏时返回）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub save_file_name: Option<String>,
 }
 
 impl CreatePlayerRequest {

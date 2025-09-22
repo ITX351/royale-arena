@@ -2,6 +2,7 @@ use sqlx::{MySqlPool, Row};
 use uuid::Uuid;
 use crate::director::{DirectorError, models::*};
 use crate::routes::AppState;
+use crate::game::models::SaveFileInfo;
 
 /// 导演服务层
 #[derive(Clone)]
@@ -343,14 +344,14 @@ impl DirectorService {
         // 初始化游戏内存状态
         let game = app_state.game_service.get_game_by_id(game_id).await
             .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
-        app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
-            .map_err(|e| DirectorError::OtherError { message: format!("Failed to initialize game state: {}", e) })?;
+        app_state.game_state_manager.create_game_state(game_id, game.rules_config).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to create game state: {}", e) })?;
         
         Ok(())
     }
 
     /// 暂停游戏（进行中 → 暂停）
-    pub async fn pause_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+    pub async fn pause_game(&self, app_state: &AppState, game_id: &str) -> Result<String, DirectorError> {
         // 更新数据库中游戏状态为 "paused"
         let result = sqlx::query!(
             "UPDATE games SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -365,10 +366,10 @@ impl DirectorService {
         }
         
         // 将当前游戏状态序列化并保存到磁盘文件
-        app_state.game_state_manager.save_game_state_to_disk(game_id).await
+        let save_file_name = app_state.game_state_manager.save_game_state_to_disk(game_id).await
             .map_err(|e| DirectorError::OtherError { message: format!("Failed to save game state to disk: {}", e) })?;
         
-        Ok(())
+        Ok(save_file_name)
     }
 
     /// 结束游戏（进行中 → 结束）
@@ -397,7 +398,13 @@ impl DirectorService {
     }
 
     /// 恢复游戏（暂停 → 进行中）
-    pub async fn resume_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+    pub async fn resume_game(&self, app_state: &AppState, game_id: &str, save_file_name: Option<String>) -> Result<(), DirectorError> {
+        // 检查是否提供了存档文件名
+        let file_name = match save_file_name {
+            Some(name) => name,
+            None => return Err(DirectorError::OtherError { message: "必须提供存档文件名".to_string() }),
+        };
+
         // 更新数据库中游戏状态为 "running"
         let result = sqlx::query!(
             "UPDATE games SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -411,10 +418,34 @@ impl DirectorService {
             return Err(DirectorError::GameNotFound);
         }
         
-        // 从磁盘文件中恢复游戏状态
-        app_state.game_state_manager.load_game_state_from_disk(game_id).await
+        // 从指定的存档文件中恢复游戏状态
+        app_state.game_state_manager.load_game_state_from_disk_with_name(game_id, &file_name).await
             .map_err(|e| DirectorError::OtherError { message: format!("Failed to load game state from disk: {}", e) })?;
         
         Ok(())
+    }
+
+    /// 手动存盘操作
+    pub async fn manual_save(&self, app_state: &AppState, game_id: &str, password: &str) -> Result<String, DirectorError> {
+        // 验证导演密码
+        self.verify_director_password(game_id, password).await?;
+        
+        // 执行存盘操作
+        let save_file_name = app_state.game_state_manager.save_game_state_to_disk(game_id).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to save game state to disk: {}", e) })?;
+        
+        Ok(save_file_name)
+    }
+
+    /// 查询存档文件列表
+    pub async fn list_save_files(&self, app_state: &AppState, game_id: &str, password: &str) -> Result<Vec<SaveFileInfo>, DirectorError> {
+        // 验证导演密码
+        self.verify_director_password(game_id, password).await?;
+        
+        // 获取存档文件列表
+        let save_files = app_state.game_state_manager.list_save_files(game_id).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to list save files: {}", e) })?;
+        
+        Ok(save_files)
     }
 }

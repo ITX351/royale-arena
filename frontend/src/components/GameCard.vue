@@ -7,7 +7,8 @@
           <p class="game-description" v-if="game.description">{{ game.description }}</p>
         </div>
         <el-tag 
-          :type="getGameStatusConfig(game.status).type" 
+          :type="getGameStatusConfig(game.status).type"
+          :color="getGameStatusConfig(game.status).color" 
           size="small"
           effect="dark"
         >
@@ -36,30 +37,32 @@
     <div class="game-actions">
       <!-- 快捷登录区域 -->
       <div class="quick-login" v-if="canQuickLogin">
-        <div class="login-input-group">
-          <el-input 
-            v-model="loginPassword" 
-            type="password"
-            placeholder="输入密码快速加入"
-            size="small"
-            show-password
-            @keyup.enter="handleQuickLogin"
-          >
-            <template #append>
-              <el-button 
-                type="primary" 
-                :loading="loginLoading"
-                @click="handleQuickLogin"
-                size="small"
-              >
-                登录
-              </el-button>
-            </template>
-          </el-input>
-        </div>
-        <div class="login-hint">
-          <span class="hint-text">输入密码后自动识别身份进入游戏</span>
-        </div>
+        <form @submit.prevent="handleQuickLogin" class="login-form">
+          <div class="login-input-group">
+            <el-input 
+              v-model="loginPassword" 
+              type="password"
+              placeholder="输入密码快速加入"
+              size="small"
+              show-password
+              @keyup.enter="handleQuickLogin"
+            >
+              <template #append>
+                <el-button 
+                  type="primary" 
+                  :loading="loginLoading"
+                  native-type="submit"
+                  size="small"
+                >
+                  登录
+                </el-button>
+              </template>
+            </el-input>
+          </div>
+          <div class="login-hint">
+            <span class="hint-text">输入密码后自动识别身份进入游戏</span>
+          </div>
+        </form>
       </div>
       
       <!-- 详情按钮 -->
@@ -162,6 +165,10 @@ const getGameStatusClass = (status: string) => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.login-form {
+  width: 100%;
 }
 
 .login-input-group {

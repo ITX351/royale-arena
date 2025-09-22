@@ -97,6 +97,59 @@ export class DirectorService {
   }
 
   /**
+   * 手动存盘游戏
+   */
+  async manualSaveGame(
+    gameId: string,
+    password: string
+  ): Promise<any> {
+    const response = await apiClient.post(
+      API_ENDPOINTS.DIRECTOR_SAVE_GAME(gameId),
+      { password }
+    )
+    return response.data
+  }
+
+  /**
+   * 获取存档文件列表
+   */
+  async listSaveFiles(
+    gameId: string,
+    password: string
+  ): Promise<any> {
+    const response = await apiClient.get(
+      API_ENDPOINTS.DIRECTOR_LIST_SAVES(gameId),
+      { params: { password } }
+    )
+    return response.data
+  }
+
+  /**
+   * 更新游戏状态
+   */
+  async updateGameStatus(
+    gameId: string,
+    password: string,
+    status: string,
+    saveFileName?: string
+  ): Promise<any> {
+    const requestData: any = {
+      password,
+      status
+    }
+    
+    if (saveFileName) {
+      requestData.save_file_name = saveFileName
+    }
+    
+    const response = await apiClient.put(
+      API_ENDPOINTS.DIRECTOR_UPDATE_STATUS(gameId),
+      requestData
+    )
+    return response.data
+  }
+
+  /**
    * 解析批量粘贴数据
    */
   parseBatchPasteData(

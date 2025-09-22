@@ -31,6 +31,14 @@
               暂停游戏
             </el-button>
             <el-button 
+              v-if="showSaveButton"
+              type="primary"
+              @click="saveGame"
+              :loading="actionLoading"
+            >
+              存盘游戏
+            </el-button>
+            <el-button 
               v-if="showResumeButton"
               type="success"
               @click="resumeGame"
@@ -71,6 +79,36 @@
         </div>
       </div>
     </el-card>
+    
+    <!-- 存档文件选择对话框 -->
+    <el-dialog
+      v-model="showSaveFileDialog"
+      title="选择存档文件"
+      width="500px"
+      :before-close="handleSaveFileClose"
+    >
+      <el-table 
+        :data="saveFiles" 
+        highlight-current-row
+        @current-change="handleSaveFileSelect"
+        style="width: 100%"
+      >
+        <el-table-column prop="file_name" label="文件名" />
+        <el-table-column prop="created_at" label="创建时间" :formatter="formatSaveFileTime" />
+      </el-table>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showSaveFileDialog = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="confirmResumeGame"
+            :disabled="!selectedSaveFile"
+          >
+            确认恢复
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -81,8 +119,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
-import apiClient from '@/services/client'
-import { API_ENDPOINTS } from '@/services/config'
+import { directorService } from '@/services/directorService'
 import { 
   formatGameStatus, 
   getStatusTagType,
@@ -109,6 +146,9 @@ const router = useRouter()
 // 响应式状态
 const actionLoading = ref(false)
 const showDetails = ref(false)
+const showSaveFileDialog = ref(false)
+const saveFiles = ref<any[]>([])
+const selectedSaveFile = ref<any>(null)
 
 // 计算属性
 const statusDisplayText = computed(() => {
@@ -121,6 +161,10 @@ const statusTagType = computed(() => {
 
 const showStartButton = computed(() => shouldShowStartButton(props.game.status))
 const showPauseButton = computed(() => shouldShowPauseButton(props.game.status))
+const showSaveButton = computed(() => {
+  // 存盘按钮在游戏状态为 RUNNING 或 PAUSED 时显示
+  return props.game.status === GameStatus.RUNNING
+})
 const showResumeButton = computed(() => shouldShowResumeButton(props.game.status))
 const showEndButton = computed(() => shouldShowEndButton(props.game.status))
 
@@ -129,7 +173,14 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
-const updateGameStatus = async (targetStatus: GameStatus) => {
+const formatSaveFileTime = (row: any) => {
+  if (row.created_at) {
+    return new Date(row.created_at).toLocaleString('zh-CN')
+  }
+  return '未知时间'
+}
+
+const updateGameStatus = async (targetStatus: GameStatus, saveFileName?: string) => {
   if (!props.directorPassword) {
     ElMessage.error('缺少导演密码')
     return
@@ -138,16 +189,18 @@ const updateGameStatus = async (targetStatus: GameStatus) => {
   actionLoading.value = true
   
   try {
-    const response = await apiClient.put(
-      `/game/${props.game.id}/status`,
-      { password: props.directorPassword, status: targetStatus }
+    const response = await directorService.updateGameStatus(
+      props.game.id,
+      props.directorPassword,
+      targetStatus,
+      saveFileName
     )
     
-    if (response.data.success) {
+    if (response.success) {
       ElMessage.success('游戏状态更新成功')
       emit('status-updated')
     } else {
-      throw new Error(response.data.message || '状态更新失败')
+      throw new Error(response.message || '状态更新失败')
     }
   } catch (error: any) {
     console.error('更新游戏状态失败:', error)
@@ -179,16 +232,16 @@ const confirmStartGame = () => {
 
 const pauseGame = () => {
   ElMessageBox.confirm(
-    '确定要暂停游戏吗？',
+    '确定要暂停游戏吗？暂停游戏会自动执行一次存盘。',
     '暂停游戏',
     {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     }
-  ).then(() => {
+  ).then(async () => {
     // 更新游戏状态为暂停
-    updateGameStatus(GameStatus.PAUSED)
+    await updateGameStatus(GameStatus.PAUSED)
     // 发送暂停游戏指令
     // 注意：这里我们不直接断开WebSocket连接，而是在DirectorMain中监听状态变化
     ElMessage.success('游戏已暂停')
@@ -197,8 +250,86 @@ const pauseGame = () => {
   })
 }
 
-const resumeGame = () => {
-  updateGameStatus(GameStatus.RUNNING)
+const saveGame = async () => {
+  if (!props.directorPassword) {
+    ElMessage.error('缺少导演密码')
+    return
+  }
+  
+  actionLoading.value = true
+  
+  try {
+    const response = await directorService.manualSaveGame(
+      props.game.id,
+      props.directorPassword
+    )
+    
+    if (response.success) {
+      ElMessage.success(`游戏状态已保存至: ${response.save_file_name}`)
+      emit('status-updated')
+    } else {
+      throw new Error(response.message || '存盘失败')
+    }
+  } catch (error: any) {
+    console.error('存盘失败:', error)
+    ElMessage.error(
+      error.response?.status === 401 
+        ? '导演密码错误' 
+        : (error.message || '存盘失败')
+    )
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const resumeGame = async () => {
+  if (!props.directorPassword) {
+    ElMessage.error('缺少导演密码')
+    return
+  }
+  
+  try {
+    // 获取存档文件列表
+    const response = await directorService.listSaveFiles(
+      props.game.id,
+      props.directorPassword
+    )
+    
+    if (response.success) {
+      saveFiles.value = response.data
+      selectedSaveFile.value = null
+      showSaveFileDialog.value = true
+    } else {
+      throw new Error(response.message || '获取存档列表失败')
+    }
+  } catch (error: any) {
+    console.error('获取存档列表失败:', error)
+    ElMessage.error(
+      error.response?.status === 401 
+        ? '导演密码错误' 
+        : (error.message || '获取存档列表失败')
+    )
+  }
+}
+
+const handleSaveFileSelect = (row: any) => {
+  selectedSaveFile.value = row
+}
+
+const handleSaveFileClose = () => {
+  showSaveFileDialog.value = false
+  selectedSaveFile.value = null
+}
+
+const confirmResumeGame = async () => {
+  if (!selectedSaveFile.value) {
+    ElMessage.warning('请选择一个存档文件')
+    return
+  }
+  
+  showSaveFileDialog.value = false
+  await updateGameStatus(GameStatus.RUNNING, selectedSaveFile.value.file_name)
+  selectedSaveFile.value = null
 }
 
 const confirmEndGame = () => {

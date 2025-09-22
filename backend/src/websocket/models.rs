@@ -47,15 +47,15 @@ pub struct WebSocketClientMessage {
     pub data: JsonValue,
 }
 
-/// WebSocket服务端消息
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct WebSocketServerMessage {
-    /// 消息类型
-    #[serde(rename = "type")]
-    pub message_type: WebSocketMessageType,
-    /// 消息数据
-    pub data: JsonValue,
-}
+// /// WebSocket服务端消息
+// #[derive(Debug, Clone, Deserialize, Serialize)]
+// pub struct WebSocketServerMessage {
+//     /// 消息类型
+//     #[serde(rename = "type")]
+//     pub message_type: WebSocketMessageType,
+//     /// 消息数据
+//     pub data: JsonValue,
+// }
 
 /// 游戏阶段枚举
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

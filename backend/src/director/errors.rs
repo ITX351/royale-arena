@@ -66,7 +66,7 @@ impl IntoResponse for DirectorError {
             DirectorError::InvalidTeamId { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::GameIdMismatch { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::InvalidGameStateTransition => (StatusCode::BAD_REQUEST, self.to_string()),
-            DirectorError::OtherError { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
+            DirectorError::OtherError { .. } => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             DirectorError::ValidationError { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             DirectorError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error occurred".to_string()),
             DirectorError::UuidError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "UUID generation error".to_string()),

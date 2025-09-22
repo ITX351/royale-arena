@@ -77,30 +77,100 @@ pub async fn update_game_status(
     // 验证导演密码
     state.director_service.verify_director_password(&game_id, &request.password).await?;
     
+    // 获取当前游戏状态
+    let game = state.game_service.get_game_by_id(&game_id).await
+        .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
+    
     // 根据目标状态调用对应的导演服务方法
-    let result = match request.status {
+    let result: Result<UpdateGameStatusResponse, DirectorError> = match request.status {
         GameStatus::Running => {
-            // 检查当前状态是否允许转换到Running
-            let game = state.game_service.get_game_by_id(&game_id).await
-                .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
-            
             match game.status {
-                GameStatus::Waiting => state.director_service.start_game(&state, &game_id).await,
-                GameStatus::Paused => state.director_service.resume_game(&state, &game_id).await,
+                GameStatus::Waiting => {
+                    state.director_service.start_game(&state, &game_id).await?;
+                    Ok(UpdateGameStatusResponse {
+                        success: true,
+                        message: "Game started successfully".to_string(),
+                        save_file_name: None,
+                    })
+                },
+                GameStatus::Paused => {
+                    state.director_service.resume_game(&state, &game_id, request.save_file_name).await?;
+                    Ok(UpdateGameStatusResponse {
+                        success: true,
+                        message: "Game resumed successfully".to_string(),
+                        save_file_name: None,
+                    })
+                },
                 _ => return Err(DirectorError::InvalidGameStateTransition),
             }
         },
-        GameStatus::Paused => state.director_service.pause_game(&state, &game_id).await,
-        GameStatus::Ended => state.director_service.end_game(&state, &game_id).await,
+        GameStatus::Paused => {
+            // 只有在运行状态才能暂停
+            match game.status {
+                GameStatus::Running => {
+                    let save_file_name = state.director_service.pause_game(&state, &game_id).await?;
+                    Ok(UpdateGameStatusResponse {
+                        success: true,
+                        message: "Game paused successfully".to_string(),
+                        save_file_name: Some(save_file_name),
+                    })
+                },
+                _ => return Err(DirectorError::InvalidGameStateTransition),
+            }
+        },
+        GameStatus::Ended => {
+            // 只有在运行或暂停状态才能结束
+            match game.status {
+                GameStatus::Running | GameStatus::Paused => {
+                    state.director_service.end_game(&state, &game_id).await?;
+                    Ok(UpdateGameStatusResponse {
+                        success: true,
+                        message: "Game ended successfully".to_string(),
+                        save_file_name: None,
+                    })
+                },
+                _ => return Err(DirectorError::InvalidGameStateTransition),
+            }
+        },
         _ => return Err(DirectorError::InvalidGameStateTransition),
     };
     
-    result?;
+    let response = result?;
     
-    Ok(Json(json!({
-        "success": true,
-        "message": "Game status updated successfully"
-    })))
+    Ok(Json(json!(response)))
+}
+
+/// 手动存盘接口
+pub async fn manual_save(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Json(request): Json<ManualSaveRequest>,
+) -> Result<Json<serde_json::Value>, DirectorError> {
+    let save_file_name = state.director_service.manual_save(&state, &game_id, &request.password).await?;
+    
+    let response = ManualSaveResponse {
+        success: true,
+        message: "Game state saved successfully".to_string(),
+        save_file_name,
+    };
+    
+    Ok(Json(json!(response)))
+}
+
+/// 查询存档文件列表接口
+pub async fn list_save_files(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(query): Query<DirectorPasswordQuery>,
+) -> Result<Json<serde_json::Value>, DirectorError> {
+    let save_files = state.director_service.list_save_files(&state, &game_id, &query.password).await?;
+    
+    let response = ListSaveFilesResponse {
+        success: true,
+        data: save_files,
+    };
+    
+    Ok(Json(json!(response)))
 }
 
 #[cfg(test)]

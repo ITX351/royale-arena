@@ -51,6 +51,15 @@ impl FromStr for GameStatus {
     }
 }
 
+/// 存档文件信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SaveFileInfo {
+    /// 文件名
+    pub file_name: String,
+    /// 创建时间
+    pub created_at: Option<DateTime<Utc>>,
+}
+
 /// 游戏实体模型
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Game {

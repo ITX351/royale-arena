@@ -19,7 +19,7 @@ use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
 use director::DirectorService;
-use game::{GameService, global_game_state_manager::GlobalGameStateManager};
+use game::{GameService, global_game_state_manager::GlobalGameStateManager, SystemInitializer};
 use routes::create_routes;
 use rule_template::RuleTemplateService;
 
@@ -42,6 +42,11 @@ async fn main() {
     let pool = create_pool(&config)
         .await
         .expect("Failed to create database pool");
+
+    // 系统初始化
+    if let Err(e) = SystemInitializer::initialize_game_states(&pool).await {
+        eprintln!("系统初始化错误: {}", e);
+    }
 
     // 创建 JWT 管理器
     let jwt_manager = JwtManager::new(&config.jwt_secret, config.jwt_expiration_hours);

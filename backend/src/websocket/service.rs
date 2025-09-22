@@ -171,8 +171,8 @@ impl WebSocketService {
         .unwrap(); // 已经验证过密码，这里不会失败
 
         let init_msg = {
-            let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
-            let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
+            // let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
+            let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id).await.unwrap();
             let game_state_guard = game_state_ref.read().await;
 
             // 检查玩家是否在游戏状态中
@@ -233,8 +233,8 @@ impl WebSocketService {
         _director_password: String,
     ) {
         let init_msg = {
-            let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
-            let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id, game.rules_config).await.unwrap();
+            // let game = self.app_state.game_service.get_game_by_id(&game_id).await.unwrap();
+            let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id).await.unwrap();
             let game_state_guard = game_state_ref.read().await;
 
             // 生成导演初始状态消息，action_result为空
@@ -333,13 +333,13 @@ impl WebSocketService {
             .ok_or("Missing action field")?;
         
         // 获取游戏状态引用
-        let game = self.app_state.game_service.get_game_by_id(game_id).await
-            .map_err(|e| format!("Failed to get game: {}", e))?;
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
+        // let game = self.app_state.game_service.get_game_by_id(game_id).await
+        //     .map_err(|e| format!("Failed to get game: {}", e))?;
+        let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id).await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
 
-        // 获取可写的游戏状态锁
         let result = {
+            // 获取可写的游戏状态锁
             let mut game_state = game_state_ref.write().await;
 
             // 根据行动类型处理
@@ -444,12 +444,12 @@ impl WebSocketService {
         // 获取行动类型
         let action = action_data.get("action").and_then(|v| v.as_str())
             .ok_or("Missing action field")?;
-        
         // 获取游戏状态引用
-        let game = self.app_state.game_service.get_game_by_id(game_id).await
-            .map_err(|e| format!("Failed to get game: {}", e))?;
-        let game_state_ref = self.app_state.game_state_manager.get_game_state(game_id, game.rules_config).await
+        // let game = self.app_state.game_service.get_game_by_id(game_id).await
+        //     .map_err(|e| format!("Failed to get game: {}", e))?;
+        let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id).await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
+
         let result = {
             let mut game_state = game_state_ref.write().await;
             match action {

@@ -8,10 +8,11 @@ use sqlx::MySqlPool;
 use std::fs;
 use std::path::Path;
 use dashmap::DashMap;
+use chrono::{DateTime, Utc};
 
 // 从websocket模块导入游戏模型
 use crate::websocket::models::{GameState, Player, Place};
-use crate::game::models::GameStatus;
+use crate::game::models::{GameStatus, SaveFileInfo};
 
 /// 全局游戏状态管理器
 #[derive(Clone)]
@@ -31,24 +32,22 @@ impl GlobalGameStateManager {
         }
     }
 
-    /// 获取游戏状态（如果不存在则创建）
-    pub async fn get_game_state(&self, game_id: &str, rules_config: JsonValue) -> Result<Arc<RwLock<GameState>>, String> {
+    /// 获取游戏状态（如果不存在则返回错误）
+    pub async fn get_game_state(&self, game_id: &str) -> Result<Arc<RwLock<GameState>>, String> {
         // 检查内存中是否已存在游戏状态
         if let Some(game_state) = self.game_states.get(game_id) {
             return Ok(game_state.clone());
         }
 
-        // 从磁盘加载或创建新的游戏状态
-        match self.load_game_state_from_disk(game_id).await {
-            Ok(()) => {
-                // 加载成功，返回内存中的状态
-                if let Some(game_state) = self.game_states.get(game_id) {
-                    return Ok(game_state.clone());
-                }
-            }
-            Err(_) => {
-                // 加载失败，创建新的游戏状态
-            }
+        // 如果内存中不存在游戏状态，返回错误
+        Err("Game state not found in memory".to_string())
+    }
+
+    /// 创建新的游戏状态（仅由首次开始游戏时调用）
+    pub async fn create_game_state(&self, game_id: &str, rules_config: JsonValue) -> Result<Arc<RwLock<GameState>>, String> {
+        // 检查内存中是否已存在游戏状态
+        if self.game_states.contains_key(game_id) {
+            return Err("Game state already exists".to_string());
         }
 
         // 创建新的游戏状态
@@ -92,19 +91,30 @@ impl GlobalGameStateManager {
         Ok(game_state_arc)
     }
 
-    /// 保存游戏状态到磁盘
-    pub async fn save_game_state_to_disk(&self, game_id: &str) -> Result<(), String> {
+    /// 保存游戏状态到磁盘（使用时间戳生成文件名）
+    pub async fn save_game_state_to_disk(&self, game_id: &str) -> Result<String, String> {
+        // 生成带时间戳的文件名（使用Windows兼容格式）
+        let timestamp = Utc::now().format("%Y-%m-%dT%H-%M-%S%.3fZ").to_string();
+        let file_name = format!("{}.json", timestamp);
+        
+        self.save_game_state_to_disk_with_name(game_id, &file_name).await?;
+        Ok(file_name)
+    }
+
+    /// 保存游戏状态到磁盘（指定文件名）
+    pub async fn save_game_state_to_disk_with_name(&self, game_id: &str, file_name: &str) -> Result<(), String> {
         if let Some(game_state) = self.game_states.get(game_id) {
             let game_state_guard = game_state.read().await;
             let serialized = serde_json::to_string(&*game_state_guard)
                 .map_err(|e| format!("Failed to serialize game state: {}", e))?;
 
-            let file_path = format!("game_states/{}.json", game_id);
+            let file_path = format!("game_states/{}/{}", game_id, file_name);
             if let Some(parent) = Path::new(&file_path).parent() {
                 fs::create_dir_all(parent)
                     .map_err(|e| format!("Failed to create directory: {}", e))?;
             }
 
+            tracing::debug!("Saving game state to disk: {}", file_path);
             fs::write(&file_path, serialized)
                 .map_err(|e| format!("Failed to write game state to disk: {}", e))?;
 
@@ -114,9 +124,9 @@ impl GlobalGameStateManager {
         }
     }
 
-    /// 从磁盘恢复游戏状态
-    pub async fn load_game_state_from_disk(&self, game_id: &str) -> Result<(), String> {
-        let file_path = format!("game_states/{}.json", game_id);
+    /// 从磁盘恢复游戏状态（指定文件名）
+    pub async fn load_game_state_from_disk_with_name(&self, game_id: &str, file_name: &str) -> Result<(), String> {
+        let file_path = format!("game_states/{}/{}", game_id, file_name);
         if !Path::new(&file_path).exists() {
             return Err("Game state file not found".to_string());
         }
@@ -132,6 +142,68 @@ impl GlobalGameStateManager {
 
         Ok(())
     }
+
+    /// 获取指定游戏的所有存档文件列表
+    pub async fn list_save_files(&self, game_id: &str) -> Result<Vec<SaveFileInfo>, String> {
+        let dir_path = format!("game_states/{}", game_id);
+        if !Path::new(&dir_path).exists() {
+            return Ok(vec![]); // 如果目录不存在，返回空列表
+        }
+
+        let mut save_files = Vec::new();
+        
+        // 读取目录中的所有文件
+        let entries = fs::read_dir(&dir_path)
+            .map_err(|e| format!("Failed to read directory: {}", e))?;
+        
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            // 只处理.json文件
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+                if let Some(file_name) = path.file_name().and_then(|name| name.to_str()) {
+                    // 尝试从文件名解析时间戳
+                    // 文件名格式: 2023-01-01T10-00-00.000Z.json (Windows兼容格式)
+                    let created_at = if let Some(timestamp_str) = file_name.strip_suffix(".json") {
+                        // 将Windows兼容格式转换回ISO 8601格式进行解析
+                        // 将 "T" 后面的 "-" 替换为 ":" 来构造有效的 RFC3339 时间字符串
+                        if let Some(t_pos) = timestamp_str.find('T') {
+                            let (date_part, time_part) = timestamp_str.split_at(t_pos + 1);
+                            let time_part = time_part.replace("-", ":");
+                            let iso_timestamp = format!("{}{}", date_part, time_part);
+                            DateTime::parse_from_rfc3339(&iso_timestamp)
+                                .map(|dt| Some(dt.with_timezone(&Utc)))
+                                .unwrap_or(None) // 如果解析失败，使用None
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    
+                    save_files.push(SaveFileInfo {
+                        file_name: file_name.to_string(),
+                        created_at,
+                    });
+                }
+            }
+        }
+        
+        // 按创建时间排序，最新的在前
+        save_files.sort_by(|a, b| {
+            // 处理None值的情况
+            match (&a.created_at, &b.created_at) {
+                (Some(a_time), Some(b_time)) => b_time.cmp(a_time),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            }
+        });
+        
+        Ok(save_files)
+    }
+
     /// 检查游戏是否接受连接
     pub async fn is_status_accepting_connections(status: &GameStatus) -> bool {
         match status {

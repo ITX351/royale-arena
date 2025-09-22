@@ -22,5 +22,8 @@ export const API_ENDPOINTS = {
   // 导演控制台相关
   DIRECTOR_PLAYERS: (gameId: string) => `/game/${gameId}/players`,
   DIRECTOR_BATCH_ADD: (gameId: string) => `/game/${gameId}/players`,
-  DIRECTOR_BATCH_DELETE: (gameId: string) => `/game/${gameId}/players`
+  DIRECTOR_BATCH_DELETE: (gameId: string) => `/game/${gameId}/players`,
+  DIRECTOR_SAVE_GAME: (gameId: string) => `/game/${gameId}/save`,
+  DIRECTOR_LIST_SAVES: (gameId: string) => `/game/${gameId}/saves`,
+  DIRECTOR_UPDATE_STATUS: (gameId: string) => `/game/${gameId}/status`
 }

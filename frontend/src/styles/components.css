@@ -57,7 +57,7 @@
 }
 
 .game-card--paused {
-  border-left: 4px solid #E6A23C;
+  border-left: 4px solid #409eff;
 }
 
 .game-card--ended {

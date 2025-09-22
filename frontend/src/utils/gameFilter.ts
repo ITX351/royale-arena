@@ -18,8 +18,8 @@ export function getGameStatusConfig(status: GameStatus) {
     case 'paused':
       return {
         text: '已暂停',
-        type: 'warning' as const,
-        color: '#E6A23C'
+        type: 'primary' as const,
+        color: '#409eff'
       }
     case 'ended':
       return {
