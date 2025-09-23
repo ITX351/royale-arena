@@ -96,7 +96,9 @@
         "properties": {
           "damage": 50,
           "uses": 5,
-          "votes": 5
+          "votes": 5,
+          "aoe_damage": 40,
+          "bleed_damage": 10
         }
       }
     ],

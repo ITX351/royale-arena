@@ -177,13 +177,10 @@
                                     </el-table-column>
                                     <el-table-column label="属性">
                                       <template #default="scope">
-                                        <div>
-                                          <div>伤害: {{ scope.row.properties.damage }}</div>
-                                          <div v-if="scope.row.properties.uses">使用次数: {{ scope.row.properties.uses }}</div>
+                                        <div v-if="scope.row.properties.uses !== undefined">使用次数: {{ scope.row.properties.uses }}</div>
                                           <div>票数: {{ scope.row.properties.votes }}</div>
-                                          <div v-if="scope.row.properties.aoeDamage">范围伤害: {{ scope.row.properties.aoeDamage }}</div>
-                                          <div v-if="scope.row.properties.bleedDamage">流血伤害: {{ scope.row.properties.bleedDamage }}</div>
-                                        </div>
+                                          <div v-if="scope.row.properties.aoeDamage !== undefined">范围伤害: {{ scope.row.properties.aoeDamage }}</div>
+                                          <div v-if="scope.row.properties.bleedDamage !== undefined">流血伤害: {{ scope.row.properties.bleedDamage }}</div>
                                       </template>
                                     </el-table-column>
                                   </el-table>
@@ -607,6 +604,8 @@ watch(activeDocTab, (newTab) => {
   border-radius: 4px;
   line-height: 1.6;
   text-align: left;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .documentation-content h1,
