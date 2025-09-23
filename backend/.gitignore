@@ -9,7 +9,7 @@ Cargo.lock
 # IDE files
 *.swp
 *.swo
-*.json
+game_states/
 
 # Environment files
 .env

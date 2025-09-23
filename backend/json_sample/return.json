@@ -1,0 +1,183 @@
+{
+    "data": {
+        "action_result": null,
+        "game_data": {
+            "places": {
+                "井": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "井",
+                    "players": []
+                },
+                "住宅区": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "住宅区",
+                    "players": []
+                },
+                "医院": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "医院",
+                    "players": []
+                },
+                "墓园": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "墓园",
+                    "players": []
+                },
+                "学校": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "学校",
+                    "players": []
+                },
+                "寺庙": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "寺庙",
+                    "players": []
+                },
+                "小巷": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "小巷",
+                    "players": []
+                },
+                "山道": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "山道",
+                    "players": []
+                },
+                "工厂": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "工厂",
+                    "players": []
+                },
+                "市政厅": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "市政厅",
+                    "players": []
+                },
+                "教堂": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "教堂",
+                    "players": []
+                },
+                "旅馆": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "旅馆",
+                    "players": []
+                },
+                "森林": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "森林",
+                    "players": []
+                },
+                "池塘": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "池塘",
+                    "players": []
+                },
+                "海滩": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "海滩",
+                    "players": []
+                },
+                "消防局": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "消防局",
+                    "players": []
+                },
+                "灯塔": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "灯塔",
+                    "players": []
+                },
+                "码头": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "码头",
+                    "players": []
+                },
+                "研究中心": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "研究中心",
+                    "players": []
+                },
+                "贫民窟": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "贫民窟",
+                    "players": []
+                },
+                "隧道": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "隧道",
+                    "players": []
+                },
+                "靶场": {
+                    "is_destroyed": false,
+                    "items": [],
+                    "name": "靶场",
+                    "players": []
+                }
+            },
+            "players": {
+                "46ed5b39-0231-4f0e-af45-f18535bbb19a": {
+                    "equipped_item": null,
+                    "hand_item": null,
+                    "id": "46ed5b39-0231-4f0e-af45-f18535bbb19a",
+                    "inventory": [],
+                    "is_alive": true,
+                    "is_bound": false,
+                    "last_search_result": null,
+                    "last_search_time": null,
+                    "life": 100,
+                    "location": "",
+                    "name": "公山妖",
+                    "rest_mode": false,
+                    "strength": 100,
+                    "votes": 0
+                },
+                "51370063-6c60-48df-b2eb-893ecd420cfa": {
+                    "equipped_item": null,
+                    "hand_item": null,
+                    "id": "51370063-6c60-48df-b2eb-893ecd420cfa",
+                    "inventory": [],
+                    "is_alive": true,
+                    "is_bound": false,
+                    "last_search_result": null,
+                    "last_search_time": null,
+                    "life": 100,
+                    "location": "",
+                    "name": "楚寒镜",
+                    "rest_mode": false,
+                    "strength": 100,
+                    "votes": 0
+                }
+            }
+        },
+        "global_state": {
+            "game_phase": "day",
+            "next_night_destroyed_places": [],
+            "night_end_time": null,
+            "night_start_time": null,
+            "weather": 1
+        }
+    },
+    "type": "game_state"
+}

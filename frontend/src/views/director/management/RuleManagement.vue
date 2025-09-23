@@ -55,26 +55,230 @@
                 </template>
               </el-alert>
               
-              <el-row :gutter="24">
-                <el-col :span="24" :md="12">
-                  <div class="editor-container">
-                    <prism-editor
-                      v-model="editableRules"
-                      language="json"
-                      :highlight="highlighter"
-                      line-numbers
-                      class="code-editor"
-                    />
-                  </div>
-                </el-col>
+              <el-tabs v-model="activeTab" class="rules-tabs">
+                <el-tab-pane label="JSON编辑器" name="editor">
+                  <el-row :gutter="24">
+                    <el-col :span="24" :md="12">
+                      <div class="editor-container">
+                        <prism-editor
+                          v-model="editableRules"
+                          language="json"
+                          :highlight="highlighter"
+                          line-numbers
+                          class="code-editor"
+                        />
+                      </div>
+                    </el-col>
+                    
+                    <el-col :span="24" :md="12">
+                      <div class="rules-parser-inline">
+                        <el-alert
+                          v-if="parsedRules.missingSections.length > 0"
+                          title="缺失的规则部分"
+                          type="warning"
+                          show-icon
+                          :closable="false"
+                          class="parser-warning"
+                        >
+                          <template #default>
+                            <p>以下规则部分缺失或未配置：</p>
+                            <ul>
+                              <li v-for="section in parsedRules.missingSections" :key="section">
+                                {{ section }}
+                              </li>
+                            </ul>
+                          </template>
+                        </el-alert>
+                        
+                        <el-alert
+                          v-if="parsedRules.parsingIssues.length > 0"
+                          title="解析问题"
+                          type="error"
+                          show-icon
+                          :closable="false"
+                          class="parser-error"
+                        >
+                          <template #default>
+                            <ul>
+                              <li v-for="issue in parsedRules.parsingIssues" :key="issue">
+                                {{ issue }}
+                              </li>
+                            </ul>
+                          </template>
+                        </el-alert>
+                        
+                        <el-collapse v-model="activeParserPanels" accordion>
+                          <el-collapse-item title="基础规则" name="basic">
+                            <div class="parser-section">
+                              <el-row :gutter="16">
+                                <el-col :span="12">
+                                  <h4>地图配置</h4>
+                                  <p><strong>地点数量：</strong>{{ parsedRules.map.places.length }}</p>
+                                  <p><strong>安全区域：</strong>{{ parsedRules.map.safePlaces.join(', ') || '无' }}</p>
+                                  <div>
+                                    <strong>地点列表：</strong>
+                                    <el-tag v-for="place in parsedRules.map.places" :key="place" style="margin: 2px;">{{ place }}</el-tag>
+                                  </div>
+                                </el-col>
+                                <el-col :span="12">
+                                  <h4>玩家配置</h4>
+                                  <p><strong>最大生命值：</strong>{{ parsedRules.player.maxLife }}</p>
+                                  <p><strong>最大体力值：</strong>{{ parsedRules.player.maxStrength }}</p>
+                                  <p><strong>每日体力恢复：</strong>{{ parsedRules.player.dailyStrengthRecovery }}</p>
+                                  <p><strong>搜索冷却时间：</strong>{{ parsedRules.player.searchCooldown }}秒</p>
+                                  <p><strong>最大装备武器数：</strong>{{ parsedRules.player.maxEquippedWeapons }}</p>
+                                  <p><strong>最大装备护甲数：</strong>{{ parsedRules.player.maxEquippedArmors }}</p>
+                                  <p><strong>背包最大物品数：</strong>{{ parsedRules.player.maxBackpackItems }}</p>
+                                </el-col>
+                              </el-row>
+                              
+                              <el-row :gutter="16">
+                                <el-col :span="12">
+                                  <h4>行动消耗</h4>
+                                  <p><strong>移动：</strong>{{ parsedRules.actionCosts.move }}体力</p>
+                                  <p><strong>搜索：</strong>{{ parsedRules.actionCosts.search }}体力</p>
+                                  <p><strong>拾取：</strong>{{ parsedRules.actionCosts.pick }}体力</p>
+                                  <p><strong>攻击：</strong>{{ parsedRules.actionCosts.attack }}体力</p>
+                                </el-col>
+                                <el-col :span="12">
+                                  <h4>静养模式</h4>
+                                  <p><strong>生命恢复：</strong>{{ parsedRules.restMode.lifeRecovery }}点</p>
+                                  <p><strong>最大移动次数：</strong>{{ parsedRules.restMode.maxMoves }}次</p>
+                                  <p><strong>队友行为规则：</strong>{{ parsedRules.teammateBehavior }}</p>
+                                </el-col>
+                              </el-row>
+                            </div>
+                          </el-collapse-item>
+                          
+                          <el-collapse-item title="物品系统" name="items">
+                            <div class="parser-section">
+                              <el-tabs v-model="activeItemTab" type="card">
+                                <el-tab-pane label="稀有度级别" name="rarity">
+                                  <el-table :data="parsedRules.items.rarityLevels" style="width: 100%">
+                                    <el-table-column prop="name" label="内部名称" />
+                                    <el-table-column prop="displayName" label="显示名称" />
+                                    <el-table-column prop="prefix" label="前缀" />
+                                    <el-table-column label="是否空投">
+                                      <template #default="scope">
+                                        {{ scope.row.isAirdropped ? '是' : '否' }}
+                                      </template>
+                                    </el-table-column>
+                                  </el-table>
+                                </el-tab-pane>
+                                
+                                <el-tab-pane label="武器" name="weapons">
+                                  <el-table :data="parsedRules.items.weapons" style="width: 100%">
+                                    <el-table-column prop="internalName" label="内部名称" />
+                                    <el-table-column prop="rarity" label="稀有度" />
+                                    <el-table-column label="显示名称">
+                                      <template #default="scope">
+                                        {{ scope.row.displayNames.join(', ') }}
+                                      </template>
+                                    </el-table-column>
+                                    <el-table-column label="属性">
+                                      <template #default="scope">
+                                        <div>
+                                          <div>伤害: {{ scope.row.properties.damage }}</div>
+                                          <div v-if="scope.row.properties.uses">使用次数: {{ scope.row.properties.uses }}</div>
+                                          <div>票数: {{ scope.row.properties.votes }}</div>
+                                          <div v-if="scope.row.properties.aoeDamage">范围伤害: {{ scope.row.properties.aoeDamage }}</div>
+                                          <div v-if="scope.row.properties.bleedDamage">流血伤害: {{ scope.row.properties.bleedDamage }}</div>
+                                        </div>
+                                      </template>
+                                    </el-table-column>
+                                  </el-table>
+                                </el-tab-pane>
+                                
+                                <el-tab-pane label="其他物品" name="other">
+                                  <el-table :data="parsedRules.items.otherItems" style="width: 100%">
+                                    <el-table-column prop="name" label="名称" />
+                                    <el-table-column prop="category" label="类别" />
+                                    <el-table-column label="属性">
+                                      <template #default="scope">
+                                        <div>
+                                          <div v-if="scope.row.properties.uses">使用次数: {{ scope.row.properties.uses }}</div>
+                                          <div>票数: {{ scope.row.properties.votes }}</div>
+                                          <div v-if="scope.row.properties.targets">目标数: {{ scope.row.properties.targets }}</div>
+                                          <div v-if="scope.row.properties.damage">伤害: {{ scope.row.properties.damage }}</div>
+                                        </div>
+                                      </template>
+                                    </el-table-column>
+                                  </el-table>
+                                </el-tab-pane>
+                                
+                                <el-tab-pane label="升级道具" name="upgraders">
+                                  <el-table :data="parsedRules.items.upgraders" style="width: 100%">
+                                    <el-table-column prop="internalName" label="内部名称" />
+                                    <el-table-column prop="rarity" label="稀有度" />
+                                    <el-table-column label="显示名称">
+                                      <template #default="scope">
+                                        {{ scope.row.displayNames.join(', ') }}
+                                      </template>
+                                    </el-table-column>
+                                  </el-table>
+                                </el-tab-pane>
+                                
+                                <el-tab-pane label="合成配方" name="recipes">
+                                  <div v-for="(recipes, upgrader) in parsedRules.items.upgradeRecipes" :key="upgrader">
+                                    <h4>{{ upgrader }}</h4>
+                                    <el-table :data="recipes" style="width: 100%">
+                                      <el-table-column prop="result" label="结果" />
+                                      <el-table-column label="材料">
+                                        <template #default="scope">
+                                          {{ scope.row.ingredients.join(', ') }}
+                                        </template>
+                                      </el-table-column>
+                                    </el-table>
+                                  </div>
+                                </el-tab-pane>
+                                <el-tab-pane label="消耗品" name="consumables">
+                                  <el-table :data="parsedRules.items.consumables" style="width: 100%">
+                                    <el-table-column prop="name" label="名称" />
+                                    <el-table-column prop="effectType" label="效果类型" />
+                                    <el-table-column prop="effectValue" label="效果值" />
+                                    <el-table-column label="治愈流血">
+                                      <template #default="scope">
+                                        {{ scope.row.cureBleed ? '是' : '否' }}
+                                      </template>
+                                    </el-table-column>
+                                  </el-table>
+                                </el-tab-pane>
+                              </el-tabs>
+                            </div>
+                          </el-collapse-item>
+                        </el-collapse>
+                      </div>
+                    </el-col>
+                  </el-row>
+                </el-tab-pane>
                 
-                <el-col :span="24" :md="12">
-                  <div class="rules-preview">
-                    <h4>规则预览</h4>
-                    <pre class="rules-json">{{ formattedRules }}</pre>
+
+                
+                <el-tab-pane label="规则文档" name="documentation">
+                  <div class="rules-documentation">
+                    <el-alert
+                      v-if="documentationError"
+                      :title="documentationError"
+                      type="error"
+                      show-icon
+                      :closable="false"
+                    />
+                    <div v-else>
+                      <el-tabs v-model="activeDocTab" type="border-card">
+                        <el-tab-pane label="配置指南" name="guide">
+                          <el-skeleton v-if="loadingDocumentation" :rows="10" animated />
+                          <div v-else v-html="renderedDocumentation" class="documentation-content"></div>
+                        </el-tab-pane>
+                        <el-tab-pane label="使用示例" name="examples">
+                          <el-skeleton v-if="loadingExamples" :rows="10" animated />
+                          <div v-else v-html="renderedExamples" class="documentation-content"></div>
+                        </el-tab-pane>
+
+                      </el-tabs>
+                    </div>
                   </div>
-                </el-col>
-              </el-row>
+                </el-tab-pane>
+              </el-tabs>
             </div>
           </div>
         </div>
@@ -84,7 +288,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { PrismEditor } from 'vue-prism-editor'
@@ -92,8 +296,14 @@ import 'vue-prism-editor/dist/prismeditor.min.css'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism-tomorrow.css'
+import MarkdownIt from 'markdown-it'
+
+
+// 忽略类型检查错误
+// @ts-ignore
 import type { GameWithRules } from '@/types/game'
 import { gameService } from '@/services/gameService'
+import { GameRuleParser, type ParsedGameRules } from '@/utils/gameRuleParser'
 
 // Props
 const props = defineProps<{
@@ -111,6 +321,28 @@ const editableRules = ref('')
 const originalRules = ref('')
 const saving = ref(false)
 const rulesCollapsed = ref(false)
+const activeTab = ref('editor')
+const activeParserPanels = ref(['basic'])
+const activeItemTab = ref('rarity')
+const activeDocTab = ref('guide')
+const documentation = ref('')
+const examples = ref('')
+const loadingDocumentation = ref(false)
+const loadingExamples = ref(false)
+const documentationError = ref('')
+
+// 解析器实例
+const ruleParser = new GameRuleParser()
+
+// 初始化Markdown渲染器
+// @ts-ignore
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
+
+
 
 // 计算属性
 const isDirty = computed(() => editableRules.value !== originalRules.value)
@@ -124,6 +356,31 @@ const formattedRules = computed(() => {
   }
 })
 
+const parsedRules = computed<ParsedGameRules>(() => {
+  try {
+    const rules = JSON.parse(editableRules.value)
+    return ruleParser.parse(rules)
+  } catch (error) {
+    return ruleParser.parse({})
+  }
+})
+
+
+
+const renderedDocumentation = computed(() => {
+  if (!documentation.value) return ''
+  // @ts-ignore
+  return md.render(documentation.value)
+})
+
+const renderedExamples = computed(() => {
+  if (!examples.value) return ''
+  // @ts-ignore
+  return md.render(examples.value)
+})
+
+
+
 // 监听器
 watch(() => props.game.rules_config, (newRules) => {
   if (newRules) {
@@ -134,6 +391,11 @@ watch(() => props.game.rules_config, (newRules) => {
     originalRules.value = editableRules.value
   }
 }, { immediate: true })
+
+// 生命周期钩子
+onMounted(() => {
+  loadRulesDocumentation()
+})
 
 // 方法实现
 const highlighter = (code: string) => {
@@ -177,6 +439,60 @@ const saveRules = async () => {
 const resetRules = () => {
   editableRules.value = originalRules.value
 }
+
+const loadRulesDocumentation = async () => {
+  try {
+    loadingDocumentation.value = true
+    documentationError.value = ''
+    
+    const response = await fetch('/docs/game-rules-explain.md')
+    if (!response.ok) {
+      throw new Error('无法加载规则文档')
+    }
+    
+    documentation.value = await response.text()
+  } catch (error: any) {
+    documentationError.value = error.message || '加载规则文档失败'
+    console.error('加载规则文档失败:', error)
+  } finally {
+    loadingDocumentation.value = false
+  }
+}
+
+const loadRulesExamples = async () => {
+  try {
+    loadingExamples.value = true
+    documentationError.value = ''
+    
+    const response = await fetch('/docs/game-rules-examples.md')
+    if (!response.ok) {
+      throw new Error('无法加载使用示例')
+    }
+    
+    examples.value = await response.text()
+  } catch (error: any) {
+    documentationError.value = error.message || '加载使用示例失败'
+    console.error('加载使用示例失败:', error)
+  } finally {
+    loadingExamples.value = false
+  }
+}
+
+// 监听文档标签页切换
+watch(activeDocTab, (newTab) => {
+  switch (newTab) {
+    case 'guide':
+      if (!documentation.value && !loadingDocumentation.value) {
+        loadRulesDocumentation()
+      }
+      break
+    case 'examples':
+      if (!examples.value && !loadingExamples.value) {
+        loadRulesExamples()
+      }
+      break
+  }
+})
 </script>
 
 <style scoped>
@@ -226,6 +542,10 @@ const resetRules = () => {
   margin-bottom: 20px;
 }
 
+.rules-tabs {
+  margin-top: 20px;
+}
+
 .editor-container {
   margin-bottom: 0;
   border: 1px solid #DCDFE6;
@@ -257,6 +577,102 @@ const resetRules = () => {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.rules-parser {
+  padding: 20px 0;
+}
+
+.parser-section {
+  padding: 16px;
+}
+
+.parser-section h4 {
+  margin-top: 0;
+  color: #303133;
+}
+
+.parser-warning,
+.parser-error {
+  margin-bottom: 20px;
+}
+
+.rules-documentation {
+  padding: 20px 0;
+}
+
+.documentation-content {
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.documentation-content h1,
+.documentation-content h2,
+.documentation-content h3 {
+  color: #303133;
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+.documentation-content h1 {
+  font-size: 24px;
+  border-bottom: 1px solid #dcdfe6;
+  padding-bottom: 10px;
+}
+
+.documentation-content h2 {
+  font-size: 20px;
+  border-bottom: 1px solid #dcdfe6;
+  padding-bottom: 8px;
+}
+
+.documentation-content h3 {
+  font-size: 18px;
+}
+
+.documentation-content code {
+  background: #f0f2f5;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.documentation-content pre {
+  background: #2d2d2d;
+  color: #f8f8f2;
+  padding: 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 16px 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.documentation-content pre code {
+  background: none;
+  padding: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Mermaid图表样式 */
+.mermaid {
+  text-align: center;
+  margin: 16px 0;
+  background: white;
+  padding: 16px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.documentation-content blockquote {
+  border-left: 4px solid #409eff;
+  padding: 0 16px;
+  margin: 16px 0;
+  color: #606266;
 }
 
 @media (max-width: 768px) {
