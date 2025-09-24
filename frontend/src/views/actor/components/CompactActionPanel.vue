@@ -254,9 +254,16 @@ const deliverMessage = ref('')
 const directorMessage = ref('')
 
 // 计算属性
-const equippedItem = computed(() => {
-  if (!props.player.equipped_item) return null
-  return props.player.inventory.find(item => item.id === props.player.equipped_item)
+const equippedWeapons = computed(() => {
+  return props.player.equipped_weapons.map(weaponId => 
+    props.player.equipped_items_detail[weaponId]
+  ).filter(Boolean)
+})
+
+const equippedArmors = computed(() => {
+  return props.player.equipped_armors.map(armorId => 
+    props.player.equipped_items_detail[armorId]
+  ).filter(Boolean)
 })
 
 const handItem = computed(() => {

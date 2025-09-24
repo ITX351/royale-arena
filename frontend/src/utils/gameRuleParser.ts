@@ -13,6 +13,7 @@ export interface ParsedGameRules {
     maxEquippedWeapons: number;
     maxEquippedArmors: number;
     maxBackpackItems: number;
+    unarmedDamage: number;  // 挥拳伤害
   };
   actionCosts: {
     move: number;
@@ -40,7 +41,7 @@ export interface ParsedGameRules {
   // 物品规则
   items: {
     rarityLevels: Array<{
-      name: string;
+      internalName: string;
       displayName: string;
       prefix: string;
       isAirdropped: boolean;
@@ -99,6 +100,7 @@ export interface ParsedGameRules {
     actionUse: string;
     actionThrow: string;
     actionDeliver: string;
+    playerUnarmedDamage: string;  // 更改为 player 前缀
     restLifeRecovery: string;
     restMaxMoves: string;
   };
@@ -147,7 +149,8 @@ export class GameRuleParser {
         searchCooldown: 30,
         maxEquippedWeapons: 1,
         maxEquippedArmors: 1,
-        maxBackpackItems: 4
+        maxBackpackItems: 4,
+        unarmedDamage: 5  // 新增：挥拳伤害默认值
       },
       actionCosts: {
         move: 5,
@@ -192,6 +195,7 @@ export class GameRuleParser {
         actionUse: "使用",
         actionThrow: "丢弃",
         actionDeliver: "传音",
+        playerUnarmedDamage: "挥拳伤害",
         restLifeRecovery: "生命恢复",
         restMaxMoves: "最大移动次数"
       },
@@ -216,6 +220,7 @@ export class GameRuleParser {
       parsedRules.player.maxEquippedWeapons = rulesConfig.player.max_equipped_weapons || 1;
       parsedRules.player.maxEquippedArmors = rulesConfig.player.max_equipped_armors || 1;
       parsedRules.player.maxBackpackItems = rulesConfig.player.max_backpack_items || 4;
+      parsedRules.player.unarmedDamage = rulesConfig.player.unarmed_damage || 5;  // 从 player 配置读取
     } else {
       parsedRules.missingSections.push('player');
     }
@@ -270,7 +275,7 @@ export class GameRuleParser {
       // 解析稀有度级别
       if (rulesConfig.items.rarity_levels) {
         parsedRules.items.rarityLevels = rulesConfig.items.rarity_levels.map((level: any) => ({
-          name: level.name || '',
+          internalName: level.internal_name || '',
           displayName: level.display_name || '',
           prefix: level.prefix || '',
           isAirdropped: level.is_airdropped !== undefined ? level.is_airdropped : true
@@ -408,6 +413,7 @@ export class GameRuleParser {
       parsedRules.displayNames.actionUse = rulesConfig.display_names.action_use || "使用";
       parsedRules.displayNames.actionThrow = rulesConfig.display_names.action_throw || "丢弃";
       parsedRules.displayNames.actionDeliver = rulesConfig.display_names.action_deliver || "传音";
+      parsedRules.displayNames.playerUnarmedDamage = rulesConfig.display_names.player_unarmed_damage || "挥拳伤害";
       parsedRules.displayNames.restLifeRecovery = rulesConfig.display_names.rest_life_recovery || "生命恢复";
       parsedRules.displayNames.restMaxMoves = rulesConfig.display_names.rest_max_moves || "最大移动次数";
     }
@@ -589,7 +595,7 @@ export class GameRuleParser {
             if (typeof consumable.effect_value !== 'number') {
               errors.push(`消耗品[${index}]效果值必须是数字`);
             }
-            if (typeof consumable.cure_bleed !== 'boolean') {
+            if (consumable.cure_bleed !== undefined && typeof consumable.cure_bleed !== 'boolean') {
               errors.push(`消耗品[${index}]治愈流血状态必须是布尔值`);
             }
           });

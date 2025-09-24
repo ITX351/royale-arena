@@ -21,7 +21,8 @@
     "search_cooldown": 30,
     "max_equipped_weapons": 1,
     "max_equipped_armors": 1,
-    "max_backpack_items": 4
+    "max_backpack_items": 4,
+    "unarmed_damage": 5
   },
   "action_costs": {
     "move": 5,
@@ -44,6 +45,7 @@
     "player_max_strength": "体力值",
     "player_daily_strength_recovery": "每日体力恢复",
     "player_search_cooldown": "搜索冷却时间",
+    "player_unarmed_damage": "挥拳伤害",
     "action_move": "移动",
     "action_search": "搜索",
     "action_pick": "拾取",
@@ -57,10 +59,10 @@
   },
   "items": {
     "rarity_levels": [
-      {"name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
-      {"name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
-      {"name": "epic", "display_name": "史诗", "prefix": "[紫]", "is_airdropped": false},
-      {"name": "legendary", "display_name": "传说", "prefix": "[橙]", "is_airdropped": false}
+      {"internal_name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
+      {"internal_name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
+      {"internal_name": "epic", "display_name": "史诗", "prefix": "[紫]", "is_airdropped": false},
+      {"internal_name": "legendary", "display_name": "传说", "prefix": "[橙]", "is_airdropped": false}
     ],
     "weapons": [
       {

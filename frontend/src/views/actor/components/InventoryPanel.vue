@@ -111,7 +111,8 @@ const puttingDownHandItem = ref(false)
 
 // 计算属性
 const isEquipped = computed(() => (itemId: string) => {
-  return props.player?.equipped_item === itemId
+  return props.player?.equipped_weapons.includes(itemId) || 
+         props.player?.equipped_armors.includes(itemId)
 })
 
 const isHandItem = computed(() => (itemId: string) => {
@@ -140,7 +141,8 @@ const getItemTypeTagType = (itemType: string) => {
 const canEquipItem = (item: Item) => {
   // 只有装备和武器可以装备
   return (item.item_type === 'equipment' || item.item_type === 'weapon') && 
-         props.player?.equipped_item !== item.id
+         !props.player?.equipped_weapons.includes(item.id) &&
+         !props.player?.equipped_armors.includes(item.id)
 }
 
 const canUseItem = (item: Item) => {

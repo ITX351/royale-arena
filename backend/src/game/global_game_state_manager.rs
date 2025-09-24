@@ -67,6 +67,7 @@ impl GlobalGameStateManager {
                     player_record.id,
                     player_record.name,
                     player_record.team_id as u32,
+                    &game_state.rule_engine, // 传递规则引擎引用
                 );
                 game_state.players.insert(player.id.clone(), player);
             }

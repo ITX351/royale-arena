@@ -5,7 +5,7 @@ pub mod service;
 pub mod global_game_state_manager;
 pub mod log_service;
 pub mod system_initializer;
-
+pub mod game_rule_engine;
 
 pub use handlers::*;
 pub use service::GameService;

@@ -17,7 +17,8 @@
     "search_cooldown": 30,
     "max_equipped_weapons": 1,
     "max_equipped_armors": 1,
-    "max_backpack_items": 4
+    "max_backpack_items": 4,
+    "unarmed_damage": 5
   },
   "action_costs": {
     "move": 5,
@@ -112,6 +113,7 @@
 - `max_equipped_weapons`: 最多允许装备的武器数量
 - `max_equipped_armors`: 最多允许装备的防具数量
 - `max_backpack_items`: 背包中最多允许存放的其他物品数量（不包括已装备的武器和防具）
+- `unarmed_damage`: 无武器攻击时的挥拳伤害值
 
 ## 2. 行动规则
 
@@ -129,7 +131,8 @@
     "equip": 0,
     "use": 0,
     "throw": 0,
-    "deliver": 105
+    "deliver": 105,
+    "unarmed_damage": 5
   }
 }
 ```
@@ -171,17 +174,17 @@
 {
   "items": {
     "rarity_levels": [
-      {"name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
-      {"name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
-      {"name": "epic", "display_name": "史诗", "prefix": "[紫]", "is_airdropped": false},
-      {"name": "legendary", "display_name": "传说", "prefix": "[橙]", "is_airdropped": false}
+      {"internal_name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
+      {"internal_name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
+      {"internal_name": "epic", "display_name": "史诗", "prefix": "[紫]", "is_airdropped": false},
+      {"internal_name": "legendary", "display_name": "传说", "prefix": "[橙]", "is_airdropped": false}
     ]
   }
 }
 ```
 
 字段说明：
-- `name`: 稀有度的内部标识符
+- `internal_name`: 稀有度的内部标识符
 - `display_name`: 显示给玩家的名称
 - `prefix`: 物品名称前的标识前缀
 - `is_airdropped`: 该稀有度的物品是否会被随机空投（蓝绿会被空投、紫橙不会被自动空投）
@@ -464,6 +467,7 @@
 - `action_use`: 使用显示名称
 - `action_throw`: 丢弃显示名称
 - `action_deliver`: 传音显示名称
+- `action_unarmed_damage`: 挥拳伤害显示名称
 - `rest_life_recovery`: 生命恢复显示名称
 - `rest_max_moves`: 最大移动次数显示名称
 

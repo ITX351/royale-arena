@@ -1,9 +1,10 @@
 //! WebSocket相关模型定义
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use crate::game::game_rule_engine::GameRuleEngine;
 use crate::game::models::MessageType;
 
 /// WebSocket连接类型
@@ -66,7 +67,7 @@ pub enum GamePhase {
 }
 
 /// 游戏状态类
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GameState {
     /// 游戏ID
     pub game_id: String,
@@ -80,8 +81,11 @@ pub struct GameState {
     pub weather: f64,
     /// 投票记录，键为投票者ID，值为被投票者ID
     pub votes: HashMap<String, String>,
-    /// 游戏规则配置
+    /// 游戏规则配置（原始JSON）
     pub rules_config: serde_json::Value,
+    /// 解析后的规则引擎（用于运行时规则查询）
+    #[serde(skip)]
+    pub rule_engine: GameRuleEngine,
     /// 夜晚开始时间
     pub night_start_time: Option<DateTime<Utc>>,
     /// 夜晚结束时间
@@ -103,10 +107,19 @@ pub struct Player {
     pub life: i32,
     /// 当前体力值
     pub strength: i32,
+    /// 最大生命值（可能被规则或道具影响）
+    pub max_life: i32,
+    /// 最大体力值（可能被规则或道具影响）
+    pub max_strength: i32,
     /// 物品背包
     pub inventory: Vec<Item>,
-    /// 当前装备的物品
-    pub equipped_item: Option<String>,
+    /// 装备的武器ID列表（支持多武器装备）
+    pub equipped_weapons: Vec<String>,
+    /// 装备的防具ID列表（支持多防具装备）
+    pub equipped_armors: Vec<String>,
+    /// 当前装备的具体物品映射（用于快速访问）
+    pub equipped_items_detail: HashMap<String, Item>,
+
     /// 当前手持的物品
     pub hand_item: Option<String>,
     /// 上一次搜索结果
@@ -115,33 +128,155 @@ pub struct Player {
     pub is_alive: bool,
     /// 是否被捆绑（禁止行动）
     pub is_bound: bool,
+    /// 出生状态标记
+    pub is_born: bool,
     /// 是否处于静养模式
     pub rest_mode: bool,
+    /// 当前静养恢复生命值
+    pub rest_life_recovery: i32,
+    /// 静养模式下的移动次数限制
+    pub rest_moves_used: i32,
     /// 上次搜索时间
     pub last_search_time: Option<DateTime<Utc>>,
     /// 当前持有票数
     pub votes: i32,
+    /// 队伍ID（用于队友行为判断）
+    pub team_id: Option<u32>,
+    /// 持续伤害效果（流血状态）
+    pub bleed_damage: i32,
+    /// 持续伤害剩余回合数
+    pub bleed_rounds_remaining: i32,
 }
 
 impl Player {
-    /// 创建新的玩家
-    pub fn new(id: String, name: String, _team_id: u32) -> Self {
+    /// 创建新的玩家（使用规则引擎的默认值）
+    pub fn new(id: String, name: String, team_id: u32, rule_engine: &GameRuleEngine) -> Self {
+        let max_life = rule_engine.player_config.max_life;
+        let max_strength = rule_engine.player_config.max_strength;
+        
         Self {
             id,
             name,
             location: String::new(),
-            life: 100, // 默认生命值
-            strength: 100, // 默认体力值
+            life: max_life,
+            strength: max_strength,
+            max_life,
+            max_strength,
             inventory: Vec::new(),
-            equipped_item: None,
+            equipped_weapons: Vec::new(),
+            equipped_armors: Vec::new(),
+            equipped_items_detail: HashMap::new(),
+
             hand_item: None,
             last_search_result: None,
             is_alive: true,
             is_bound: false,
+            is_born: false,
             rest_mode: false,
+            rest_life_recovery: 0,
+            rest_moves_used: 0,
             last_search_time: None,
             votes: 0,
+            team_id: Some(team_id),
+            bleed_damage: 0,
+            bleed_rounds_remaining: 0,
         }
+    }
+
+    /// 检查是否可以装备指定类型的物品（使用规则引擎配置）
+    pub fn can_equip_weapon(&self, rule_engine: &GameRuleEngine) -> bool {
+        self.equipped_weapons.len() < rule_engine.player_config.max_equipped_weapons as usize
+    }
+
+    /// 检查是否可以装备防具（使用规则引擎配置）
+    pub fn can_equip_armor(&self, rule_engine: &GameRuleEngine) -> bool {
+        self.equipped_armors.len() < rule_engine.player_config.max_equipped_armors as usize
+    }
+
+    /// 应用持续伤害效果
+    pub fn apply_bleed_damage(&mut self) -> bool {
+        if self.bleed_rounds_remaining > 0 {
+            self.life -= self.bleed_damage;
+            self.bleed_rounds_remaining -= 1;
+            
+            if self.life <= 0 {
+                self.life = 0;
+                self.is_alive = false;
+                return true; // 表示玩家死亡
+            }
+        }
+        false
+    }
+
+    /// 设置持续伤害效果
+    pub fn set_bleed_effect(&mut self, damage: i32, rounds: i32) {
+        self.bleed_damage = damage;
+        self.bleed_rounds_remaining = rounds;
+    }
+
+    /// 清除持续伤害效果
+    pub fn clear_bleed_effect(&mut self) {
+        self.bleed_damage = 0;
+        self.bleed_rounds_remaining = 0;
+    }
+
+    /// 检查是否有持续伤害效果
+    pub fn has_bleed_effect(&self) -> bool {
+        self.bleed_rounds_remaining > 0
+    }
+
+    /// 装备武器
+    pub fn equip_weapon(&mut self, weapon_id: String, weapon: Item) {
+        self.equipped_weapons.push(weapon_id.clone());
+        self.equipped_items_detail.insert(weapon_id, weapon);
+    }
+
+    /// 装备防具
+    pub fn equip_armor(&mut self, armor_id: String, armor: Item) {
+        self.equipped_armors.push(armor_id.clone());
+        self.equipped_items_detail.insert(armor_id, armor);
+    }
+
+    /// 卸下武器
+    pub fn unequip_weapon(&mut self, weapon_id: &str) -> Option<Item> {
+        if let Some(pos) = self.equipped_weapons.iter().position(|id| id == weapon_id) {
+            self.equipped_weapons.remove(pos);
+            self.equipped_items_detail.remove(weapon_id)
+        } else {
+            None
+        }
+    }
+
+    /// 卸下防具
+    pub fn unequip_armor(&mut self, armor_id: &str) -> Option<Item> {
+        if let Some(pos) = self.equipped_armors.iter().position(|id| id == armor_id) {
+            self.equipped_armors.remove(pos);
+            self.equipped_items_detail.remove(armor_id)
+        } else {
+            None
+        }
+    }
+
+    /// 获取总防御值
+    pub fn get_total_defense(&self) -> i32 {
+        self.equipped_armors
+            .iter()
+            .filter_map(|armor_id| self.equipped_items_detail.get(armor_id))
+            .filter_map(|item| item.properties.get("defense"))
+            .filter_map(|def| def.as_i64())
+            .map(|def| def as i32)
+            .sum()
+    }
+
+    /// 获取所有武器的总伤害
+    pub fn get_total_weapon_damage(&self) -> i32 {
+        self.equipped_weapons
+            .iter()
+            .filter_map(|weapon_id| self.equipped_items_detail.get(weapon_id))
+            .filter_map(|item| item.properties.get("damage"))
+            .filter_map(|dmg| dmg.as_i64())
+            .map(|dmg| dmg as i32)
+            .sum()
     }
 }
 
@@ -213,6 +348,13 @@ pub enum SearchResultType {
     Item,
 }
 
+/// 搜索目标类型（内部使用）
+#[derive(Debug, Clone)]
+pub enum SearchTarget {
+    Player(String), // 玩家ID
+    Item(String),   // 物品ID
+}
+
 /// 动作处理结果，包含广播信息
 #[derive(Debug, Clone)]
 pub struct ActionResult {
@@ -272,6 +414,12 @@ impl ActionResult {
 impl GameState {
     /// 创建新的游戏状态
     pub fn new(game_id: String, rules_config: serde_json::Value) -> Self {
+        // 解析JSON规则为结构化的规则引擎
+        let rules_json = serde_json::to_string(&rules_config)
+            .expect("Failed to serialize rules config");
+        let rule_engine = GameRuleEngine::from_json(&rules_json)
+            .expect("Failed to parse game rules");
+        
         Self {
             game_id,
             players: HashMap::new(),
@@ -280,12 +428,21 @@ impl GameState {
             weather: 1.0,
             votes: HashMap::new(),
             rules_config,
+            rule_engine,
             night_start_time: None,
             night_end_time: None,
             next_night_destroyed_places: Vec::new(),
         }
     }
-
+    
+    /// 从已有游戏状态反序列化时重新创建规则引擎
+    pub fn rebuild_rule_engine(&mut self) {
+        let rules_json = serde_json::to_string(&self.rules_config)
+            .expect("Failed to serialize rules config");
+        self.rule_engine = GameRuleEngine::from_json(&rules_json)
+            .expect("Failed to parse game rules");
+    }
+    
     /// 生成全局状态信息
     pub fn generate_global_state_info(&self) -> serde_json::Value {
         serde_json::json!({
@@ -294,6 +451,51 @@ impl GameState {
             "night_start_time": self.night_start_time,
             "night_end_time": self.night_end_time,
             "next_night_destroyed_places": self.next_night_destroyed_places,
+        })
+    }
+}
+
+// 为GameState实现自定义反序列化
+impl<'de> Deserialize<'de> for GameState {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // 定义一个临时结构体用于反序列化
+        #[derive(Deserialize)]
+        struct GameStateHelper {
+            game_id: String,
+            players: HashMap<String, Player>,
+            places: HashMap<String, Place>,
+            game_phase: GamePhase,
+            weather: f64,
+            votes: HashMap<String, String>,
+            rules_config: serde_json::Value,
+            night_start_time: Option<DateTime<Utc>>,
+            night_end_time: Option<DateTime<Utc>>,
+            next_night_destroyed_places: Vec<String>,
+        }
+        
+        let helper = GameStateHelper::deserialize(deserializer)?;
+        
+        // 从 rules_config 重新创建 rule_engine
+        let rules_json = serde_json::to_string(&helper.rules_config)
+            .map_err(serde::de::Error::custom)?;
+        let rule_engine = GameRuleEngine::from_json(&rules_json)
+            .map_err(serde::de::Error::custom)?;
+        
+        Ok(GameState {
+            game_id: helper.game_id,
+            players: helper.players,
+            places: helper.places,
+            game_phase: helper.game_phase,
+            weather: helper.weather,
+            votes: helper.votes,
+            rules_config: helper.rules_config,
+            rule_engine,
+            night_start_time: helper.night_start_time,
+            night_end_time: helper.night_end_time,
+            next_night_destroyed_places: helper.next_night_destroyed_places,
         })
     }
 }

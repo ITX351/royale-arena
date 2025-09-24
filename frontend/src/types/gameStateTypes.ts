@@ -21,15 +21,26 @@ export interface Player {
   location: string;
   life: number;
   strength: number;
+  max_life: number; // 新增：最大生命值
+  max_strength: number; // 新增：最大体力值
   inventory: Item[];
-  equipped_item: string | null;
+  equipped_weapons: string[]; // 修改：支持多武器装备
+  equipped_armors: string[]; // 修改：支持多防具装备
+  equipped_items_detail: Record<string, Item>; // 新增：装备详情映射
+
   hand_item: string | null;
   last_search_result: SearchResult | null;
   is_alive: boolean;
   is_bound: boolean;
+  is_born: boolean; // 新增：出生状态
   rest_mode: boolean;
+  rest_life_recovery: number; // 新增：静养恢复生命值
+  rest_moves_used: number; // 新增：静养移动次数
   last_search_time: string | null;
   votes: number;
+  team_id: number | null; // 新增：队伍ID
+  bleed_damage: number; // 新增：持续伤害数值
+  bleed_rounds_remaining: number; // 新增：持续伤害剩余回合
 }
 
 // 导演视角的地点接口
@@ -108,4 +119,94 @@ export interface ActorGameState {
 export interface AirdropItem {
   id: string;
   name: string;
+}
+
+// 装备分类接口
+export interface EquipmentSlots {
+  weapons: Item[];
+  armors: Item[];
+  other: Item[];
+}
+
+// 玩家状态详情接口（用于导演界面展示）
+export interface PlayerStatusDetail {
+  basic: {
+    id: string;
+    name: string;
+    location: string;
+    team_id: number | null;
+    is_born: boolean;
+  };
+  health: {
+    life: number;
+    max_life: number;
+    strength: number;
+    max_strength: number;
+    is_alive: boolean;
+  };
+  status: {
+    is_bound: boolean;
+    rest_mode: boolean;
+    rest_life_recovery: number;
+    rest_moves_used: number;
+  };
+  effects: {
+    bleed_damage: number;
+    bleed_rounds_remaining: number;
+  };
+  equipment: {
+    weapons: Item[];
+    armors: Item[];
+    hand_item: Item | null;
+    inventory: Item[];
+  };
+  activity: {
+    last_search_result: SearchResult | null;
+    last_search_time: string | null;
+    votes: number;
+  };
+}
+
+// 玩家状态统计接口
+export interface PlayerStats {
+  totalPlayers: number;
+  alivePlayers: number;
+  deadPlayers: number;
+  boundPlayers: number;
+  restingPlayers: number;
+  bleedingPlayers: number;
+}
+
+// 游戏规则配置接口
+export interface GameRuleConfig {
+  map: {
+    places: string[];
+    safe_places: string[];
+  };
+  player: {
+    max_life: number;
+    max_strength: number;
+    daily_strength_recovery: number;
+    search_cooldown: number;
+    max_equipped_weapons: number;
+    max_equipped_armors: number;
+    max_backpack_items: number;
+    unarmed_damage: number;  // 挥拳伤害
+  };
+  action_costs: {
+    move: number;
+    search: number;
+    pick: number;
+    attack: number;
+    equip: number;
+    use: number;
+    throw: number;
+    deliver: number;
+  };
+  rest_mode: {
+    life_recovery: number;
+    max_moves: number;
+  };
+  teammate_behavior: number;
+  death_item_disposition: string;
 }

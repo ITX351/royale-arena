@@ -1,0 +1,211 @@
+{
+  "map": {
+    "places": [
+      "位置1", "位置2", "位置3", "位置4", "位置5", "位置6", "位置7", "位置8", "位置9"
+    ],
+    "safe_places": ["位置0"]
+  },
+  "player": {
+    "max_life": 101,
+    "max_strength": 102,
+    "daily_strength_recovery": 43,
+    "search_cooldown": 4,
+    "max_equipped_weapons": 2,
+    "max_equipped_armors": 3,
+    "max_backpack_items": 2,
+    "unarmed_damage": 1
+  },
+  "action_costs": {
+    "move": 1,
+    "search": 2,
+    "pick": 3,
+    "attack": 4,
+    "equip": 5,
+    "use": 6,
+    "throw": 7,
+    "deliver": 8
+  },
+  "rest_mode": {
+    "life_recovery": 13,
+    "max_moves": 2
+  },
+  "death_item_disposition": "killer_takes_loot",
+  "teammate_behavior": 15,
+  "display_names": {
+    "player_max_life": "生命NAME",
+    "player_max_strength": "体力NAME",
+    "player_daily_strength_recovery": "每日体力恢复NAME",
+    "player_search_cooldown": "搜索冷却时间NAME",
+    "player_unarmed_damage": "挥拳伤害NAME",
+    "action_move": "移动NAME",
+    "action_search": "搜索NAME",
+    "action_pick": "拾取NAME",
+    "action_attack": "攻击NAME",
+    "action_equip": "装备NAME",
+    "action_use": "使用NAME",
+    "action_throw": "丢弃NAME",
+    "action_deliver": "传音NAME",
+    "rest_life_recovery": "生命恢复NAME",
+    "rest_max_moves": "最大移动次数NAME"
+  },
+  "items": {
+    "rarity_levels": [
+      {"internal_name": "common", "display_name": "普通1", "prefix": "[绿1]", "is_airdropped": true},
+      {"internal_name": "rare", "display_name": "稀有2", "prefix": "[蓝2]", "is_airdropped": true},
+      {"internal_name": "epic", "display_name": "史诗3", "prefix": "[紫3]", "is_airdropped": false},
+      {"internal_name": "legendary", "display_name": "传说4", "prefix": "[橙4]", "is_airdropped": false}
+    ],
+    "weapons": [
+      {
+        "internal_name": "common_weapon",
+        "display_names": ["[绿]佩剑", "[绿]战斧"],
+        "rarity": "common",
+        "properties": {
+          "damage": 11,
+          "votes": 1
+        }
+      },
+      {
+        "internal_name": "rare_weapon",
+        "display_names": ["[蓝]大太刀", "[蓝]死神镰刀"],
+        "rarity": "rare",
+        "properties": {
+          "damage": 22,
+          "votes": 2
+        }
+      },
+      {
+        "internal_name": "epic_weapon",
+        "display_names": ["[紫]青龙偃月刀"],
+        "rarity": "epic",
+        "properties": {
+          "damage": 33,
+          "votes": 3
+        }
+      },
+      {
+        "internal_name": "legendary_weapon",
+        "display_names": ["[橙]自然之力.晓"],
+        "rarity": "legendary",
+        "properties": {
+          "damage": 44,
+          "uses": 2,
+          "votes": 5,
+          "aoe_damage": 12,
+          "bleed_damage": 7
+        }
+      }
+    ],
+    "armors": [
+      {
+        "internal_name": "common_armor",
+        "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
+        "rarity": "common",
+        "properties": {
+          "defense": 5,
+          "votes": 2
+        }
+      }
+    ],
+    "other_items": [
+      {
+        "name": "[GPS]心跳探测仪1",
+        "category": "utility_locator",
+        "properties": {
+          "votes": 3,
+          "targets": 1
+        }
+      },
+      {
+        "name": "[侦]手持式雷达2",
+        "category": "utility_revealer",
+        "properties": {
+          "votes": 3,
+          "targets": 2
+        }
+      },
+      {
+        "name": "[神]生命启示3",
+        "category": "utility_seer",
+        "properties": {
+          "votes": 3,
+          "targets": 2
+        }
+      },
+      {
+        "name": "[炸]遥控地雷4",
+        "category": "trap",
+        "properties": {
+          "damage": 30,
+          "uses": 1,
+          "votes": 0
+        }
+      }
+    ],
+    "consumables": [
+      {
+        "name": "[HP30]绷带a",
+        "effect_type": "heal",
+        "effect_value": 30,
+        "cure_bleed": true
+      },
+      {
+        "name": "[HP50]止血绷带b",
+        "effect_type": "heal",
+        "effect_value": 50,
+        "cure_bleed": true
+      },
+      {
+        "name": "[HP100]红花丹c",
+        "effect_type": "heal",
+        "effect_value": 100,
+        "cure_bleed": true
+      },
+      {
+        "name": "[MP20]矿泉水d",
+        "effect_type": "strength",
+        "effect_value": 20
+      },
+      {
+        "name": "[MP50]能量饮料e",
+        "effect_type": "strength",
+        "effect_value": 50
+      },
+      {
+        "name": "[MP100]威士忌f",
+        "effect_type": "strength",
+        "effect_value": 100
+      }
+    ],
+    "upgraders": [
+      {
+        "internal_name": "natural_upgrader",
+        "display_names": ["[合]自然升级器q"],
+        "rarity": "legendary"
+      },
+      {
+        "internal_name": "artificial_upgrader",
+        "display_names": ["[合]人造升级器w"],
+        "rarity": "rare"
+      }
+    ],
+    "upgrade_recipes": {
+      "natural_upgrader": [
+        {
+          "result": "epic_weapon",
+          "ingredients": ["rare_weapon"]
+        },
+        {
+          "result": "legendary_weapon",
+          "ingredients": ["epic_weapon"]
+        }
+      ],
+      "artificial_upgrader": [
+        {
+          "result": "rare_weapon",
+          "ingredients": ["common_weapon"]
+        }
+      ]
+    }
+  }
+}

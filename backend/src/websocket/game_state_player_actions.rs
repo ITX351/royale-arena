@@ -50,24 +50,77 @@ impl GameState {
         
         Ok(())
     }
+
+    /// 检查玩家是否已出生
+    /// 
+    /// # 参数
+    /// - `player_id`: 玩家ID
+    /// 
+    /// # 返回值
+    /// - `Ok(())`: 玩家已出生，检查通过
+    /// - `Err(ActionResult)`: 玩家尚未出生，返回Info类型的错误消息
+    fn check_player_born_status(&self, player_id: &str) -> Result<(), ActionResult> {
+        let player = self.players.get(player_id)
+            .ok_or_else(|| {
+                let data = serde_json::json!({});
+                ActionResult::new_info_message(
+                    data,
+                    vec![player_id.to_string()],
+                    "玩家未找到".to_string(),
+                    false
+                )
+            })?;
+        
+        if !player.is_born || player.location.is_empty() {
+            let data = serde_json::json!({});
+            return Err(ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "玩家尚未出生，请先选择出生地点".to_string(),
+                false
+            ));
+        }
+        
+        Ok(())
+    }
     /// 处理玩家出生行动
     pub fn handle_born_action(&mut self, player_id: &str, place_name: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态（出生不消耗体力）
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
+        }
+        
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
         // 检查玩家是否已经执行过出生
-        if !player.location.is_empty() {
-            return Err("Player has already been born".to_string());
+        if player.is_born || !player.location.is_empty() {
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "玩家已经出生".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
         
         // 验证指定地点是否存在且未被摧毁
         let place = self.places.get(place_name).ok_or("Place not found".to_string())?;
         if place.is_destroyed {
-            return Err("Place is destroyed".to_string());
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "地点已被摧毁".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
         
-        // 更新玩家位置到指定地点
+        // 更新玩家位置到指定地点并设置出生状态
         player.location = place_name.to_string();
+        player.is_born = true;
         
         // 将玩家添加到地点的玩家列表中
         let place_mut = self.places.get_mut(place_name).unwrap();
@@ -75,7 +128,8 @@ impl GameState {
         
         // 向该玩家发送位置更新结果
         let data = serde_json::json!({
-            "location": place_name
+            "location": place_name,
+            "is_born": true
         });
         
         // 创建动作结果，只广播给发起者本人
@@ -90,9 +144,16 @@ impl GameState {
 
     /// 处理玩家移动行动
     pub fn handle_move_action(&mut self, player_id: &str, target_place: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（移动消耗 5 点体力）
-        let move_cost = 5;
+        // 使用规则引擎获取移动消耗
+        let move_cost = self.rule_engine.action_costs.move_cost;
+        
+        // 使用公用函数检查玩家基础状态
         if let Err(action_result) = self.check_player_basic_status(player_id, Some(move_cost)) {
+            return Ok(action_result);
+        }
+        
+        // 检查玩家是否已出生
+        if let Err(action_result) = self.check_player_born_status(player_id) {
             return Ok(action_result);
         }
         
@@ -145,30 +206,33 @@ impl GameState {
         Ok(action_result)
     }
 
-    /// 处理搜索行动
+    /// 处理搜索行动（优化版本）
     pub fn handle_search_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（搜索消耗 5 点体力）
-        let search_cost = 5;
+        // 使用规则引擎获取搜索消耗
+        let search_cost = self.rule_engine.action_costs.search;
+        
+        // 使用公用函数检查玩家基础状态
         if let Err(action_result) = self.check_player_basic_status(player_id, Some(search_cost)) {
+            return Ok(action_result);
+        }
+        
+        // 检查玩家是否已出生
+        if let Err(action_result) = self.check_player_born_status(player_id) {
             return Ok(action_result);
         }
         
         // 获取玩家状态信息（避免借用冲突）
         let (player_location, player_last_search_time) = {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-            (
-                player.location.clone(),
-                player.last_search_time,
-            )
+            (player.location.clone(), player.last_search_time)
         };
         
-        // 检查搜索冷却期（简化处理，假设冷却期为30秒）
-        let search_cooldown = 30;
+        // 使用规则引擎获取搜索冷却时间
+        let search_cooldown = self.rule_engine.get_search_cooldown();
         if let Some(last_search_time) = player_last_search_time {
             let elapsed = chrono::Utc::now().signed_duration_since(last_search_time);
             if elapsed.num_seconds() < search_cooldown {
                 let remaining_time = search_cooldown - elapsed.num_seconds();
-                // 用Info类型返回错误提示
                 let data = serde_json::json!({});
                 let action_result = ActionResult::new_info_message(
                     data, 
@@ -187,235 +251,29 @@ impl GameState {
             player.last_search_time = Some(chrono::Utc::now());
         }
         
-        // 随机确定搜索结果（玩家/物品/空）
-        // 这里我们简化处理，随机生成结果
-        use rand::Rng;
-        let mut rng = rand::rng(); // 使用正确的rng方法
-        let result_type: u32 = rng.random_range(0..3);
+        // 汇总当前地点的所有搜索目标
+        let search_targets = self.collect_search_targets(player_id);
         
-        match result_type {
-            0 => {
-                // 搜索到玩家
-                // 查找当前地点的其他玩家（先获取地点信息，避免借用冲突）
-                let other_player_ids = {
-                    // 先检查地点是否存在
-                    if self.places.contains_key(&player_location) {
-                        // 获取地点玩家列表的副本
-                        let place = &self.places[&player_location];
-                        let mut place_players = Vec::new();
-                        for id in &place.players {
-                            place_players.push(id.clone());
-                        }
-                        
-                        // 过滤掉当前玩家
-                        let mut filtered_ids = Vec::new();
-                        for id in place_players {
-                            if id != player_id {
-                                filtered_ids.push(id.clone());
-                            }
-                        }
-                        filtered_ids
-                    } else {
-                        Vec::new()
-                    }
-                };
-                
-                if !other_player_ids.is_empty() {
-                    // 随机选择一个玩家
-                    let target_player_id = &other_player_ids[rng.random_range(0..other_player_ids.len())];
-                    
-                    // 获取目标玩家信息
-                    let (target_player_id_clone, target_player_name) = {
-                        if let Some(target_player) = self.players.get(target_player_id) {
-                            (target_player.id.clone(), target_player.name.clone())
-                        } else {
-                            return Err("Target player not found".to_string());
-                        }
-                    };
-                    
-                    // 根据天气条件确定结果可见性
-                    let is_visible = rng.random_bool(self.weather);
-                    
-                    // 更新玩家的上次搜索结果
-                    {
-                        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-                        player.last_search_result = Some(SearchResult {
-                            target_type: SearchResultType::Player,
-                            target_id: target_player_id_clone.clone(),
-                            target_name: target_player_name.clone(),
-                            is_visible,
-                        });
-                    }
-                    
-                    // 获取更新后的玩家状态
-                    let (player_strength, player_last_search_time) = {
-                        let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-                        (player.strength, player.last_search_time)
-                    };
-                    
-                    // 向该玩家发送搜索结果
-                    let data = serde_json::json!({
-                        "last_search_result": {
-                            "target_type": "player",
-                            "target_id": target_player_id_clone,
-                            "target_name": target_player_name,
-                            "is_visible": is_visible
-                        },
-                        "strength": player_strength,
-                        "last_search_time": player_last_search_time
-                    });
-                    
-                    // 创建动作结果，只广播给发起者本人
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("{} 搜索发现了玩家 {}", 
-                            self.players.get(player_id).unwrap().name, target_player_name)
-                    );
-                    
-                    return Ok(action_result);
-                }
-                
-                // 如果没有其他玩家，返回空结果
-                {
-                    let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-                    player.last_search_result = None;
-                }
-                
-                // 获取更新后的玩家状态
-                let (player_strength, player_last_search_time) = {
-                    let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-                    (player.strength, player.last_search_time)
-                };
-                
-                let data = serde_json::json!({
-                    "last_search_result": null,
-                    "strength": player_strength,
-                    "last_search_time": player_last_search_time
-                });
-                
-                // 创建动作结果，只广播给发起者本人
-                let action_result = ActionResult::new_system_message(
-                    data, 
-                    vec![player_id.to_string()], 
-                    format!("{} 搜索但没有发现任何东西", 
-                        self.players.get(player_id).unwrap().name)
-                );
-                Ok(action_result)
+        if search_targets.is_empty() {
+            // 没有搜索目标，返回空结果
+            return self.handle_empty_search_result(player_id);
+        }
+        
+        // 等概率随机选择一个目标
+        let selected_target = self.select_random_target(&search_targets);
+        
+        // 根据天气条件确定结果可见性
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let is_visible = rng.random_bool(self.weather);
+        
+        // 处理搜索结果
+        match selected_target {
+            SearchTarget::Player(target_player_id) => {
+                self.handle_player_search_result(player_id, &target_player_id, is_visible)
             }
-            1 => {
-                // 搜索到物品
-                // 先获取地点信息，避免借用冲突
-                let place_info = {
-                    if let Some(place) = self.places.get(&player_location) {
-                        if !place.items.is_empty() {
-                            // 随机选择一个物品
-                            let item_index = rng.random_range(0..place.items.len());
-                            let item = &place.items[item_index];
-                            Some((item.id.clone(), item.name.clone()))
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                };
-                
-                if let Some((item_id, item_name)) = place_info {
-                    // 根据天气条件确定结果可见性
-                    let is_visible = rng.random_bool(self.weather);
-                    
-                    // 更新玩家的上次搜索结果
-                    {
-                        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-                        player.last_search_result = Some(SearchResult {
-                            target_type: SearchResultType::Item,
-                            target_id: item_id.clone(),
-                            target_name: item_name.clone(),
-                            is_visible,
-                        });
-                    }
-                    
-                    // 获取更新后的玩家状态
-                    let (player_strength, player_last_search_time) = {
-                        let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-                        (player.strength, player.last_search_time)
-                    };
-                    
-                    // 向该玩家发送搜索结果
-                    let data = serde_json::json!({
-                        "last_search_result": {
-                            "target_type": "item",
-                            "target_id": item_id,
-                            "target_name": item_name,
-                            "is_visible": is_visible
-                        },
-                        "strength": player_strength,
-                        "last_search_time": player_last_search_time
-                    });
-                    
-                    // 创建动作结果，只广播给发起者本人
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("{} 搜索并发现了物品 {}", 
-                            self.players.get(player_id).unwrap().name, item_name)
-                    );
-                    Ok(action_result)
-                } else {
-                    // 地点没有物品，返回空结果
-                    {
-                        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-                        player.last_search_result = None;
-                    }
-                    
-                    // 获取更新后的玩家状态
-                    let (player_strength, player_last_search_time) = {
-                        let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-                        (player.strength, player.last_search_time)
-                    };
-                    
-                    let data = serde_json::json!({
-                        "last_search_result": null,
-                        "strength": player_strength,
-                        "last_search_time": player_last_search_time
-                    });
-                    
-                    // 创建动作结果，只广播给发起者本人
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("{} 搜索但没有发现任何东西", 
-                            self.players.get(player_id).unwrap().name));
-                    Ok(action_result)
-                }
-            }
-            _ => {
-                // 搜索结果为空
-                {
-                    let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-                    player.last_search_result = None;
-                }
-                
-                // 获取更新后的玩家状态
-                let (player_strength, player_last_search_time) = {
-                    let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-                    (player.strength, player.last_search_time)
-                };
-                
-                let data = serde_json::json!({
-                    "last_search_result": null,
-                    "strength": player_strength,
-                    "last_search_time": player_last_search_time
-                });
-                
-                // 创建动作结果，只广播给发起者本人
-                let action_result = ActionResult::new_system_message(
-                    data, 
-                    vec![player_id.to_string()], 
-                    format!("{} 搜索但没有发现任何东西", 
-                            self.players.get(player_id).unwrap().name));
-                Ok(action_result)
+            SearchTarget::Item(item_id) => {
+                self.handle_item_search_result(player_id, &item_id, is_visible)
             }
         }
     }
@@ -425,6 +283,31 @@ impl GameState {
         // 使用公用函数检查玩家基础状态（捡拾不消耗体力）
         if let Err(action_result) = self.check_player_basic_status(player_id, None) {
             return Ok(action_result);
+        }
+        
+        // 检查玩家是否已出生
+        if let Err(action_result) = self.check_player_born_status(player_id) {
+            return Ok(action_result);
+        }
+        
+        // 使用规则引擎检查背包容量
+        {
+            let player = self.players.get(player_id).ok_or("玩家未找到".to_string())?;
+            let max_backpack_items = self.rule_engine.player_config.max_backpack_items as usize;
+            
+            if player.inventory.len() >= max_backpack_items {
+                // 背包已满，返回Info提示
+                let data = serde_json::json!({
+                    "message": "背包已满，无法拾取更多物品"
+                });
+                let action_result = ActionResult::new_info_message(
+                    data,
+                    vec![player_id.to_string()],
+                    format!("玩家 {} 尝试拾取物品但背包已满", player.name),
+                    false // 不向导演广播
+                );
+                return Ok(action_result);
+            }
         }
         
         // 检查上一次搜索结果是否为物品
@@ -524,39 +407,29 @@ impl GameState {
             return Ok(action_result);
         }
         
-        // 检查前置条件：上一次搜索结果为玩家，玩家装备了武器
-        {
+        // 检查前置条件：上一次搜索结果为玩家
+        let (has_weapons, last_search_result_valid) = {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
             
-            if player.equipped_item.is_none() {
-                // 用Info类型返回错误提示
-                let data = serde_json::json!({});
-                let action_result = ActionResult::new_info_message(
-                    data, 
-                    vec![player_id.to_string()], 
-                    "未装备武器，无法攻击".to_string(),
-                    false
-                );
-                return Ok(action_result);
-            }
-            
-            let last_search_result_valid = if let Some(ref search_result) = player.last_search_result {
+            let search_valid = if let Some(ref search_result) = player.last_search_result {
                 search_result.target_type == SearchResultType::Player
             } else {
                 false
             };
             
-            if !last_search_result_valid {
-                // 用Info类型返回错误提示
-                let data = serde_json::json!({});
-                let action_result = ActionResult::new_info_message(
-                    data, 
-                    vec![player_id.to_string()], 
-                    "上一次搜索结果不是玩家".to_string(),
-                    false
-                );
-                return Ok(action_result);
-            }
+            (!player.equipped_weapons.is_empty(), search_valid)
+        };
+        
+        if !last_search_result_valid {
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "上一次搜索结果不是玩家".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
         
         // 获取搜索结果信息和玩家位置
@@ -615,11 +488,17 @@ impl GameState {
             return Ok(action_result);
         }
         
-        // 根据武器属性计算伤害（简化处理）
-        let damage = 20; // 假设固定伤害值
+        // 根据是否装备武器计算伤害
+        let (damage, attack_method) = if has_weapons {
+            // 有武器：使用武器伤害（简化处理）
+            (20, "武器攻击")
+        } else {
+            // 无武器：使用规则引擎获取挥拳伤害
+            (self.rule_engine.get_unarmed_damage(), "挥拳攻击")
+        };
         
         // 减少目标玩家生命值
-        {
+        let was_killed = {
             let target_player = self.players.get_mut(&target_player_id).ok_or("Target player not found".to_string())?;
             target_player.life -= damage;
             
@@ -627,8 +506,18 @@ impl GameState {
             if target_player.life <= 0 {
                 target_player.life = 0;
                 target_player.is_alive = false;
+                true
+            } else {
+                false
             }
-        } // 释放对目标玩家的可变借用
+        }; // 释放对目标玩家的可变借用
+        
+        // 如果目标玩家被击杀，处理掉落物品
+        let loot_effects = if was_killed {
+            self.handle_player_death_loot(Some(player_id), &target_player_id)
+        } else {
+            Vec::new()
+        };
         
         // 获取目标玩家的当前状态
         let (target_player_life, target_player_is_alive) = {
@@ -638,9 +527,12 @@ impl GameState {
         
         // 向攻击者发送攻击结果（仅包括主目标）
         let data = serde_json::json!({
-            "message": format!("Attacked player {} for {} damage", target_player_id, damage),
+            "message": format!("Attacked player {} for {} damage using {}", target_player_id, damage, attack_method),
             "target_player_life": target_player_life,
-            "target_player_is_alive": target_player_is_alive
+            "target_player_is_alive": target_player_is_alive,
+            "attack_method": attack_method,
+            "damage": damage,
+            "loot_effects": loot_effects // 添加掉落效果信息
         });
         
         // 向被攻击者发送被攻击通知（不包括攻击者身份）
@@ -648,8 +540,8 @@ impl GameState {
             "message": format!("You were attacked for {} damage", damage)
         });
         
-        // 消耗体力值（根据规则配置，假设攻击消耗10点体力）
-        let attack_cost = 10;
+        // 使用规则引擎获取攻击消耗
+        let attack_cost = self.rule_engine.action_costs.attack;
         {
             let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
             if player.strength >= attack_cost {
@@ -663,8 +555,8 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![player_id.to_string(), target_player_id.clone()], 
-            format!("玩家 {} 攻击玩家 {} 造成 {} 点伤害", 
-                self.players.get(player_id).unwrap().name, target_player_id, damage)
+            format!("玩家 {} 使用{}攻击玩家 {} 造成 {} 点伤害", 
+                self.players.get(player_id).unwrap().name, attack_method, target_player_id, damage)
         );
         
         Ok(action_result)
@@ -768,8 +660,8 @@ impl GameState {
                     // 如果是消耗品：恢复生命值、传送等，并从玩家背包中移除消耗品
                     // 这里我们简化处理，假设所有消耗品都恢复20点生命值
                     player.life += 20;
-                    if player.life > 100 {
-                        player.life = 100; // 假设最大生命值为100
+                    if player.life > player.max_life {
+                        player.life = player.max_life; // 使用玩家的最大生命值
                     }
                     
                     // 从玩家背包中移除消耗品
@@ -794,13 +686,25 @@ impl GameState {
                     Ok(action_result)
                 }
                 ItemType::Weapon => {
-                    // 如果是装备类：装备到对应位置，替换原有装备
-                    // 这里我们简化处理，只是更新装备状态
-                    player.equipped_item = Some(item_id.to_string());
+                    // 如果是装备类：装备到对应位置
+                    match item.item_type {
+                        ItemType::Weapon => {
+                            if player.can_equip_weapon(&self.rule_engine) {
+                                player.equip_weapon(item_id.to_string(), item.clone());
+                            }
+                        }
+                        ItemType::Equipment => {
+                            if player.can_equip_armor(&self.rule_engine) {
+                                player.equip_armor(item_id.to_string(), item.clone());
+                            }
+                        }
+                        _ => {}
+                    }
                     
                     // 更新玩家状态
                     let data = serde_json::json!({
-                        "equipped_item": item_id
+                        "equipped_weapons": player.equipped_weapons,
+                        "equipped_armors": player.equipped_armors
                     });
                     
                     // 创建动作结果，只广播给发起者本人
@@ -813,11 +717,13 @@ impl GameState {
                 }
                 ItemType::Equipment => {
                     // 其他装备类型处理
-                    player.equipped_item = Some(item_id.to_string());
+                    if player.can_equip_armor(&self.rule_engine) {
+                        player.equip_armor(item_id.to_string(), item.clone());
+                    }
                     
                     // 更新玩家状态
                     let data = serde_json::json!({
-                        "equipped_item": item_id
+                        "equipped_armors": player.equipped_armors
                     });
                     
                     // 创建动作结果，只广播给发起者本人
@@ -901,8 +807,10 @@ impl GameState {
 
     /// 处理传音行动
     pub fn handle_deliver_action(&mut self, player_id: &str, target_player_id: &str, message: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（传音消耗 5 点体力）
-        let deliver_cost = 5;
+        // 使用规则引擎获取传音消耗
+        let deliver_cost = self.rule_engine.action_costs.deliver;
+        
+        // 使用公用函数检查玩家基础状态
         if let Err(action_result) = self.check_player_basic_status(player_id, Some(deliver_cost)) {
             return Ok(action_result);
         }
@@ -952,5 +860,262 @@ impl GameState {
             format!("玩家 {} 向导演发送消息: {}", player.name, message)
         );
         Ok(action_result)
+    }
+    
+    /// 汇总当前地点的所有搜索目标
+    fn collect_search_targets(&self, player_id: &str) -> Vec<SearchTarget> {
+        let mut targets = Vec::new();
+        
+        // 获取玩家当前位置
+        let player_location = &self.players[player_id].location;
+        
+        if let Some(place) = self.places.get(player_location) {
+            // 添加其他玩家到搜索目标
+            for other_player_id in &place.players {
+                if other_player_id != player_id {
+                    // 只搜索存活的玩家
+                    if let Some(other_player) = self.players.get(other_player_id) {
+                        if other_player.is_alive {
+                            targets.push(SearchTarget::Player(other_player_id.clone()));
+                        }
+                    }
+                }
+            }
+            
+            // 添加物品到搜索目标
+            for item in &place.items {
+                targets.push(SearchTarget::Item(item.id.clone()));
+            }
+        }
+        
+        targets
+    }
+    
+    /// 等概率随机选择一个搜索目标
+    fn select_random_target(&self, targets: &[SearchTarget]) -> SearchTarget {
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let index = rng.random_range(0..targets.len());
+        targets[index].clone()
+    }
+    
+    /// 处理空搜索结果
+    fn handle_empty_search_result(&mut self, player_id: &str) -> Result<ActionResult, String> {
+        {
+            let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+            player.last_search_result = None;
+        }
+        
+        let (player_strength, player_last_search_time) = {
+            let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
+            (player.strength, player.last_search_time)
+        };
+        
+        let data = serde_json::json!({
+            "last_search_result": null,
+            "strength": player_strength,
+            "last_search_time": player_last_search_time
+        });
+        
+        let action_result = ActionResult::new_system_message(
+            data, 
+            vec![player_id.to_string()], 
+            format!("{} 搜索但没有发现任何东西", 
+                self.players.get(player_id).unwrap().name)
+        );
+        Ok(action_result)
+    }
+    
+    /// 处理玩家搜索结果
+    fn handle_player_search_result(&mut self, player_id: &str, target_player_id: &str, is_visible: bool) -> Result<ActionResult, String> {
+        let target_player_name = {
+            if let Some(target_player) = self.players.get(target_player_id) {
+                target_player.name.clone()
+            } else {
+                return Err("Target player not found".to_string());
+            }
+        };
+        
+        // 更新玩家的上次搜索结果
+        {
+            let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+            player.last_search_result = Some(SearchResult {
+                target_type: SearchResultType::Player,
+                target_id: target_player_id.to_string(),
+                target_name: target_player_name.clone(),
+                is_visible,
+            });
+        }
+        
+        let (player_strength, player_last_search_time) = {
+            let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
+            (player.strength, player.last_search_time)
+        };
+        
+        let data = serde_json::json!({
+            "last_search_result": {
+                "target_type": "player",
+                "target_id": target_player_id,
+                "target_name": target_player_name,
+                "is_visible": is_visible
+            },
+            "strength": player_strength,
+            "last_search_time": player_last_search_time
+        });
+        
+        let action_result = ActionResult::new_system_message(
+            data, 
+            vec![player_id.to_string()], 
+            format!("{} 搜索发现了玩家 {}", 
+                self.players.get(player_id).unwrap().name, target_player_name)
+        );
+        
+        Ok(action_result)
+    }
+    
+    /// 处理物品搜索结果
+    fn handle_item_search_result(&mut self, player_id: &str, item_id: &str, is_visible: bool) -> Result<ActionResult, String> {
+        let (player_location, item_name) = {
+            let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
+            let location = player.location.clone();
+            
+            // 查找物品名称
+            let name = if let Some(place) = self.places.get(&location) {
+                if let Some(item) = place.items.iter().find(|item| item.id == item_id) {
+                    item.name.clone()
+                } else {
+                    return Err("Item not found in place".to_string());
+                }
+            } else {
+                return Err("Place not found".to_string());
+            };
+            
+            (location, name)
+        };
+        
+        // 更新玩家的上次搜索结果
+        {
+            let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+            player.last_search_result = Some(SearchResult {
+                target_type: SearchResultType::Item,
+                target_id: item_id.to_string(),
+                target_name: item_name.clone(),
+                is_visible,
+            });
+        }
+        
+        let (player_strength, player_last_search_time) = {
+            let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
+            (player.strength, player.last_search_time)
+        };
+        
+        let data = serde_json::json!({
+            "last_search_result": {
+                "target_type": "item",
+                "target_id": item_id,
+                "target_name": item_name,
+                "is_visible": is_visible
+            },
+            "strength": player_strength,
+            "last_search_time": player_last_search_time
+        });
+        
+        let action_result = ActionResult::new_system_message(
+            data, 
+            vec![player_id.to_string()], 
+            format!("{} 搜索并发现了物品 {}", 
+                self.players.get(player_id).unwrap().name, item_name)
+        );
+        
+        Ok(action_result)
+    }
+    
+    /// 处理玩家死亡后的物品分配
+    pub fn handle_player_death_loot(&mut self, killer_id: Option<&str>, dead_player_id: &str) -> Vec<String> {
+        let mut effects = Vec::new();
+        
+        // 获取死者的所有物品和位置（避免借用冲突）
+        let (dead_player_location, dead_player_items) = {
+            let dead_player = &self.players[dead_player_id];
+            let mut all_items = dead_player.inventory.clone();
+            
+            // 添加装备的物品到掉落列表
+            for weapon_id in &dead_player.equipped_weapons {
+                if let Some(weapon) = dead_player.equipped_items_detail.get(weapon_id) {
+                    all_items.push(weapon.clone());
+                }
+            }
+            for armor_id in &dead_player.equipped_armors {
+                if let Some(armor) = dead_player.equipped_items_detail.get(armor_id) {
+                    all_items.push(armor.clone());
+                }
+            }
+            if let Some(hand_item_id) = &dead_player.hand_item {
+                if let Some(hand_item) = dead_player.equipped_items_detail.get(hand_item_id) {
+                    all_items.push(hand_item.clone());
+                }
+            }
+            
+            (dead_player.location.clone(), all_items)
+        };
+        
+        if let Some(killer_id) = killer_id {
+            // 获取击杀者信息（避免借用冲突）
+            let (killer_current_inventory_size, killer_name) = {
+                let killer = &self.players[killer_id];
+                (killer.inventory.len(), killer.name.clone())
+            };
+            
+            let max_backpack_size = 4; // 从规则配置获取，这里简化为固定值
+            let available_slots = max_backpack_size - killer_current_inventory_size;
+            
+            if available_slots > 0 {
+                // 随机选择可收缴的物品数量
+                let items_to_take = available_slots.min(dead_player_items.len());
+                
+                // 随机打乱物品顺序
+                let mut shuffled_items = dead_player_items.clone();
+                use rand::seq::SliceRandom;
+                let mut rng = rand::rng();
+                shuffled_items.shuffle(&mut rng);
+                
+                // 击杀者获得前N个物品
+                for item in shuffled_items.iter().take(items_to_take) {
+                    self.players.get_mut(killer_id).unwrap().inventory.push(item.clone());
+                    effects.push(format!("击杀者 {} 收缴了物品 {}", 
+                        killer_name, item.name));
+                }
+                
+                // 剩余物品掉落原地
+                let remaining_items: Vec<Item> = shuffled_items.into_iter().skip(items_to_take).collect();
+                self.drop_items_to_ground(&dead_player_location, remaining_items);
+            } else {
+                // 击杀者背包已满，所有物品掉落原地
+                self.drop_items_to_ground(&dead_player_location, dead_player_items);
+                effects.push("击杀者背包已满，所有物品掉落原地".to_string());
+            }
+        } else {
+            // 无击杀者，所有物品掉落原地
+            self.drop_items_to_ground(&dead_player_location, dead_player_items);
+            effects.push("所有物品掉落原地".to_string());
+        }
+        
+        // 清空死者的装备和背包
+        if let Some(dead_player) = self.players.get_mut(dead_player_id) {
+            dead_player.inventory.clear();
+            dead_player.equipped_weapons.clear();
+            dead_player.equipped_armors.clear();
+            dead_player.equipped_items_detail.clear();
+            dead_player.hand_item = None;
+        }
+        
+        effects
+    }
+    
+    /// 将物品掉落到指定地点
+    fn drop_items_to_ground(&mut self, location: &str, items: Vec<Item>) {
+        if let Some(place) = self.places.get_mut(location) {
+            place.items.extend(items);
+        }
     }
 }
