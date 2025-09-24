@@ -226,28 +226,36 @@ pub struct ActionResult {
     pub message_type: MessageType,
     /// 动作处理时间戳
     pub timestamp: DateTime<Utc>,
+    /// 是否向导演广播
+    pub broadcast_to_director: bool,
 }
 
 impl ActionResult {
     /// 创建新的动作处理结果
-    fn new(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, log_type: MessageType) -> Self {
+    fn new(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, log_type: MessageType, broadcast_to_director: bool) -> Self {
         Self {
             data,
             broadcast_players,
             log_message,
             message_type: log_type,
             timestamp: Utc::now(),
+            broadcast_to_director,
         }
     }
     
     /// 创建新的动作处理结果（带系统日志消息）
     pub fn new_system_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::SystemNotice)
+        ActionResult::new(data, broadcast_players, log_message, MessageType::SystemNotice, true)
     }
     
     /// 创建新的动作处理结果（带用户定向日志消息）
     pub fn new_user_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::UserDirected)
+        ActionResult::new(data, broadcast_players, log_message, MessageType::UserDirected, true)
+    }
+    
+    /// 创建新的动作处理结果（带Info类型提示消息）
+    pub fn new_info_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
+        ActionResult::new(data, broadcast_players, log_message, MessageType::Info, broadcast_to_director)
     }
     
     /// 创建用于返回给前端的数据结构，排除`broadcast_players`字段

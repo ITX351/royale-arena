@@ -37,6 +37,7 @@
     "life_recovery": 25,
     "max_moves": 1
   },
+  "death_item_disposition": "killer_takes_loot",
   "teammate_behavior": 0,
   "display_names": {
     "player_max_life": "生命值",

@@ -172,6 +172,8 @@ pub enum MessageType {
     SystemNotice,
     #[serde(rename = "UserDirected")]
     UserDirected,
+    #[serde(rename = "Info")]
+    Info,
 }
 
 impl MessageType {
@@ -180,6 +182,7 @@ impl MessageType {
         match self {
             MessageType::SystemNotice => "SystemNotice",
             MessageType::UserDirected => "UserDirected",
+            MessageType::Info => "Info",
         }
     }
 }

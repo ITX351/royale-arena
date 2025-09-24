@@ -1,68 +1,63 @@
 <template>
   <div class="in-game-state">
-    <el-card class="game-state-card">
-      <template #header>
-        <div class="card-header">
-          <h3>游戏状态</h3>
+    <!-- 主操作面板 -->
+    <CompactActionPanel 
+      v-if="player" 
+      :player="player" 
+      :places="placeList"
+      @action="handlePlayerAction"
+    />
+
+    <!-- 连接状态提示 -->
+    <el-alert 
+      v-if="!player && gameStateStore.connecting" 
+      title="正在连接到游戏服务器..." 
+      type="info" 
+      show-icon
+      style="margin-bottom: 20px;"
+    />
+
+    <!-- 无玩家数据提示 -->
+    <el-alert 
+      v-else-if="!player" 
+      title="暂无玩家数据，请确保已连接到游戏并有有效的玩家信息" 
+      type="warning" 
+      show-icon
+      style="margin-bottom: 20px;"
+    />
+
+    <!-- 紧凑布局的主要内容区域 -->
+    <div class="main-content-grid" v-if="player">
+      <!-- 背包与搜索结果的紧凑显示 -->
+      <div class="inventory-section">
+        <div class="section-header">
+          <h3>背包管理</h3>
+          <span class="item-count">道具: {{ player.inventory?.length || 0 }}</span>
         </div>
-      </template>
-      
-      <!-- 玩家状态显示组件 -->
-      <PlayerStatusCard 
-        v-if="player" 
-        :player="player" 
-        :global-state="globalState"
-      />
+        <InventoryPanel
+          :player="player"
+          @equip-item="handleEquipItem"
+          @use-item="handleUseItem"
+          @discard-item="handleDiscardItem"
+          @put-down-hand-item="handlePutDownHandItem"
+        />
+      </div>
 
-      <!-- 紧凑操作面板 -->
-      <CompactActionPanel 
-        v-if="player" 
-        :player="player" 
-        :places="placeList"
-        @action="handlePlayerAction"
-      />
-
-      <!-- 连接状态提示 -->
-      <el-alert 
-        v-if="!player && gameStateStore.connecting" 
-        title="正在连接到游戏服务器..." 
-        type="info" 
-        show-icon
-        style="margin-bottom: 20px;"
-      />
-
-      <!-- 无玩家数据提示 -->
-      <el-alert 
-        v-else-if="!player" 
-        title="暂无玩家数据，请确保已连接到游戏并有有效的玩家信息" 
-        type="warning" 
-        show-icon
-        style="margin-bottom: 20px;"
-      />
-
-      <el-row :gutter="20" class="main-content">
-        <!-- 左侧：背包面板 -->
-        <el-col :span="24" :md="12">
-          <InventoryPanel
-            :player="player"
-            @equip-item="handleEquipItem"
-            @use-item="handleUseItem"
-            @discard-item="handleDiscardItem"
-            @put-down-hand-item="handlePutDownHandItem"
-          />
-        </el-col>
-
-        <!-- 右侧：搜索结果展示 -->
-        <el-col :span="24" :md="12">
-          <SearchResultDisplay
-            :player="player"
-            @search="handleSearch"
-            @pick="handlePick"
-            @attack="handleAttack"
-          />
-        </el-col>
-      </el-row>
-    </el-card>
+      <div class="search-section">
+        <div class="section-header">
+          <h3>搜索结果</h3>
+          <span class="search-status" v-if="player.last_search_result">
+            发现: {{ player.last_search_result.target_name }}
+          </span>
+        </div>
+        <SearchResultDisplay
+          :player="player"
+          @search="handleSearch"
+          @pick="handlePick"
+          @attack="handleAttack"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -173,36 +168,80 @@ const handleSend = (message: string) => {
 .in-game-state {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
+  gap: 16px;
+  padding: 16px;
   height: 100%;
   overflow-y: auto;
   max-width: 100%;
   margin: 0 auto;
 }
 
-.game-state-card {
-  height: fit-content;
+.main-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  flex: 1;
 }
 
-.card-header h3 {
+.inventory-section, .search-section {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e1e6f0;
+  min-height: 300px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.section-header h3 {
   margin: 0;
+  font-size: 16px;
+  font-weight: 600;
   color: #303133;
 }
 
-.main-content {
-  flex: 1;
+.item-count, .search-status {
+  font-size: 12px;
+  color: #909399;
+  background: #f0f2f5;
+  padding: 2px 8px;
+  border-radius: 12px;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
   .in-game-state {
-    padding: 10px;
-    gap: 10px;
+    padding: 12px;
+    gap: 12px;
   }
   
-  .el-row {
-    gap: 10px;
+  .main-content-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .inventory-section, .search-section {
+    padding: 12px;
+    min-height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .in-game-state {
+    padding: 8px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
 

@@ -185,7 +185,8 @@ const displayedMessages = computed(() => {
 const getMessageTypeLabel = (type: string) => {
   const typeMap: Record<string, string> = {
     'SystemNotice': '系统消息',
-    'UserDirected': '用户消息'
+    'UserDirected': '用户消息',
+    'Info': '提示消息' // 这个理论上不会出现，但保留作为安全措施
   }
   return typeMap[type] || type
 }
@@ -353,6 +354,11 @@ onUnmounted(() => {
   border-left: 4px solid #67c23a;
 }
 
+.log-item.Info {
+  background-color: #f4f4f5;
+  border-left: 4px solid #909399;
+}
+
 /* 新增的淡入淡出效果样式 */
 .log-item.fade-effect {
   background-color: #409eff !important;
@@ -400,6 +406,11 @@ onUnmounted(() => {
 
 .log-type.UserDirected {
   background-color: #67c23a;
+  color: white;
+}
+
+.log-type.Info {
+  background-color: #909399;
   color: white;
 }
 

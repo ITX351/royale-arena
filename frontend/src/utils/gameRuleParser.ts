@@ -28,7 +28,14 @@ export interface ParsedGameRules {
     lifeRecovery: number;
     maxMoves: number;
   };
+  deathItemDisposition: string; // 死亡后物品去向
   teammateBehavior: number;
+  parsedTeammateBehaviors: {
+    noHarm: boolean;
+    noSearch: boolean;
+    canViewStatus: boolean;
+    canTransferItems: boolean;
+  }; // 解析后的队友行为效果
   
   // 物品规则
   items: {
@@ -156,7 +163,14 @@ export class GameRuleParser {
         lifeRecovery: 25,
         maxMoves: 1
       },
+      deathItemDisposition: "killer_takes_loot", // 默认值
       teammateBehavior: 0,
+      parsedTeammateBehaviors: {
+        noHarm: false,
+        noSearch: false,
+        canViewStatus: false,
+        canTransferItems: false
+      },
       items: {
         rarityLevels: [],
         weapons: [],
@@ -228,9 +242,25 @@ export class GameRuleParser {
       parsedRules.missingSections.push('rest_mode');
     }
 
+    // 解析死亡后物品去向规则
+    if (typeof rulesConfig.death_item_disposition === 'string') {
+      // 验证值是否为允许的选项之一
+      const allowedDispositions = ["killer_takes_loot", "drop_to_ground", "vanish_completely"];
+      if (allowedDispositions.includes(rulesConfig.death_item_disposition)) {
+        parsedRules.deathItemDisposition = rulesConfig.death_item_disposition;
+      } else {
+        parsedRules.parsingIssues.push(`无效的死亡物品处理方式: ${rulesConfig.death_item_disposition}，使用默认值`);
+        parsedRules.deathItemDisposition = "killer_takes_loot"; // 默认值
+      }
+    } else {
+      parsedRules.deathItemDisposition = "killer_takes_loot"; // 默认值
+    }
+
     // 解析队友行为规则
     if (typeof rulesConfig.teammate_behavior === 'number') {
       parsedRules.teammateBehavior = rulesConfig.teammate_behavior;
+      // 解析队友行为的位运算值
+      parsedRules.parsedTeammateBehaviors = this.parseTeammateBehavior(rulesConfig.teammate_behavior);
     } else {
       parsedRules.missingSections.push('teammate_behavior');
     }
@@ -396,6 +426,18 @@ export class GameRuleParser {
       }
     }
     
+    // 检查死亡后物品去向字段
+    if (rulesConfig.death_item_disposition !== undefined) {
+      if (typeof rulesConfig.death_item_disposition !== 'string') {
+        errors.push('死亡后物品去向必须是字符串');
+      } else {
+        const allowedDispositions = ["killer_takes_loot", "drop_to_ground", "vanish_completely"];
+        if (!allowedDispositions.includes(rulesConfig.death_item_disposition)) {
+          errors.push('死亡后物品去向值无效，必须是: killer_takes_loot, drop_to_ground, vanish_completely 之一');
+        }
+      }
+    }
+    
     // 检查地图配置
     if (rulesConfig.map) {
       if (!Array.isArray(rulesConfig.map.places)) {
@@ -558,6 +600,20 @@ export class GameRuleParser {
     return {
       isValid: errors.length === 0,
       errors
+    };
+  }
+  
+  /**
+   * 解析队友行为的位运算值
+   * @param value 位运算值
+   * @returns 解析后的行为对象
+   */
+  parseTeammateBehavior(value: number) {
+    return {
+      noHarm: (value & 1) !== 0,           // 禁止队友伤害 (1)
+      noSearch: (value & 2) !== 0,         // 禁止搜索到队友 (2)
+      canViewStatus: (value & 4) !== 0,    // 允许查看队友状态 (4)
+      canTransferItems: (value & 8) !== 0  // 允许赠送物品给队友 (8)
     };
   }
 }

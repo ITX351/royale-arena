@@ -79,7 +79,7 @@ export interface ActorGameData {
 }
 
 // 消息类型枚举
-export type MessageType = 'SystemNotice' | 'UserDirected';
+export type MessageType = 'SystemNotice' | 'UserDirected' | 'Info';
 
 // 动作结果接口
 export interface ActionResult {
@@ -87,6 +87,7 @@ export interface ActionResult {
   log_message: string;
   message_type: MessageType;
   timestamp: string;
+  broadcast_to_director?: boolean; // 可选字段，后端传输时可能不包含
 }
 
 // 导演视角的游戏状态接口

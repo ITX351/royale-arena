@@ -33,6 +33,7 @@
     "life_recovery": 25,
     "max_moves": 1
   },
+  "death_item_disposition": "由击杀者收缴（无击杀者则掉落在原地）",
   "items": {
     "rarity_levels": [],
     "weapons": [],
@@ -486,3 +487,19 @@
   - `4`: 允许查看队友状态
   - `8`: 允许赠送物品给队友
   - 可以通过相加组合规则，例如：`5`（1+4）表示禁止伤害且允许查看状态
+
+### 死亡后物品去向 (death_item_disposition)
+
+定义玩家死亡后其物品的处理方式。
+
+```json
+{
+  "death_item_disposition": "killer_takes_loot"
+}
+```
+
+字段说明：
+- `death_item_disposition`: 玩家死亡后物品的处理方式，可选值：
+  - `"killer_takes_loot"`: 如果有击杀者，则物品由击杀者获得；如果没有击杀者（如因环境因素死亡），则物品掉落在原地
+  - `"drop_to_ground"`: 玩家死亡后，其所有物品均掉落在死亡地点
+  - `"vanish_completely"`: 玩家死亡后，其所有物品直接消失，不留下任何物品

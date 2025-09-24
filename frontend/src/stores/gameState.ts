@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { ElNotification } from 'element-plus'
 import type { 
   DirectorGameState, 
   ActorGameState,
@@ -100,8 +101,8 @@ export const useGameStateStore = defineStore('gameState', () => {
   const updateGameState = (newState: DirectorGameState | ActorGameState) => {
     gameState.value = newState
     
-    // 如果有动作结果，添加到日志消息中
-    if (newState.action_result) {
+    // 如果有动作结果，只有非Info类型的消息才添加到日志消息中
+    if (newState.action_result && newState.action_result.message_type !== 'Info') {
       addLogMessage(newState.action_result)
     }
   }
@@ -233,6 +234,18 @@ export const useGameStateStore = defineStore('gameState', () => {
       case 'system_message':
         // 处理系统消息
         console.log('系统消息:', event.data)
+        break
+      case 'info_notification':
+        // 处理Info类型的轻量提示
+        console.log('Info提示:', event.data)
+        ElNotification({
+          title: '提示',
+          message: event.data.message,
+          type: 'info',
+          position: 'top-right',
+          duration: 3000,
+          showClose: true
+        })
         break
       case 'error':
         error.value = event.data.message || 'WebSocket错误'

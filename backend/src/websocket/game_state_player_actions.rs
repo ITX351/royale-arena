@@ -3,6 +3,53 @@
 use super::models::*;
 
 impl GameState {
+    /// 检查玩家基础状态（存活状态和体力值）
+    /// 
+    /// # 参数
+    /// - `player_id`: 玩家ID
+    /// - `required_strength`: 所需的最少体力值，如果为None则不检查体力
+    /// 
+    /// # 返回值
+    /// - `Ok(())`: 状态检查通过
+    /// - `Err(ActionResult)`: 状态检查失败，返回Info类型的错误消息
+    fn check_player_basic_status(&self, player_id: &str, required_strength: Option<i32>) -> Result<(), ActionResult> {
+        let player = self.players.get(player_id)
+            .ok_or_else(|| {
+                let data = serde_json::json!({});
+                ActionResult::new_info_message(
+                    data,
+                    vec![player_id.to_string()],
+                    "玩家未找到".to_string(),
+                    false
+                )
+            })?;
+        
+        // 检查玩家是否存活
+        if !player.is_alive {
+            let data = serde_json::json!({});
+            return Err(ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "玩家已死亡，无法进行操作".to_string(),
+                false
+            ));
+        }
+        
+        // 检查体力值（如果指定了最低要求）
+        if let Some(min_strength) = required_strength {
+            if player.strength < min_strength {
+                let data = serde_json::json!({});
+                return Err(ActionResult::new_info_message(
+                    data,
+                    vec![player_id.to_string()],
+                    "体力不足，无法执行该操作".to_string(),
+                    false
+                ));
+            }
+        }
+        
+        Ok(())
+    }
     /// 处理玩家出生行动
     pub fn handle_born_action(&mut self, player_id: &str, place_name: &str) -> Result<ActionResult, String> {
         // 获取玩家引用
@@ -43,26 +90,30 @@ impl GameState {
 
     /// 处理玩家移动行动
     pub fn handle_move_action(&mut self, player_id: &str, target_place: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态（移动消耗 5 点体力）
+        let move_cost = 5;
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(move_cost)) {
+            return Ok(action_result);
+        }
+        
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-        
-        // 检查前置条件：玩家处于存活状态，有足够体力
-        if !player.is_alive {
-            return Err("Player is not alive".to_string());
-        }
         
         // 验证目标地点是否存在且未被摧毁
         let place = self.places.get(target_place).ok_or("Target place not found".to_string())?;
         if place.is_destroyed {
-            return Err("Target place is destroyed".to_string());
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "目标地点已被摧毁".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
         
-        // 消耗体力值（根据规则配置）
-        // 这里我们简化处理，假设每次移动消耗5点体力
-        let move_cost = 5;
-        if player.strength < move_cost {
-            return Err("Not enough strength".to_string());
-        }
+        // 消耗体力值
         player.strength -= move_cost;
         
         // 从当前地点移除玩家
@@ -96,34 +147,36 @@ impl GameState {
 
     /// 处理搜索行动
     pub fn handle_search_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态（搜索消耗 5 点体力）
+        let search_cost = 5;
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(search_cost)) {
+            return Ok(action_result);
+        }
+        
         // 获取玩家状态信息（避免借用冲突）
-        let (player_location, player_alive, player_strength, player_last_search_time) = {
+        let (player_location, player_last_search_time) = {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
             (
                 player.location.clone(),
-                player.is_alive,
-                player.strength,
                 player.last_search_time,
             )
         };
-        
-        // 检查前置条件：玩家处于存活状态，有足够体力，未处于搜索冷却期
-        if !player_alive {
-            return Err("玩家已出局".to_string());
-        }
-        
-        // 检查体力
-        let search_cost = 5; // 假设搜索消耗5点体力
-        if player_strength < search_cost {
-            return Err("玩家体力不足".to_string());
-        }
         
         // 检查搜索冷却期（简化处理，假设冷却期为30秒）
         let search_cooldown = 30;
         if let Some(last_search_time) = player_last_search_time {
             let elapsed = chrono::Utc::now().signed_duration_since(last_search_time);
             if elapsed.num_seconds() < search_cooldown {
-                return Err("搜索冷却中".to_string());
+                let remaining_time = search_cooldown - elapsed.num_seconds();
+                // 用Info类型返回错误提示
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("搜索冷却中，请等待{}秒后再试", remaining_time),
+                    false
+                );
+                return Ok(action_result);
             }
         }
         
@@ -369,13 +422,14 @@ impl GameState {
 
     /// 处理捡拾行动
     pub fn handle_pick_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
-        // 检查玩家是否存在且处于存活状态，上一次搜索结果为物品
+        // 使用公用函数检查玩家基础状态（捡拾不消耗体力）
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
+        }
+        
+        // 检查上一次搜索结果是否为物品
         {
             let player = self.players.get(player_id).ok_or("玩家未找到".to_string())?;
-            
-            if !player.is_alive {
-                return Err("玩家已死亡".to_string());
-            }
             
             let last_search_result_valid = if let Some(ref search_result) = player.last_search_result {
                 search_result.target_type == SearchResultType::Item
@@ -384,7 +438,15 @@ impl GameState {
             };
             
             if !last_search_result_valid {
-                return Err("上一次搜索结果不是物品".to_string());
+                // 用Info类型返回错误提示
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    "上一次搜索结果不是物品".to_string(),
+                    false
+                );
+                return Ok(action_result);
             }
         }
         
@@ -457,20 +519,25 @@ impl GameState {
 
     /// 处理攻击行动
     pub fn handle_attack_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
-        // 检查前置条件：玩家处于存活状态，上一次搜索结果为玩家，玩家装备了武器
+        // 使用公用函数检查玩家基础状态（攻击不消耗体力，但需要活着）
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
+        }
+        
+        // 检查前置条件：上一次搜索结果为玩家，玩家装备了武器
         {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
             
-            if !player.is_alive {
-                return Err("Player is not alive".to_string());
-            }
-            
             if player.equipped_item.is_none() {
-                return Err("Player has no equipped item".to_string());
-            }
-            
-            if player.last_search_result.is_none() {
-                return Err("No previous search result".to_string());
+                // 用Info类型返回错误提示
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    "未装备武器，无法攻击".to_string(),
+                    false
+                );
+                return Ok(action_result);
             }
             
             let last_search_result_valid = if let Some(ref search_result) = player.last_search_result {
@@ -480,7 +547,15 @@ impl GameState {
             };
             
             if !last_search_result_valid {
-                return Err("Last search result is not a player".to_string());
+                // 用Info类型返回错误提示
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    "上一次搜索结果不是玩家".to_string(),
+                    false
+                );
+                return Ok(action_result);
             }
         }
         
@@ -513,33 +588,29 @@ impl GameState {
                 "message": "Target player has left the location"
             });
             
-            // 创建动作结果，只广播给发起者本人
-            let action_result = ActionResult::new_system_message(
+            // 用Info类型返回错误提示
+            let action_result = ActionResult::new_info_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("玩家 {} 试图攻击 {} 但对方已离开", 
-                    self.players.get(player_id).unwrap().name,
-                    target_player_id
-                )
+                "目标玩家已离开该地点".to_string(),
+                false
             );
             return Ok(action_result);
         }
         
-        // 检查目标玩家是否已死亡
+        // 验证目标玩家是否已死亡
         if !target_player_alive {
-            // 目标玩家已死亡
+            // 目标玩家已死亡，不能攻击
             let data = serde_json::json!({
                 "message": "Target player is already dead"
             });
             
-            // 创建动作结果，只广播给发起者本人
-            let action_result = ActionResult::new_system_message(
+            // 用Info类型返回错误提示
+            let action_result = ActionResult::new_info_message(
                 data, 
                 vec![player_id.to_string()], 
-                format!("玩家 {} 试图攻击 {} 但对方已死亡", 
-                    self.players.get(player_id).unwrap().name,
-                    target_player_id
-                )
+                "目标玩家已死亡".to_string(),
+                false
             );
             return Ok(action_result);
         }
@@ -601,14 +672,27 @@ impl GameState {
 
     /// 处理装备行动
     pub fn handle_equip_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态（装备不消耗体力）
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
+        }
+        
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
         // 检查前置条件：玩家处于存活状态，背包中有指定物品
         if !player.is_alive {
-            return Err("Player is not alive".to_string());
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "玩家已死亡，无法进行操作".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
-        
+
         // 验证玩家背包中是否存在指定物品
         if let Some(_item_index) = player.inventory.iter().position(|item| item.id == item_id) {
             // 更新玩家当前手持物品
@@ -627,29 +711,53 @@ impl GameState {
             );
             Ok(action_result)
         } else {
-            Err("Item not found in player's inventory".to_string())
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "背包中没有该道具".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
     }
 
     /// 处理使用道具行动
     pub fn handle_use_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态（使用道具不消耗体力）
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
+        }
+        
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
-        // 检查前置条件：玩家处于存活状态，手持道具
-        if !player.is_alive {
-            return Err("Player is not alive".to_string());
-        }
-        
         if player.hand_item.is_none() {
-            return Err("Player has no item in hand".to_string());
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "当前没有手持道具".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
         
         // 验证手持的是否是指定物品
         if player.hand_item.as_ref() != Some(&item_id.to_string()) {
-            return Err("Specified item is not in player's hand".to_string());
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "指定的道具不是当前手持道具".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
-        
+
         // 查找物品信息
         if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
             let item = &player.inventory[item_index];
@@ -728,14 +836,27 @@ impl GameState {
 
     /// 处理丢弃道具行动
     pub fn handle_throw_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
-        // 获取玩家引用
-        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-        
-        // 检查前置条件：玩家处于存活状态，背包中有指定物品
-        if !player.is_alive {
-            return Err("Player is not alive".to_string());
+        // 使用公用函数检查玩家基础状态（丢弃道具不消耗体力）
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
         }
         
+        // 获取玩家引用
+        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+
+        // 检查前置条件：玩家处于存活状态，背包中有指定物品
+        if !player.is_alive {
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "玩家已死亡，无法进行操作".to_string(),
+                false
+            );
+            return Ok(action_result);
+        }
+
         // 验证玩家背包中是否存在指定物品
         if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
             // 从玩家背包中移除物品
@@ -765,28 +886,33 @@ impl GameState {
             );
             Ok(action_result)
         } else {
-            Err("Item not found in player's inventory".to_string())
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "背包中没有该道具".to_string(),
+                false
+            );
+            return Ok(action_result);
         }
+
     }
 
     /// 处理传音行动
     pub fn handle_deliver_action(&mut self, player_id: &str, target_player_id: &str, message: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态（传音消耗 5 点体力）
+        let deliver_cost = 5;
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(deliver_cost)) {
+            return Ok(action_result);
+        }
+        
         // 获取玩家引用
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         
-        // 检查前置条件：玩家处于存活状态
-        if !player.is_alive {
-            return Err("Player is not alive".to_string());
-        }
-        
-        // 消耗体力值（根据规则配置，假设传音消耗5点体力）
-        let deliver_cost = 5;
-        if player.strength >= deliver_cost {
-            player.strength -= deliver_cost;
-        } else {
-            player.strength = 0;
-        }
-        
+        // 消耗体力值
+        player.strength -= deliver_cost;
+
         // 向目标玩家发送消息
         // 在实际实现中，这里需要找到目标玩家的连接并发送消息
         // 这里我们只是构造响应

@@ -12,7 +12,7 @@ export enum WebSocketStatus {
 
 // WebSocket事件类型
 export interface WebSocketEvent {
-  type: 'state_update' | 'system_message' | 'action_result' | 'error'
+  type: 'state_update' | 'system_message' | 'action_result' | 'error' | 'info_notification'
   data: any
   timestamp: Date
 }
@@ -216,11 +216,24 @@ export class WebSocketService {
         
         // 如果有动作结果，也发送动作结果事件
         if (data.data.action_result) {
-          this.emitEvent({
-            type: 'action_result',
-            data: data.data.action_result,
-            timestamp: new Date()
-          });
+          // 检查消息类型，如果是Info类型，发送轻量提示事件
+          if (data.data.action_result.message_type === 'Info') {
+            this.emitEvent({
+              type: 'info_notification',
+              data: {
+                message: data.data.action_result.log_message,
+                timestamp: data.data.action_result.timestamp
+              },
+              timestamp: new Date()
+            });
+          } else {
+            // 其他类型的消息使用原有的action_result事件
+            this.emitEvent({
+              type: 'action_result',
+              data: data.data.action_result,
+              timestamp: new Date()
+            });
+          }
         }
         break;
         

@@ -107,7 +107,7 @@
                           </template>
                         </el-alert>
                         
-                        <el-collapse v-model="activeParserPanels" accordion>
+                        <el-collapse v-model="activeParserPanels">
                           <el-collapse-item title="基础规则" name="basic">
                             <div class="parser-section">
                               <el-row :gutter="16">
@@ -145,6 +145,26 @@
                                   <p><strong>生命恢复：</strong>{{ parsedRules.restMode.lifeRecovery }}点</p>
                                   <p><strong>最大移动次数：</strong>{{ parsedRules.restMode.maxMoves }}次</p>
                                   <p><strong>队友行为规则：</strong>{{ parsedRules.teammateBehavior }}</p>
+                                  <p><strong>死亡后物品去向：</strong>{{ getDispositionDisplayText(parsedRules.deathItemDisposition) }}</p>
+                                  
+                                  <!-- 队友行为详细解析 -->
+                                  <div class="teammate-behavior-details">
+                                    <h5>队友行为详细设置：</h5>
+                                    <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.noHarm" style="margin: 2px;">禁止队友伤害</el-tag>
+                                    <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.noSearch" style="margin: 2px;">禁止搜索到队友</el-tag>
+                                    <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.canViewStatus" style="margin: 2px;">允许查看队友状态</el-tag>
+                                    <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.canTransferItems" style="margin: 2px;">允许赠送物品给队友</el-tag>
+                                    
+                                    <!-- 如果没有启用任何特殊行为，显示默认 -->
+                                    <el-tag v-if="!parsedRules.parsedTeammateBehaviors.noHarm && 
+                                               !parsedRules.parsedTeammateBehaviors.noSearch && 
+                                               !parsedRules.parsedTeammateBehaviors.canViewStatus && 
+                                               !parsedRules.parsedTeammateBehaviors.canTransferItems" 
+                                            style="margin: 2px;" 
+                                            type="success">
+                                      无特殊队友行为规则
+                                    </el-tag>
+                                  </div>
                                 </el-col>
                               </el-row>
                             </div>
@@ -319,7 +339,7 @@ const originalRules = ref('')
 const saving = ref(false)
 const rulesCollapsed = ref(false)
 const activeTab = ref('editor')
-const activeParserPanels = ref(['basic'])
+const activeParserPanels = ref(['basic', 'items'])
 const activeItemTab = ref('rarity')
 const activeDocTab = ref('guide')
 const documentation = ref('')
@@ -437,6 +457,15 @@ const resetRules = () => {
   editableRules.value = originalRules.value
 }
 
+const getDispositionDisplayText = (value: string) => {
+  const dispositionMap: Record<string, string> = {
+    'killer_takes_loot': '由击杀者收缴（无击杀者则掉落在原地）',
+    'drop_to_ground': '无条件掉落在原地',
+    'vanish_completely': '凭空消失'
+  };
+  return dispositionMap[value] || value;
+}
+
 const loadRulesDocumentation = async () => {
   try {
     loadingDocumentation.value = true
@@ -493,16 +522,12 @@ watch(activeDocTab, (newTab) => {
 </script>
 
 <style scoped>
-.rules-card {
-  margin-bottom: 24px;
-}
-
-.card-header {
+.rule-management {
+  max-width: 100%;
+  overflow-x: hidden;
+  width: 100%;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
+  justify-content: center;
 }
 
 .card-header h3 {
@@ -524,6 +549,14 @@ watch(activeDocTab, (newTab) => {
   font-size: 16px;
   font-weight: 600;
   color: #303133;
+}
+
+.rules-card {
+  margin-bottom: 24px;
+  max-width: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 900px;
 }
 
 .rules-content {
@@ -594,8 +627,19 @@ watch(activeDocTab, (newTab) => {
   margin-bottom: 20px;
 }
 
+.rules-documentation-wrapper {
+  max-width: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 800px;
+}
+
 .rules-documentation {
   padding: 20px 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 800px;
 }
 
 .documentation-content {
@@ -606,6 +650,13 @@ watch(activeDocTab, (newTab) => {
   text-align: left;
   word-break: break-word;
   overflow-wrap: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  /* 固定宽度，不随页面宽度变化 */
+  width: 100%;
+  max-width: 800px; /* Fixed maximum width */
+  overflow-x: hidden;
 }
 
 .documentation-content h1,
@@ -672,6 +723,20 @@ watch(activeDocTab, (newTab) => {
   padding: 0 16px;
   margin: 16px 0;
   color: #606266;
+}
+
+.teammate-behavior-details {
+  margin-top: 12px;
+  padding: 8px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.teammate-behavior-details h5 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #606266;
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {

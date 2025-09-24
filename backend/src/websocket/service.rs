@@ -403,25 +403,30 @@ impl WebSocketService {
                 // 使用新的广播器广播消息给相关玩家
                 let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
                 
-                // 使用新的广播器广播给所有导演
-                let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                // 根据broadcast_to_director字段判断是否向导演广播
+                if action_result.broadcast_to_director {
+                    let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                }
                 
                 // 使用显式的消息类型而不是通过字符串内容判断
                 let message_type = action_result.message_type.clone();
                 
-                // 为每个相关玩家创建日志记录
-                for broadcast_player_id in &action_result.broadcast_players {
-                    let log_result = self.app_state.game_log_service.create_log(
-                        game_id,
-                        broadcast_player_id,
-                        &action_result.log_message,
-                        message_type.clone(),
-                        action_result.timestamp,  // 传递ActionResult中的时间戳
-                    ).await;
-                    
-                    // 忽略日志记录错误，但记录日志
-                    if let Err(e) = log_result {
-                        eprintln!("Failed to create log record: {}", e);
+                // 仅在非Info类型消息时创建日志记录
+                if message_type != crate::game::MessageType::Info {
+                    // 为每个相关玩家创建日志记录
+                    for broadcast_player_id in &action_result.broadcast_players {
+                        let log_result = self.app_state.game_log_service.create_log(
+                            game_id,
+                            broadcast_player_id,
+                            &action_result.log_message,
+                            message_type.clone(),
+                            action_result.timestamp,  // 传递ActionResult中的时间戳
+                        ).await;
+                        
+                        // 忽略日志记录错误，但记录日志
+                        if let Err(e) = log_result {
+                            eprintln!("Failed to create log record: {}", e);
+                        }
                     }
                 }
             }
@@ -567,25 +572,30 @@ impl WebSocketService {
                 // 使用新的广播器广播消息给相关玩家
                 let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
                 
-                // 使用新的广播器广播给所有导演
-                let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                // 根据broadcast_to_director字段判断是否向导演广播
+                if action_result.broadcast_to_director {
+                    let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                }
                 
                 // 使用显式的消息类型而不是通过字符串内容判断
                 let message_type = action_result.message_type.clone();
                 
-                // 为每个相关玩家创建日志记录
-                for broadcast_player_id in &action_result.broadcast_players {
-                    let log_result = self.app_state.game_log_service.create_log(
-                        game_id,
-                        broadcast_player_id,
-                        &action_result.log_message,
-                        message_type.clone(),
-                        action_result.timestamp,  // 传递ActionResult中的时间戳
-                    ).await;
-                    
-                    // 忽略日志记录错误，但记录日志
-                    if let Err(e) = log_result {
-                        eprintln!("Failed to create log record: {}", e);
+                // 仅在非Info类型消息时创建日志记录
+                if message_type != crate::game::MessageType::Info {
+                    // 为每个相关玩家创建日志记录
+                    for broadcast_player_id in &action_result.broadcast_players {
+                        let log_result = self.app_state.game_log_service.create_log(
+                            game_id,
+                            broadcast_player_id,
+                            &action_result.log_message,
+                            message_type.clone(),
+                            action_result.timestamp,  // 传递ActionResult中的时间戳
+                        ).await;
+                        
+                        // 忽略日志记录错误，但记录日志
+                        if let Err(e) = log_result {
+                            eprintln!("Failed to create log record: {}", e);
+                        }
                     }
                 }
             }
