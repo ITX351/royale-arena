@@ -280,8 +280,11 @@ impl GameState {
 
     /// 处理捡拾行动
     pub fn handle_pick_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（捡拾不消耗体力）
-        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+        // 使用规则引擎获取拾取消耗
+        let pick_cost = self.rule_engine.action_costs.pick;
+        
+        // 使用公用函数检查玩家基础状态
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(pick_cost)) {
             return Ok(action_result);
         }
         
@@ -356,6 +359,8 @@ impl GameState {
                 // 将物品添加到玩家背包
                 {
                     let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+                    // 消耗体力值
+                    player.strength -= pick_cost;
                     player.inventory.push(item);
                 }
                 
@@ -367,7 +372,8 @@ impl GameState {
                 
                 // 向该玩家发送背包更新
                 let data = serde_json::json!({
-                    "inventory": player_inventory
+                    "inventory": player_inventory,
+                    "strength": self.players.get(player_id).unwrap().strength
                 });
                 
                 // 创建动作结果，只广播给发起者本人
@@ -402,8 +408,11 @@ impl GameState {
 
     /// 处理攻击行动
     pub fn handle_attack_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（攻击不消耗体力，但需要活着）
-        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+        // 使用规则引擎获取攻击消耗
+        let attack_cost = self.rule_engine.action_costs.attack;
+        
+        // 使用公用函数检查玩家基础状态
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(attack_cost)) {
             return Ok(action_result);
         }
         
@@ -540,8 +549,7 @@ impl GameState {
             "message": format!("You were attacked for {} damage", damage)
         });
         
-        // 使用规则引擎获取攻击消耗
-        let attack_cost = self.rule_engine.action_costs.attack;
+        // 消耗体力值
         {
             let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
             if player.strength >= attack_cost {
@@ -564,8 +572,11 @@ impl GameState {
 
     /// 处理装备行动
     pub fn handle_equip_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（装备不消耗体力）
-        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+        // 使用规则引擎获取装备消耗
+        let equip_cost = self.rule_engine.action_costs.equip;
+        
+        // 使用公用函数检查玩家基础状态
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(equip_cost)) {
             return Ok(action_result);
         }
         
@@ -587,12 +598,16 @@ impl GameState {
 
         // 验证玩家背包中是否存在指定物品
         if let Some(_item_index) = player.inventory.iter().position(|item| item.id == item_id) {
+            // 消耗体力值
+            player.strength -= equip_cost;
+            
             // 更新玩家当前手持物品
             player.hand_item = Some(item_id.to_string());
             
             // 向该玩家发送手持物品状态更新
             let data = serde_json::json!({
-                "hand_item": item_id
+                "hand_item": item_id,
+                "strength": player.strength
             });
             
             // 创建动作结果，只广播给发起者本人
@@ -617,8 +632,11 @@ impl GameState {
 
     /// 处理使用道具行动
     pub fn handle_use_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（使用道具不消耗体力）
-        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+        // 使用规则引擎获取使用消耗
+        let use_cost = self.rule_engine.action_costs.use_item;
+        
+        // 使用公用函数检查玩家基础状态
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(use_cost)) {
             return Ok(action_result);
         }
         
@@ -654,6 +672,9 @@ impl GameState {
         if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
             let item = &player.inventory[item_index];
             
+            // 消耗体力值
+            player.strength -= use_cost;
+            
             // 根据道具类型执行相应效果
             match item.item_type {
                 ItemType::Consumable => {
@@ -674,7 +695,8 @@ impl GameState {
                     let data = serde_json::json!({
                         "life": player.life,
                         "inventory": player.inventory,
-                        "hand_item": null
+                        "hand_item": null,
+                        "strength": player.strength
                     });
                     
                     // 创建动作结果，只广播给发起者本人
@@ -704,7 +726,8 @@ impl GameState {
                     // 更新玩家状态
                     let data = serde_json::json!({
                         "equipped_weapons": player.equipped_weapons,
-                        "equipped_armors": player.equipped_armors
+                        "equipped_armors": player.equipped_armors,
+                        "strength": player.strength
                     });
                     
                     // 创建动作结果，只广播给发起者本人
@@ -723,7 +746,8 @@ impl GameState {
                     
                     // 更新玩家状态
                     let data = serde_json::json!({
-                        "equipped_armors": player.equipped_armors
+                        "equipped_armors": player.equipped_armors,
+                        "strength": player.strength
                     });
                     
                     // 创建动作结果，只广播给发起者本人
@@ -742,8 +766,11 @@ impl GameState {
 
     /// 处理丢弃道具行动
     pub fn handle_throw_action(&mut self, player_id: &str, item_id: &str) -> Result<ActionResult, String> {
-        // 使用公用函数检查玩家基础状态（丢弃道具不消耗体力）
-        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+        // 使用规则引擎获取丢弃消耗
+        let throw_cost = self.rule_engine.action_costs.throw_item;
+        
+        // 使用公用函数检查玩家基础状态
+        if let Err(action_result) = self.check_player_basic_status(player_id, Some(throw_cost)) {
             return Ok(action_result);
         }
         
@@ -765,6 +792,9 @@ impl GameState {
 
         // 验证玩家背包中是否存在指定物品
         if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
+            // 消耗体力值
+            player.strength -= throw_cost;
+            
             // 从玩家背包中移除物品
             let item = player.inventory.remove(item_index);
             
@@ -781,7 +811,8 @@ impl GameState {
             // 向该玩家发送背包更新
             let data = serde_json::json!({
                 "inventory": player.inventory,
-                "hand_item": player.hand_item
+                "hand_item": player.hand_item,
+                "strength": player.strength
             });
             
             // 创建动作结果，只广播给发起者本人

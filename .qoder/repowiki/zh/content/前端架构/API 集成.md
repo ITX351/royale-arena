@@ -33,6 +33,8 @@
 - **更新WebSocket消息格式**：描述重构后的消息结构，包括系统消息、游戏状态消息和动作结果消息
 - **添加导演控制指令示例**：提供导演通过WebSocket发送控制指令的代码示例
 - **微调规则物品输出显示**：根据最新提交，调整了规则管理界面中物品信息的显示方式
+- **增强WebSocket重连机制**：根据`webSocketService.ts`的更新，详细说明了连接超时处理和自动重连逻辑
+- **完善错误处理流程**：更新了前端对WebSocket消息解析失败和发送失败的处理方式
 
 ## 目录
 1. [简介](#简介)
@@ -262,14 +264,17 @@ export const useAdminStore = defineStore('admin', () => {
 
 根据最新的代码重构，WebSocket 实现实时通信功能，支持导演和玩家的实时交互。
 
-#### WebSocket连接建立
-前端通过 `WebSocketService` 类建立与后端的连接，连接URL包含游戏ID、用户类型和密码。
+#### WebSocket连接建立与重连机制
+前端通过 `WebSocketService` 类建立与后端的连接，连接URL包含游戏ID、用户类型和密码。该服务实现了连接超时检测和自动重连机制。
 
 ```typescript
 // WebSocket服务类
 export class WebSocketService {
   private ws: WebSocket | null = null
   private url: string = ''
+  private reconnectAttempts: number = 0
+  private maxReconnectAttempts: number = 5
+  private reconnectInterval: number = 3000
   private status: WebSocketStatus = WebSocketStatus.DISCONNECTED
   private listeners: Array<(event: WebSocketEvent) => void> = []
   private gameId: string = ''
@@ -279,18 +284,36 @@ export class WebSocketService {
   // 连接到WebSocket服务器
   connect(gameId: string, password: string, userType: string, timeout: number = API_CONFIG.TIMEOUT): Promise<void> {
     return new Promise((resolve, reject) => {
+      // 如果已经连接，先断开
+      if (this.ws) {
+        this.disconnect()
+      }
+
       this.gameId = gameId
       this.password = password
-      this.userType = userType
+      this.userType = userType // 保存用户类型
       this.url = `${API_CONFIG.BASE_URL}/ws/${gameId}?user_type=${userType}&password=${encodeURIComponent(password)}`
+      console.log('连接URL:', this.url)
       
+      // 设置连接超时定时器
+      const timeoutId = setTimeout(() => {
+        if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+          console.warn('WebSocket连接超时')
+          this.ws.close() // 关闭连接
+          this.setStatus(WebSocketStatus.ERROR)
+          reject(new Error('连接超时'))
+        }
+      }, timeout)
+
       try {
         this.setStatus(WebSocketStatus.CONNECTING)
         this.ws = new WebSocket(this.url)
 
         this.ws.onopen = () => {
+          clearTimeout(timeoutId) // 清除超时定时器
           console.log('WebSocket连接已建立')
           this.setStatus(WebSocketStatus.CONNECTED)
+          this.reconnectAttempts = 0
           resolve()
         }
 
@@ -300,32 +323,69 @@ export class WebSocketService {
             this.handleMessage(data)
           } catch (error) {
             console.error('解析WebSocket消息失败:', error)
+            this.emitEvent({
+              type: 'error',
+              data: { message: '解析消息失败', error },
+              timestamp: new Date()
+            })
           }
         }
 
         this.ws.onclose = () => {
+          clearTimeout(timeoutId) // 清除超时定时器
           console.log('WebSocket连接已关闭')
           this.setStatus(WebSocketStatus.DISCONNECTED)
+          
+          // 如果不是主动断开，尝试重连
+          if (this.status !== WebSocketStatus.DISCONNECTED) {
+            this.attemptReconnect()
+          }
         }
 
         this.ws.onerror = (error) => {
+          clearTimeout(timeoutId) // 清除超时定时器
           console.error('WebSocket连接错误:', error)
           this.setStatus(WebSocketStatus.ERROR)
+          this.emitEvent({
+            type: 'error',
+            data: { message: '连接错误', error },
+            timestamp: new Date()
+          })
           reject(error)
         }
       } catch (error) {
+        clearTimeout(timeoutId) // 清除超时定时器
         console.error('创建WebSocket连接失败:', error)
         this.setStatus(WebSocketStatus.ERROR)
         reject(error)
       }
     })
   }
+
+  // 重新连接
+  private attemptReconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++
+      console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
+      ElMessage.warning(`连接断开，正在尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
+
+      setTimeout(() => {
+        this.connect(this.gameId, this.password, this.userType).catch(() => {
+          // 重连失败，继续尝试
+          this.attemptReconnect()
+        })
+      }, this.reconnectInterval)
+    } else {
+      console.error('达到最大重连次数，停止重连')
+      ElMessage.error('连接失败，请刷新页面重试')
+    }
+  }
 }
 ```
 
 **代码来源**  
-- [frontend/src/services/webSocketService.ts](file://frontend/src/services/webSocketService.ts#L1-L259)
-- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L601)
+- [frontend/src/services/webSocketService.ts](file://frontend/src/services/webSocketService.ts#L1-L272)
+- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L611)
 
 #### WebSocket消息格式
 WebSocket消息采用统一的JSON格式，包含消息类型和数据。
@@ -364,7 +424,7 @@ pub fn game_state_message(data: JsonValue) -> Message {
 
 **代码来源**  
 - [backend/src/websocket/message_formatter.rs](file://backend/src/websocket/message_formatter.rs#L1-L32)
-- [backend/src/websocket/models.rs](file://backend/src/websocket/models.rs#L1-L291)
+- [backend/src/websocket/models.rs](file://backend/src/websocket/models.rs#L1-L501)
 
 #### WebSocket消息处理流程
 ```mermaid
@@ -382,8 +442,8 @@ participant 后端 as Rust后端
 ```
 
 **图示来源**  
-- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L601)
-- [frontend/src/services/webSocketService.ts](file://frontend/src/services/webSocketService.ts#L1-L259)
+- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L611)
+- [frontend/src/services/webSocketService.ts](file://frontend/src/services/webSocketService.ts#L1-L272)
 
 #### 导演控制指令示例
 导演可以通过WebSocket发送各种控制指令来管理游戏。
@@ -423,8 +483,8 @@ webSocketService.sendDirectorAction('drop', {
 ```
 
 **代码来源**  
-- [frontend/src/services/webSocketService.ts](file://frontend/src/services/webSocketService.ts#L1-L259)
-- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L601)
+- [frontend/src/services/webSocketService.ts](file://frontend/src/services/webSocketService.ts#L1-L272)
+- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L611)
 
 #### 消息广播机制
 后端使用 `MessageBroadcaster` 实现智能消息广播，根据不同用户类型发送不同视角的游戏状态。
@@ -491,7 +551,7 @@ impl MessageBroadcaster {
 
 **代码来源**  
 - [backend/src/websocket/broadcaster.rs](file://backend/src/websocket/broadcaster.rs#L1-L74)
-- [backend/src/websocket/models.rs](file://backend/src/websocket/models.rs#L1-L291)
+- [backend/src/websocket/models.rs](file://backend/src/websocket/models.rs#L1-L501)
 
 #### 连接管理机制
 后端使用 `GameConnectionManager` 管理游戏的所有WebSocket连接。
@@ -633,7 +693,7 @@ style G fill:#ffc,stroke:#333
 - [backend/src/auth/middleware.rs](file://backend/src/auth/middleware.rs#L1-L62)
 - [frontend/src/services/adminClient.ts](file://frontend/src/services/adminClient.ts#L1-L40)
 - [backend/src/errors.rs](file://backend/src/errors.rs)
-- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L601)
+- [backend/src/websocket/service.rs](file://backend/src/websocket/service.rs#L1-L611)
 
 ## 结论
 

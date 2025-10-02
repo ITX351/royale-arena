@@ -13,6 +13,8 @@
 - [AdminGamesPage.vue](file://frontend\src\views\admin\AdminGamesPage.vue) - *新增于最近提交*
 - [config.ts](file://frontend\src\services\config.ts)
 - [types/admin.ts](file://frontend\src\types\admin.ts) - *新增于最近提交*
+- [game.ts](file://frontend\src\stores\game.ts) - *新增于最近提交*
+- [DirectorMain.vue](file://frontend\src\views\director\DirectorMain.vue) - *更新于最近提交*
 </cite>
 
 ## 更新摘要
@@ -23,6 +25,8 @@
 - 添加了新的序列图来说明游戏状态更新的工作流程
 - 移除了过时的 `counter.ts` 相关内容，因为该项目实际上并未使用 counter store
 - 所有引用的文件路径和来源均已更新，以反映最新的代码库状态
+- 新增了 `useGameStore` 的分析，用于管理游戏列表状态
+- 更新了 `DirectorMain.vue` 中对状态管理的使用方式
 
 ## 目录
 1. [简介](#简介)
@@ -235,6 +239,30 @@ A->>A : 跳转到管理页面
 - [types/admin.ts](file://frontend\src\types\admin.ts)
 - [AdminLoginPage.vue](file://frontend\src\views\admin\AdminLoginPage.vue)
 - [AdminLayout.vue](file://frontend\src\views\admin\AdminLayout.vue)
+
+### 游戏列表状态管理模块分析
+新增了 `useGameStore` 用于管理游戏列表的状态，该模块由 `game.ts` 文件定义。
+
+**状态 (State)**
+- `games`: 游戏列表数据
+- `loading`: 加载状态
+- `searchQuery`: 搜索查询条件
+- `statusFilter`: 状态过滤条件
+- `error`: 错误信息
+
+**计算属性 (Getters)**
+- `filteredGames`: 根据搜索条件和状态过滤后的游戏列表
+
+**操作 (Actions)**
+- `loadGames`: 加载游戏列表
+- `refreshGames`: 刷新游戏列表
+- `setSearchQuery`: 设置搜索查询
+- `setStatusFilter`: 设置状态过滤
+- `clearError`: 清除错误信息
+
+**本节来源**
+- [game.ts](file://frontend\src\stores\game.ts)
+- [DirectorMain.vue](file://frontend\src\views\director\DirectorMain.vue)
 
 ### WebSocket 集成分析
 `useGameStateStore` 与 `webSocketService` 紧密集成，形成了完整的实时通信机制。

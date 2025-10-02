@@ -1,7 +1,7 @@
 # WebSocket架构
 
 <cite>
-**Referenced Files in This Document**   
+**本文档引用的文件**   
 - [service.rs](file://backend/src/websocket/service.rs)
 - [global_connection_manager.rs](file://backend/src/websocket/global_connection_manager.rs)
 - [game_connection_manager.rs](file://backend/src/websocket/game_connection_manager.rs)
@@ -9,7 +9,15 @@
 - [models.rs](file://backend/src/websocket/models.rs)
 - [message_formatter.rs](file://backend/src/websocket/message_formatter.rs)
 - [main.rs](file://backend/src/main.rs)
+- [game_state_player_actions.rs](file://backend/src/websocket/game_state_player_actions.rs) - *新增在最近提交中*
 </cite>
+
+## 更新摘要
+**已做更改**   
+- 更新了“模型定义分析”部分，增加了`ActionResult`的新消息类型`Info`及其用途
+- 新增了“玩家行动处理机制”部分，详细说明了玩家行动处理中的用户反馈机制
+- 更新了“故障排除指南”，增加了关于用户交互反馈的说明
+- 增强了源码追踪系统，添加了新文件`game_state_player_actions.rs`的引用
 
 ## 目录
 1. [引言](#引言)
@@ -323,6 +331,7 @@ class ActionResult {
 +log_message : String
 +message_type : MessageType
 +timestamp : DateTime~Utc~
++broadcast_to_director : bool
 }
 enum ConnectionType {
 Actor
@@ -384,6 +393,42 @@ MessageFormatter --> Utf8Bytes : "uses"
 **Section sources**
 - [message_formatter.rs](file://backend/src/websocket/message_formatter.rs#L1-L31)
 
+### 玩家行动处理机制
+
+新增的玩家行动处理机制通过`ActionResult`的`Info`消息类型向玩家提供操作失败的详细反馈。
+
+#### 信息反馈机制
+```mermaid
+graph TD
+A[玩家行动] --> B{行动条件检查}
+B --> |检查通过| C[执行行动]
+B --> |检查失败| D[创建Info消息]
+D --> E[返回给玩家]
+C --> F[创建系统消息]
+F --> G[广播给相关方]
+subgraph "Info消息类型"
+D1[体力不足]
+D2[背包已满]
+D3[目标地点已摧毁]
+D4[上一次搜索结果不是物品]
+D5[目标玩家已离开]
+D6[目标玩家已死亡]
+end
+D --> D1
+D --> D2
+D --> D3
+D --> D4
+D --> D5
+D --> D6
+```
+
+**Diagram sources**
+- [game_state_player_actions.rs](file://backend/src/websocket/game_state_player_actions.rs#L1-L1152) - *新增在最近提交中*
+
+**Section sources**
+- [game_state_player_actions.rs](file://backend/src/websocket/game_state_player_actions.rs#L1-L1152) - *新增在最近提交中*
+- [models.rs](file://backend/src/websocket/models.rs#L320-L380) - *更新了ActionResult定义*
+
 ## 依赖关系分析
 
 WebSocket架构的组件之间存在明确的依赖关系，形成了清晰的调用链。
@@ -444,10 +489,16 @@ WebSocket架构在设计时充分考虑了性能因素：
    - 检查网络状况
    - 验证服务器资源使用情况
 
+5. **用户交互反馈问题**
+   - 检查`ActionResult::new_info_message`的调用是否正确
+   - 验证前端是否正确处理`Info`类型的消息
+   - 确认`broadcast_to_director`标志位的设置是否符合预期
+
 **Section sources**
 - [service.rs](file://backend/src/websocket/service.rs)
 - [game_connection_manager.rs](file://backend/src/websocket/game_connection_manager.rs)
+- [game_state_player_actions.rs](file://backend/src/websocket/game_state_player_actions.rs) - *新增在最近提交中*
 
 ## 结论
 
-WebSocket架构为Royale Arena提供了强大而灵活的实时通信能力。通过分层设计和模块化组件，该架构实现了高内聚、低耦合的设计原则，确保了系统的可维护性和可扩展性。未来可以进一步优化消息压缩、连接池管理和错误恢复机制，以提升整体性能和可靠性。
+WebSocket架构为Royale Arena提供了强大而灵活的实时通信能力。通过分层设计和模块化组件，该架构实现了高内聚、低耦合的设计原则，确保了系统的可维护性和可扩展性。新增的`Info`消息类型增强了用户交互反馈，使玩家能够及时了解操作失败的原因。未来可以进一步优化消息压缩、连接池管理和错误恢复机制，以提升整体性能和可靠性。
