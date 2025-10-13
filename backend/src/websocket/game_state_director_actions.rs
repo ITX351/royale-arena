@@ -142,6 +142,85 @@ impl GameState {
         Ok(ActionResult::new_info_message(response_data, vec![], log_message, true))
     }
 
+    /// 批量物品删除处理
+    pub fn handle_batch_item_deletion(&mut self, deletions: Vec<ItemDeletionItem>, clear_all: bool) -> Result<ActionResult, String> {
+        let mut deleted_items = Vec::new();
+        let mut failed_items = Vec::new();
+        
+        if clear_all {
+            // 清空全场所有物品
+            for (place_name, place) in self.places.iter_mut() {
+                for item in place.items.drain(..) {
+                    deleted_items.push(serde_json::json!({
+                        "item_name": item.name,
+                        "place_name": place_name
+                    }));
+                }
+            }
+        } else {
+            // 根据删除列表逐项删除
+            for deletion in deletions {
+                let place_name = &deletion.place_name;
+                
+                // 检查地点是否存在
+                if let Some(place) = self.places.get_mut(place_name) {
+                    if let Some(item_name) = &deletion.item_name {
+                        // 删除指定物品
+                        if let Some(pos) = place.items.iter().position(|item| &item.name == item_name) {
+                            let item = place.items.remove(pos);
+                            deleted_items.push(serde_json::json!({
+                                "item_name": item.name,
+                                "place_name": place_name
+                            }));
+                        } else {
+                            // 物品不存在
+                            failed_items.push(serde_json::json!({
+                                "item_name": item_name,
+                                "place_name": place_name,
+                                "reason": "物品不存在"
+                            }));
+                        }
+                    } else {
+                        // 清空地点所有物品
+                        for item in place.items.drain(..) {
+                            deleted_items.push(serde_json::json!({
+                                "item_name": item.name,
+                                "place_name": place_name
+                            }));
+                        }
+                    }
+                } else {
+                    // 地点不存在
+                    let item_name_str = deletion.item_name.as_deref().unwrap_or("所有物品");
+                    failed_items.push(serde_json::json!({
+                        "item_name": item_name_str,
+                        "place_name": place_name,
+                        "reason": "地点不存在"
+                    }));
+                }
+            }
+        }
+        
+        let deleted_count = deleted_items.len();
+        let failed_count = failed_items.len();
+        
+        let response_data = serde_json::json!({
+            "action_result": {
+                "message_type": "Info",
+                "log_message": format!("导演删除物品操作完成：成功删除{}个物品，失败{}个物品", deleted_count, failed_count),
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "data": {
+                    "deleted_items": deleted_items,
+                    "failed_items": failed_items
+                }
+            }
+        });
+        
+        let log_message = format!("导演删除物品操作完成：成功删除{}个物品，失败{}个物品", deleted_count, failed_count);
+        
+        Ok(ActionResult::new_info_message(response_data, vec![], log_message, true))
+    }
+
 
     /// 调整天气
     pub fn handle_weather(&mut self, weather: f64) -> Result<ActionResult, String> {

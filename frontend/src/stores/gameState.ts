@@ -226,6 +226,11 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('batch_airdrop', { airdrops })
   }
 
+  // 批量物品删除（统一接口，支持单个删除、地点清空和全场清空）
+  const sendBatchItemDeletion = (deletions: Array<{ place_name: string, item_name?: string }>, clearAll: boolean = false) => {
+    sendDirectorAction('batch_item_deletion', { deletions, clear_all: clearAll })
+  }
+
   const handleWebSocketEvent = (event: WebSocketEvent) => {
     switch (event.type) {
       case 'state_update':
@@ -304,6 +309,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendBroadcast,
     sendDirectorMessageToPlayer,
     sendBatchAirdrop,
+    sendBatchItemDeletion,
     clearError
   }
 })
