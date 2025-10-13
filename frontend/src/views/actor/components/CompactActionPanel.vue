@@ -109,17 +109,34 @@
     <div class="item-quick-actions" v-if="player.inventory.length > 0">
       <h4 class="section-title">道具快操</h4>
       <div class="quick-item-row">
-        <!-- 当前装备 -->
-        <div class="equipped-item" v-if="equippedItem">
-          <span class="item-label">装备:</span>
-          <span class="item-name">{{ equippedItem.name }}</span>
-          <el-button 
-            size="small" 
-            type="text"
-            @click="handleUnequip"
-          >
-            卸下
-          </el-button>
+        <!-- 当前装备的武器 -->
+        <div class="equipped-weapons" v-if="equippedWeapons.length > 0">
+          <span class="item-label">武器:</span>
+          <div v-for="(weapon, index) in equippedWeapons" :key="index" class="item-display">
+            <span class="item-name">{{ weapon.name }}</span>
+            <el-button 
+              size="small" 
+              type="text"
+              @click="handleUnequipWeapon(weapon.id)"
+            >
+              卸下
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 当前装备的防具 -->
+        <div class="equipped-armors" v-if="equippedArmors.length > 0">
+          <span class="item-label">防具:</span>
+          <div v-for="(armor, index) in equippedArmors" :key="`armor-${index}`" class="item-display">
+            <span class="item-name">{{ armor.name }}</span>
+            <el-button 
+              size="small" 
+              type="text"
+              @click="handleUnequipArmor(armor.id)"
+            >
+              卸下
+            </el-button>
+          </div>
         </div>
 
         <!-- 当前手持 -->
@@ -162,7 +179,7 @@
             :disabled="!selectedItem"
             @click="handleEquipSelected"
           >
-            装备
+            手持
           </el-button>
           <el-button 
             size="small"
@@ -328,9 +345,12 @@ const handlePutDown = () => {
   emit('action', 'put_down')
 }
 
-const handleUnequip = () => {
-  // 卸下装备的逻辑需要后端支持，暂时不实现
-  console.log('卸下装备功能待实现')
+const handleUnequipWeapon = (weaponId: string) => {
+  emit('action', 'unequip', { item_id: weaponId })
+}
+
+const handleUnequipArmor = (armorId: string) => {
+  emit('action', 'unequip', { item_id: armorId })
 }
 
 const handleDeliver = () => {
@@ -425,13 +445,19 @@ const handleSendToDirector = () => {
   flex-wrap: wrap;
 }
 
-.equipped-item, .hand-item {
+.equipped-weapons, .equipped-armors, .hand-item {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
   padding: 8px 12px;
   background: #f0f2f5;
   border-radius: 4px;
+}
+
+.item-display {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .item-label {

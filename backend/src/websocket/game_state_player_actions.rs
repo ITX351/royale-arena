@@ -356,25 +356,21 @@ impl GameState {
                 let item = place.items.remove(item_index);
                 let item_name = item.name.clone();
                 
-                // 将物品添加到玩家背包
-                {
+                // 将物品添加到玩家背包并清除上一次搜索结果
+                let data = {
                     let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
                     // 消耗体力值
                     player.strength -= pick_cost;
                     player.inventory.push(item);
-                }
-                
-                // 获取更新后的玩家背包
-                let player_inventory = {
-                    let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
-                    player.inventory.clone()
+                    // 清除捡拾者的上一次搜索结果，防止连续捡拾同一物品
+                    player.last_search_result = None;
+                    
+                    // 返回更新后的玩家信息
+                    serde_json::json!({
+                        "inventory": player.inventory,
+                        "strength": player.strength
+                    })
                 };
-                
-                // 向该玩家发送背包更新
-                let data = serde_json::json!({
-                    "inventory": player_inventory,
-                    "strength": self.players.get(player_id).unwrap().strength
-                });
                 
                 // 创建动作结果，只广播给发起者本人
                 let action_result = ActionResult::new_system_message(
@@ -455,12 +451,9 @@ impl GameState {
         };
         
         // 验证目标玩家是否存在且在同一地点
-        let (target_player_location, target_player_alive) = {
-            if let Some(target_player) = self.players.get(&target_player_id) {
-                (target_player.location.clone(), target_player.is_alive)
-            } else {
-                return Err("Target player not found".to_string());
-            }
+        let (target_player_location, target_player_alive, target_player_name) = {
+            let target_player = self.players.get(&target_player_id).ok_or("Target player not found".to_string())?;
+            (target_player.location.clone(), target_player.is_alive, target_player.name.clone())
         };
         
         // 验证目标玩家是否在同一地点
@@ -533,10 +526,10 @@ impl GameState {
             let target_player = self.players.get(&target_player_id).ok_or("Target player not found".to_string())?;
             (target_player.life, target_player.is_alive)
         };
-        
+
         // 向攻击者发送攻击结果（仅包括主目标）
         let data = serde_json::json!({
-            "message": format!("Attacked player {} for {} damage using {}", target_player_id, damage, attack_method),
+            "message": format!("Attacked player {} for {} damage using {}", target_player_name, damage, attack_method),
             "target_player_life": target_player_life,
             "target_player_is_alive": target_player_is_alive,
             "attack_method": attack_method,
@@ -549,7 +542,7 @@ impl GameState {
             "message": format!("You were attacked for {} damage", damage)
         });
         
-        // 消耗体力值
+        // 消耗体力值并清除上一次搜索结果，防止连续攻击同一目标
         {
             let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
             if player.strength >= attack_cost {
@@ -557,14 +550,16 @@ impl GameState {
             } else {
                 player.strength = 0;
             }
+            // 清除攻击者的上一次搜索结果，防止连续攻击同一目标
+            player.last_search_result = None;
         } // 释放对攻击者的可变借用
-        
+
         // 创建动作结果，广播给攻击者和被攻击者
         let action_result = ActionResult::new_system_message(
             data, 
             vec![player_id.to_string(), target_player_id.clone()], 
             format!("玩家 {} 使用{}攻击玩家 {} 造成 {} 点伤害", 
-                self.players.get(player_id).unwrap().name, attack_method, target_player_id, damage)
+                self.players.get(player_id).unwrap().name, attack_method, target_player_name, damage)
         );
         
         Ok(action_result)
@@ -846,17 +841,20 @@ impl GameState {
             return Ok(action_result);
         }
         
-        // 获取玩家引用
-        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
-        
-        // 消耗体力值
-        player.strength -= deliver_cost;
+        // 获取发送玩家和目标玩家信息
+        let target_player_name = self.players.get(target_player_id).ok_or("Target player not found".to_string())?.name.clone();
+        let sender_player_name = {
+            // 获取发送玩家引用并消耗体力值
+            let sender_player = self.players.get_mut(player_id).ok_or("Sender player not found".to_string())?;
+            sender_player.strength -= deliver_cost;
+            sender_player.name.clone()
+        };
 
         // 向目标玩家发送消息
         // 在实际实现中，这里需要找到目标玩家的连接并发送消息
         // 这里我们只是构造响应
 
-        let formatted_message = format!("玩家 {} 向玩家 {} 发送消息: {}", player.name, target_player_id, message);
+        let formatted_message = format!("玩家 {} 向玩家 {} 发送消息: {}", sender_player_name, target_player_name, message);
         
         let data = serde_json::json!({
             "message": formatted_message,

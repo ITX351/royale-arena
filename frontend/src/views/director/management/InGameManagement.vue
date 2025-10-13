@@ -209,7 +209,7 @@ const playerList = computed<Player[]>(() => {
 })
 
 const placeList = computed<Place[]>(() => {
-  return store.placeList
+  return store.directorPlaceList
 })
 
 // 监听全局状态变化，更新控制面板值
