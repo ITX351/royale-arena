@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::websocket::models::{Item, ItemType};
+use uuid::Uuid;
 
 /// 游戏规则引擎
 #[derive(Debug, Clone)]
@@ -339,5 +341,90 @@ impl GameRuleEngine {
     /// 检查地点是否为安全区
     pub fn is_safe_place(&self, place_name: &str) -> bool {
         self.map_config.safe_places.contains(&place_name.to_string())
+    }
+
+    /// 根据物品名称从规则JSON中查找并创建物品对象
+    pub fn create_item_from_name(&self, item_name: &str) -> Result<Item, String> {
+        // 1. 搜索武器
+        for weapon in &self.items_config.weapons {
+            for display_name in &weapon.display_names {
+                if display_name == item_name {
+                    return Ok(Item {
+                        id: Uuid::new_v4().to_string(),
+                        name: item_name.to_string(),
+                        item_type: ItemType::Weapon,
+                        properties: serde_json::to_value(&weapon.properties).unwrap_or_default(),
+                    });
+                }
+            }
+        }
+        
+        // 2. 搜索防具
+        for armor in &self.items_config.armors {
+            for display_name in &armor.display_names {
+                if display_name == item_name {
+                    return Ok(Item {
+                        id: Uuid::new_v4().to_string(),
+                        name: item_name.to_string(),
+                        item_type: ItemType::Equipment,
+                        properties: serde_json::to_value(&armor.properties).unwrap_or_default(),
+                    });
+                }
+            }
+        }
+        
+        // 3. 搜索消耗品
+        for consumable in &self.items_config.consumables {
+            if consumable.name == item_name {
+                let mut properties = serde_json::json!({
+                    "effect_type": consumable.effect_type,
+                    "effect_value": consumable.effect_value
+                });
+                
+                // 如果有治疗流血效果，添加该属性
+                if let Some(cure_bleed) = consumable.cure_bleed {
+                    properties["cure_bleed"] = serde_json::Value::Bool(cure_bleed);
+                }
+                
+                return Ok(Item {
+                    id: Uuid::new_v4().to_string(),
+                    name: item_name.to_string(),
+                    item_type: ItemType::Consumable,
+                    properties,
+                });
+            }
+        }
+        
+        // 4. 搜索其他道具
+        for other_item in &self.items_config.other_items {
+            if other_item.name == item_name {
+                return Ok(Item {
+                    id: Uuid::new_v4().to_string(),
+                    name: item_name.to_string(),
+                    item_type: ItemType::Equipment,
+                    properties: serde_json::to_value(&other_item.properties).unwrap_or_default(),
+                });
+            }
+        }
+        
+        // 5. 搜索升级器
+        for upgrader in &self.items_config.upgraders {
+            for display_name in &upgrader.display_names {
+                if display_name == item_name {
+                    return Ok(Item {
+                        id: Uuid::new_v4().to_string(),
+                        name: item_name.to_string(),
+                        item_type: ItemType::Equipment,
+                        properties: serde_json::json!({
+                            "upgrader_type": upgrader.internal_name,
+                            "rarity": upgrader.rarity
+                        }),
+                    });
+                }
+            }
+        }
+        
+        // 如果没有找到匹配的物品，返回错误
+        Err(format!("未在规则JSON中找到物品: {}", item_name))
     }
 }

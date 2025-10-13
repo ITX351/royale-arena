@@ -484,17 +484,6 @@ impl WebSocketService {
                         .ok_or("Missing places field")?;
                     game_state.handle_set_destroy_places(places)
                 }
-                "drop" => {
-                    // 空投
-                    let place_name = action_data.get("place_name").and_then(|v| v.as_str())
-                        .ok_or("Missing place_name field")?;
-                    
-                    // 获取物品信息
-                    let item_data = action_data.get("item").ok_or("Missing item field")?;
-                    let item: crate::websocket::models::Item = serde_json::from_value(item_data.clone())
-                        .map_err(|_| "Invalid item format".to_string())?;
-                    game_state.handle_drop(place_name, item)
-                }
                 "weather" => {
                     // 调整天气
                     let weather = action_data.get("weather").and_then(|v| v.as_f64())
@@ -558,6 +547,26 @@ impl WebSocketService {
                     let message = action_data.get("message").and_then(|v| v.as_str())
                         .ok_or("Missing message field")?;
                     game_state.handle_director_message_to_player(player_id, message)
+                }
+                "batch_airdrop" => {
+                    // 批量空投
+                    let airdrops_data = action_data.get("airdrops").and_then(|v| v.as_array())
+                        .ok_or("Missing airdrops field")?;
+                    
+                    let mut airdrops = Vec::new();
+                    for airdrop_data in airdrops_data {
+                        let item_name = airdrop_data.get("item_name").and_then(|v| v.as_str())
+                            .ok_or("Missing item_name field in airdrop")?;
+                        let place_name = airdrop_data.get("place_name").and_then(|v| v.as_str())
+                            .ok_or("Missing place_name field in airdrop")?;
+                        
+                        airdrops.push(super::models::AirdropItem {
+                            item_name: item_name.to_string(),
+                            place_name: place_name.to_string(),
+                        });
+                    }
+                    
+                    game_state.handle_batch_airdrop(airdrops)
                 }
                 _ => Err("Unknown director action".to_string()),
             }

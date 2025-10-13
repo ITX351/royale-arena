@@ -80,13 +80,35 @@
         "program": "${workspaceFolder}/frontend/node_modules/vite/bin/vite.js",
         "args": [
           "--host",
-          "0.0.0.0"
+          "127.0.0.1",
+          "--port",
+          "5173"
         ],
         "cwd": "${workspaceFolder}/frontend",
         "env": {
           "NODE_ENV": "development"
         },
         "console": "integratedTerminal"
+      },
+      {
+        "type": "msedge",
+        "request": "launch",
+        "name": "Debug Frontend in Edge",
+        "url": "http://localhost:5173",
+        "webRoot": "${workspaceFolder}/frontend/src",
+        "sourceMaps": true,
+        "presentation": {
+          "hidden": false
+        }
+      }
+    ],
+    "compounds": [
+      {
+        "name": "Frontend Edge Debug",
+        "configurations": [
+          "Run Frontend Dev Server",
+          "Debug Frontend in Edge"
+        ]
       }
     ]
   }

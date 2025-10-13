@@ -7,91 +7,87 @@
     </template>
 
     <div class="airdrop-content">
-      <!-- 物品输入区域 -->
-      <div class="item-input-section">
-        <el-form :model="airdropForm" ref="airdropFormRef">
-          <el-form-item label="空投物品">
-            <div class="item-input-list">
-              <div 
-                v-for="(item, index) in airdropItems" 
-                :key="index" 
-                class="item-input-row"
-              >
-                <el-input 
-                  v-model="item.name" 
-                  placeholder="输入物品名称"
-                  clearable
-                />
-                <el-button 
-                  type="danger" 
-                  circle 
-                  @click="removeItem(index)"
-                >
-                  <el-icon><Delete /></el-icon>
-                </el-button>
-              </div>
-              <el-button 
-                type="primary" 
-                @click="addItem"
-                class="add-item-btn"
-              >
-                <el-icon><Plus /></el-icon>
-                添加物品
-              </el-button>
-            </div>
+      <!-- 单次空投区域 -->
+      <div class="single-airdrop-section">
+        <h4>单次空投</h4>
+        <el-form :model="singleAirdropForm" ref="singleAirdropFormRef">
+          <el-form-item label="选择物品">
+            <el-select 
+              v-model="singleAirdropForm.selectedItem" 
+              placeholder="请选择物品"
+              style="width: 100%"
+              filterable
+            >
+              <el-option
+                v-for="item in allItemOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="选择地点">
+            <el-select 
+              v-model="singleAirdropForm.selectedPlace" 
+              placeholder="请选择地点"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="place in availablePlaces"
+                :key="place"
+                :label="place"
+                :value="place"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button 
+              type="primary" 
+              @click="executeSingleAirdrop"
+              :disabled="!singleAirdropForm.selectedItem || !singleAirdropForm.selectedPlace"
+              :loading="executing"
+            >
+              确认空投
+            </el-button>
           </el-form-item>
         </el-form>
       </div>
 
-      <!-- 随机生成按钮 -->
-      <div class="random-generate-section">
+      <el-divider />
+
+      <!-- 批量空投区域 -->
+      <div class="batch-airdrop-section">
+        <h4>批量空投</h4>
         <el-button 
           type="success" 
-          @click="generateRandomItems"
-          :loading="generating"
+          @click="openBatchAirdropDialog"
         >
-          随机生成空投
+          打开批量空投界面
         </el-button>
-      </div>
-
-      <!-- 预览区域 -->
-      <div class="preview-section" v-if="generatedItems.length > 0">
-        <h4>预览</h4>
-        <el-table :data="generatedItems" style="width: 100%">
-          <el-table-column prop="name" label="物品名称" />
-          <el-table-column label="操作">
-            <template #default="{ row }">
-              <el-button 
-                type="danger" 
-                size="small" 
-                @click="removeGeneratedItem(row)"
-              >
-                移除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-
-      <!-- 操作按钮 -->
-      <div class="action-buttons" v-if="generatedItems.length > 0">
-        <el-button 
-          type="primary" 
-          @click="acceptAirdrop"
-          :loading="accepting"
-        >
-          接受空投
-        </el-button>
-        <el-button @click="rejectAirdrop">拒绝</el-button>
       </div>
     </div>
+
+    <!-- 批量空投对话框 -->
+    <BatchAirdropDialog 
+      v-if="BatchAirdropDialog"
+      v-model="showBatchDialog"
+      :rules-json="rulesJson"
+      :existing-items="existingItems"
+      :available-places="availablePlaces"
+      @confirm="handleBatchAirdrop"
+    />
   </el-card>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { AirdropItem } from '@/types/gameStateTypes'
+import { useGameStateStore } from '@/stores/gameState'
+import { createItemParser, extractExistingItemsFromGameState } from '@/utils/itemParser'
+import type { DirectorGameData } from '@/types/gameStateTypes'
+
+// 异步加载批量空投对话框组件
+const BatchAirdropDialog = defineAsyncComponent(() => import('./BatchAirdropDialog.vue'))
 
 // 定义组件属性
 const props = defineProps<{
@@ -100,92 +96,97 @@ const props = defineProps<{
 
 // 定义事件发射
 const emit = defineEmits<{
-  (e: 'airdrop-accepted', items: AirdropItem[], place: string): void
+  (e: 'airdrop-accepted', items: any[], place: string): void
 }>()
 
+// 使用store
+const store = useGameStateStore()
+
 // 响应式状态
-const airdropFormRef = ref()
-const airdropForm = reactive({
-  items: [] as AirdropItem[]
+const singleAirdropFormRef = ref()
+const singleAirdropForm = reactive({
+  selectedItem: '',
+  selectedPlace: ''
 })
 
-const airdropItems = ref<AirdropItem[]>([{ id: '1', name: '' }])
-const generatedItems = ref<AirdropItem[]>([])
-const generating = ref(false)
-const accepting = ref(false)
+const showBatchDialog = ref(false)
+const executing = ref(false)
+
+// 计算属性
+const rulesJson = computed(() => {
+  return store.gameState?.global_state?.rules_config || {}
+})
+
+const existingItems = computed(() => {
+  return extractExistingItemsFromGameState(store.gameData as DirectorGameData)
+})
+
+const availablePlaces = computed(() => {
+  if (!store.directorPlaces) return []
+  return Object.values(store.directorPlaces)
+    .filter(place => !place.is_destroyed)
+    .map(place => place.name)
+})
+
+const allItemOptions = computed(() => {
+  if (!rulesJson.value.items) return []
+  
+  try {
+    const parser = createItemParser(rulesJson.value, existingItems.value)
+    const parsedItems = parser.parseAllItems()
+    return parsedItems.allItems
+  } catch (error) {
+    console.error('解析物品列表失败:', error)
+    return []
+  }
+})
 
 // 方法实现
-const addItem = () => {
-  const newId = Date.now().toString()
-  airdropItems.value.push({ id: newId, name: '' })
-}
-
-const removeItem = (index: number) => {
-  if (airdropItems.value.length > 1) {
-    airdropItems.value.splice(index, 1)
-  } else {
-    airdropItems.value[0].name = ''
-  }
-}
-
-const generateRandomItems = () => {
-  generating.value = true
-  
-  // 模拟随机生成过程
-  setTimeout(() => {
-    const randomItems = [
-      { id: '1', name: '医疗包' },
-      { id: '2', name: '能量饮料' },
-      { id: '3', name: '手枪' },
-      { id: '4', name: '子弹' },
-      { id: '5', name: '防护服' }
-    ]
-    
-    // 随机选择1-3个物品
-    const itemCount = Math.floor(Math.random() * 3) + 1
-    generatedItems.value = []
-    
-    for (let i = 0; i < itemCount; i++) {
-      const randomIndex = Math.floor(Math.random() * randomItems.length)
-      const item = randomItems[randomIndex]
-      generatedItems.value.push({ ...item, id: `${Date.now()}-${i}` })
-    }
-    
-    generating.value = false
-    ElMessage.success('随机空投生成成功')
-  }, 500)
-}
-
-const removeGeneratedItem = (item: AirdropItem) => {
-  const index = generatedItems.value.findIndex(i => i.id === item.id)
-  if (index !== -1) {
-    generatedItems.value.splice(index, 1)
-  }
-}
-
-const acceptAirdrop = () => {
-  if (generatedItems.value.length === 0) {
-    ElMessage.warning('请先生成空投物品')
+const executeSingleAirdrop = async () => {
+  if (!singleAirdropForm.selectedItem || !singleAirdropForm.selectedPlace) {
+    ElMessage.warning('请选择物品和地点')
     return
   }
   
-  // 这里应该弹出地点选择对话框，为了简化直接使用默认地点
-  const placeName = '中心广场' // 实际应用中应该让用户选择地点
+  executing.value = true
   
-  accepting.value = true
-  
-  // 模拟发送空投请求
-  setTimeout(() => {
-    emit('airdrop-accepted', generatedItems.value, placeName)
-    ElMessage.success('空投已发送')
-    generatedItems.value = []
-    accepting.value = false
-  }, 500)
+  try {
+    // 调用批量空投接口，但只传一个物品
+    store.sendBatchAirdrop([
+      {
+        item_name: singleAirdropForm.selectedItem,
+        place_name: singleAirdropForm.selectedPlace
+      }
+    ])
+    
+    ElMessage.success('单次空投已发送')
+    
+    // 发射事件给父组件
+    emit('airdrop-accepted', [{ name: singleAirdropForm.selectedItem }], singleAirdropForm.selectedPlace)
+    
+    // 清空表单
+    singleAirdropForm.selectedItem = ''
+    singleAirdropForm.selectedPlace = ''
+  } catch (error) {
+    console.error('单次空投失败:', error)
+    ElMessage.error('单次空投失败')
+  } finally {
+    executing.value = false
+  }
 }
 
-const rejectAirdrop = () => {
-  generatedItems.value = []
-  ElMessage.info('已取消空投')
+const openBatchAirdropDialog = () => {
+  showBatchDialog.value = true
+}
+
+const handleBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: string }>) => {
+  store.sendBatchAirdrop(airdrops)
+  ElMessage.success(`批量空投已发送，共 ${airdrops.length} 个物品`)
+  
+  // 发射事件给父组件
+  emit('airdrop-accepted', airdrops.map(a => ({ name: a.item_name })), '多个地点')
+  
+  showBatchDialog.value = false
 }
 </script>
 
@@ -199,52 +200,39 @@ const rejectAirdrop = () => {
   color: #303133;
 }
 
-.item-input-list {
+.airdrop-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.item-input-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.add-item-btn {
-  align-self: flex-start;
-}
-
-.random-generate-section {
-  margin: 20px 0;
-  text-align: center;
-}
-
-.preview-section {
-  margin: 20px 0;
-}
-
-.preview-section h4 {
-  margin-bottom: 15px;
-  color: #606266;
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: center;
   gap: 20px;
-  margin-top: 20px;
+}
+
+.single-airdrop-section h4,
+.batch-airdrop-section h4 {
+  margin: 0 0 15px 0;
+  color: #606266;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.single-airdrop-section {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e1e6f0;
+}
+
+.batch-airdrop-section {
+  text-align: center;
+  padding: 20px;
 }
 
 @media (max-width: 768px) {
-  .item-input-row {
-    flex-direction: column;
-    align-items: stretch;
+  .airdrop-content {
+    gap: 15px;
   }
   
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
+  .single-airdrop-section {
+    padding: 10px;
   }
 }
 </style>

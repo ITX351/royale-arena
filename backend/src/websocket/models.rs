@@ -48,6 +48,13 @@ pub struct WebSocketClientMessage {
     pub data: JsonValue,
 }
 
+/// 批量空投请求项结构
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AirdropItem {
+    pub item_name: String,
+    pub place_name: String,
+}
+
 // /// WebSocket服务端消息
 // #[derive(Debug, Clone, Deserialize, Serialize)]
 // pub struct WebSocketServerMessage {
@@ -451,6 +458,7 @@ impl GameState {
             "night_start_time": self.night_start_time,
             "night_end_time": self.night_end_time,
             "next_night_destroyed_places": self.next_night_destroyed_places,
+            "rules_config": self.rules_config,
         })
     }
 }

@@ -221,6 +221,11 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('director_message_to_player', { player_id: playerId, message })
   }
 
+  // 批量空投（统一接口，支持单次和批量）
+  const sendBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: string }>) => {
+    sendDirectorAction('batch_airdrop', { airdrops })
+  }
+
   const handleWebSocketEvent = (event: WebSocketEvent) => {
     switch (event.type) {
       case 'state_update':
@@ -298,6 +303,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     destroyPlace,
     sendBroadcast,
     sendDirectorMessageToPlayer,
+    sendBatchAirdrop,
     clearError
   }
 })

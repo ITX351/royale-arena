@@ -108,32 +108,40 @@ impl GameState {
         Ok(action_result)
     }
 
-    /// 空投
-    pub fn handle_drop(&mut self, place_name: &str, item: Item) -> Result<ActionResult, String> {
-        // 在指定地点添加空投物品
-        if let Some(place) = self.places.get_mut(place_name) {
-            place.items.push(item);
-            
-            // 构造响应数据
-            let data = serde_json::json!({
-                "place": {
-                    "name": place_name,
-                    "items": place.items.clone()
+    /// 批量空投处理 - 根据规则JSON智能查找物品属性
+    pub fn handle_batch_airdrop(&mut self, airdrops: Vec<AirdropItem>) -> Result<ActionResult, String> {
+        let mut success_count = 0;
+        
+        for airdrop in airdrops {
+            // 根据物品名称从规则JSON中查找并创建物品
+            match self.rule_engine.create_item_from_name(&airdrop.item_name) {
+                Ok(item) => {
+                    // 添加到指定地点
+                    if let Some(place) = self.places.get_mut(&airdrop.place_name) {
+                        place.items.push(item);
+                        success_count += 1;
+                    }
+                },
+                Err(err) => {
+                    // 如果物品创建失败，记录但继续处理其他物品
+                    eprintln!("创建物品失败: {}, 错误: {}", airdrop.item_name, err);
                 }
-            });
-            
-            // 创建动作结果，只广播给导演（不需要通知玩家）
-            let action_result = ActionResult::new_system_message(
-                data, 
-                vec![], 
-                format!("导演在地点 {} 空投物品", place_name)
-            );
-            
-            Ok(action_result)
-        } else {
-            Err("Place not found".to_string())
+            }
         }
+        
+        let response_data = serde_json::json!({
+            "action_result": {
+                "message_type": "Info",
+                "log_message": format!("导演执行批量空投操作，成功 {} 项", success_count),
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }
+        });
+        
+        let log_message = format!("导演执行批量空投操作，成功 {} 项", success_count);
+        
+        Ok(ActionResult::new_info_message(response_data, vec![], log_message, true))
     }
+
 
     /// 调整天气
     pub fn handle_weather(&mut self, weather: f64) -> Result<ActionResult, String> {
@@ -387,4 +395,5 @@ impl GameState {
         
         Ok(action_result)
     }
+    
 }

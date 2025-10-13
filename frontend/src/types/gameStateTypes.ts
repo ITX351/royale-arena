@@ -75,6 +75,7 @@ export interface GlobalState {
   night_start_time: string | null;
   night_end_time: string | null;
   next_night_destroyed_places: string[];
+  rules_config: Record<string, any>; // 后端传递的规则配置
 }
 
 // 导演视角的游戏数据接口
