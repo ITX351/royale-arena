@@ -568,6 +568,31 @@ impl WebSocketService {
                     
                     game_state.handle_batch_airdrop(airdrops)
                 }
+                "batch_item_deletion" => {
+                    // 批量物品删除
+                    let clear_all = action_data.get("clear_all").and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    
+                    let mut deletions = Vec::new();
+                    if !clear_all {
+                        let deletions_data = action_data.get("deletions").and_then(|v| v.as_array())
+                            .ok_or("Missing deletions field")?;
+                        
+                        for deletion_data in deletions_data {
+                            let place_name = deletion_data.get("place_name").and_then(|v| v.as_str())
+                                .ok_or("Missing place_name field in deletion")?;
+                            let item_name = deletion_data.get("item_name").and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+                            
+                            deletions.push(super::models::ItemDeletionItem {
+                                place_name: place_name.to_string(),
+                                item_name,
+                            });
+                        }
+                    }
+                    
+                    game_state.handle_batch_item_deletion(deletions, clear_all)
+                }
                 _ => Err("Unknown director action".to_string()),
             }
         };

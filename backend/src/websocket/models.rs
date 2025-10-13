@@ -55,6 +55,13 @@ pub struct AirdropItem {
     pub place_name: String,
 }
 
+/// 批量物品删除请求项结构
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ItemDeletionItem {
+    pub place_name: String,
+    pub item_name: Option<String>, // None表示清空地点所有物品
+}
+
 // /// WebSocket服务端消息
 // #[derive(Debug, Clone, Deserialize, Serialize)]
 // pub struct WebSocketServerMessage {
