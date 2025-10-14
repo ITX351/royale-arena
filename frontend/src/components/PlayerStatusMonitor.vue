@@ -55,10 +55,10 @@
         <!-- 装备概览 -->
         <div class="equipment-summary">
           <span class="equipment-count">
-            武器: {{ player.equipped_weapons.length }}/{{ maxWeapons }}
+            武器: {{ player.equipped_weapon ? 1 : 0 }}/1
           </span>
           <span class="equipment-count">
-            防具: {{ player.equipped_armors.length }}/{{ maxArmors }}
+            防具: {{ player.equipped_armor ? 1 : 0 }}/1
           </span>
           <span class="inventory-count">
             背包: {{ player.inventory.length }}/{{ maxBackpack }}

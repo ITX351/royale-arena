@@ -106,60 +106,37 @@
     </div>
 
     <!-- 道具快操区 -->
-    <div class="item-quick-actions" v-if="player.inventory.length > 0">
+    <!--<div class="item-quick-actions" v-if="player.inventory.length > 0 || equippedWeapon || equippedArmor">
       <h4 class="section-title">道具快操</h4>
       <div class="quick-item-row">
-        <!-- 当前装备的武器 -->
-        <div class="equipped-weapons" v-if="equippedWeapons.length > 0">
+        <div class="equipped-weapons" v-if="equippedWeapon">
           <span class="item-label">武器:</span>
-          <div v-for="(weapon, index) in equippedWeapons" :key="index" class="item-display">
-            <span class="item-name">{{ weapon.name }}</span>
+          <div class="item-display">
+            <span class="item-name">{{ equippedWeapon.name }}</span>
             <el-button 
               size="small" 
               type="text"
-              @click="handleUnequipWeapon(weapon.id)"
+              @click="handleUnequipWeapon"
             >
               卸下
             </el-button>
           </div>
         </div>
 
-        <!-- 当前装备的防具 -->
-        <div class="equipped-armors" v-if="equippedArmors.length > 0">
+        <div class="equipped-armors" v-if="equippedArmor">
           <span class="item-label">防具:</span>
-          <div v-for="(armor, index) in equippedArmors" :key="`armor-${index}`" class="item-display">
-            <span class="item-name">{{ armor.name }}</span>
+          <div class="item-display">
+            <span class="item-name">{{ equippedArmor.name }}</span>
             <el-button 
               size="small" 
               type="text"
-              @click="handleUnequipArmor(armor.id)"
+              @click="handleUnequipArmor"
             >
               卸下
             </el-button>
           </div>
         </div>
 
-        <!-- 当前手持 -->
-        <div class="hand-item" v-if="handItem">
-          <span class="item-label">手持:</span>
-          <span class="item-name">{{ handItem.name }}</span>
-          <el-button 
-            size="small" 
-            type="text"
-            @click="handleUseItem"
-          >
-            使用
-          </el-button>
-          <el-button 
-            size="small" 
-            type="text"
-            @click="handlePutDown"
-          >
-            放下
-          </el-button>
-        </div>
-
-        <!-- 背包道具选择 -->
         <div class="inventory-selector">
           <el-select 
             v-model="selectedItem" 
@@ -179,7 +156,14 @@
             :disabled="!selectedItem"
             @click="handleEquipSelected"
           >
-            手持
+            装备
+          </el-button>
+          <el-button 
+            size="small"
+            :disabled="!selectedItem"
+            @click="handleUseItem"
+          >
+            使用
           </el-button>
           <el-button 
             size="small"
@@ -190,7 +174,7 @@
           </el-button>
         </div>
       </div>
-    </div>
+    </div>-->
 
     <!-- 通信快捷区 -->
     <div class="communication-actions">
@@ -271,21 +255,12 @@ const deliverMessage = ref('')
 const directorMessage = ref('')
 
 // 计算属性
-const equippedWeapons = computed(() => {
-  return props.player.equipped_weapons.map(weaponId => 
-    props.player.equipped_items_detail[weaponId]
-  ).filter(Boolean)
+const equippedWeapon = computed(() => {
+  return props.player.equipped_weapon
 })
 
-const equippedArmors = computed(() => {
-  return props.player.equipped_armors.map(armorId => 
-    props.player.equipped_items_detail[armorId]
-  ).filter(Boolean)
-})
-
-const handItem = computed(() => {
-  if (!props.player.hand_item) return null
-  return props.player.inventory.find(item => item.id === props.player.hand_item)
+const equippedArmor = computed(() => {
+  return props.player.equipped_armor
 })
 
 const hasValidTarget = computed(() => {
@@ -314,15 +289,15 @@ const handleMove = () => {
 }
 
 const handleSearch = () => {
-  emit('action', 'search')
+  emit('action', 'search', {})
 }
 
 const handleAttack = () => {
-  emit('action', 'attack')
+  emit('action', 'attack', {})
 }
 
 const handlePick = () => {
-  emit('action', 'pick')
+  emit('action', 'pick', {})
 }
 
 const handleEquipSelected = () => {
@@ -336,21 +311,17 @@ const handleDiscardSelected = () => {
 }
 
 const handleUseItem = () => {
-  if (handItem.value) {
-    emit('action', 'use', { item_id: handItem.value.id })
+  if (selectedItem.value) {
+    emit('action', 'use', { item_id: selectedItem.value })
   }
 }
 
-const handlePutDown = () => {
-  emit('action', 'put_down')
+const handleUnequipWeapon = () => {
+  emit('action', 'unequip', { slot_type: 'weapon' })
 }
 
-const handleUnequipWeapon = (weaponId: string) => {
-  emit('action', 'unequip', { item_id: weaponId })
-}
-
-const handleUnequipArmor = (armorId: string) => {
-  emit('action', 'unequip', { item_id: armorId })
+const handleUnequipArmor = () => {
+  emit('action', 'unequip', { slot_type: 'armor' })
 }
 
 const handleDeliver = () => {

@@ -39,7 +39,8 @@
           @equip-item="handleEquipItem"
           @use-item="handleUseItem"
           @discard-item="handleDiscardItem"
-          @put-down-hand-item="handlePutDownHandItem"
+          @unequip-weapon="handleUnequipWeapon"
+          @unequip-armor="handleUnequipArmor"
         />
       </div>
 
@@ -127,8 +128,12 @@ const handleDiscardItem = (itemId: string) => {
   handlePlayerAction('throw', { item_id: itemId })
 }
 
-const handlePutDownHandItem = () => {
-  handlePlayerAction('put_down')
+const handleUnequipWeapon = () => {
+  handlePlayerAction('unequip', { slot_type: 'weapon' })
+}
+
+const handleUnequipArmor = () => {
+  handlePlayerAction('unequip', { slot_type: 'armor' })
 }
 
 const handleSearch = () => {

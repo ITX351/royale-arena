@@ -21,26 +21,23 @@ export interface Player {
   location: string;
   life: number;
   strength: number;
-  max_life: number; // 新增：最大生命值
-  max_strength: number; // 新增：最大体力值
+  max_life: number;
+  max_strength: number;
   inventory: Item[];
-  equipped_weapons: string[]; // 修改：支持多武器装备
-  equipped_armors: string[]; // 修改：支持多防具装备
-  equipped_items_detail: Record<string, Item>; // 新增：装备详情映射
-
-  hand_item: string | null;
+  equipped_weapon: Item | null; // 修改：单槽位武器
+  equipped_armor: Item | null; // 修改：单槽位防具
   last_search_result: SearchResult | null;
   is_alive: boolean;
   is_bound: boolean;
-  is_born: boolean; // 新增：出生状态
+  is_born: boolean;
   rest_mode: boolean;
-  rest_life_recovery: number; // 新增：静养恢复生命值
-  rest_moves_used: number; // 新增：静养移动次数
+  rest_life_recovery: number;
+  rest_moves_used: number;
   last_search_time: string | null;
   votes: number;
-  team_id: number | null; // 新增：队伍ID
-  bleed_damage: number; // 新增：持续伤害数值
-  bleed_rounds_remaining: number; // 新增：持续伤害剩余回合
+  team_id: number | null;
+  bleed_damage: number;
+  bleed_rounds_remaining: number;
 }
 
 // 导演视角的地点接口
@@ -156,9 +153,8 @@ export interface PlayerStatusDetail {
     bleed_rounds_remaining: number;
   };
   equipment: {
-    weapons: Item[];
-    armors: Item[];
-    hand_item: Item | null;
+    weapon: Item | null;
+    armor: Item | null;
     inventory: Item[];
   };
   activity: {

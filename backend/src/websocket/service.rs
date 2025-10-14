@@ -378,6 +378,11 @@ impl WebSocketService {
                         .ok_or("Missing item_id field")?;
                     game_state.handle_throw_action(player_id, item_id)
                 }
+                "unequip" => {
+                    let slot_type = action_data.get("slot_type").and_then(|v| v.as_str())
+                        .ok_or("Missing slot_type field")?;
+                    game_state.handle_unequip_action(player_id, slot_type)
+                }
                 "deliver" => {
                     let target_player_id = action_data.get("target_player_id").and_then(|v| v.as_str())
                         .ok_or("Missing target_player_id field")?;

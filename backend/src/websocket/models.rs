@@ -127,15 +127,10 @@ pub struct Player {
     pub max_strength: i32,
     /// 物品背包
     pub inventory: Vec<Item>,
-    /// 装备的武器ID列表（支持多武器装备）
-    pub equipped_weapons: Vec<String>,
-    /// 装备的防具ID列表（支持多防具装备）
-    pub equipped_armors: Vec<String>,
-    /// 当前装备的具体物品映射（用于快速访问）
-    pub equipped_items_detail: HashMap<String, Item>,
-
-    /// 当前手持的物品
-    pub hand_item: Option<String>,
+    /// 当前装备的武器（单槽位）
+    pub equipped_weapon: Option<Item>,
+    /// 当前装备的防具（单槽位）
+    pub equipped_armor: Option<Item>,
     /// 上一次搜索结果
     pub last_search_result: Option<SearchResult>,
     /// 是否存活
@@ -177,11 +172,8 @@ impl Player {
             max_life,
             max_strength,
             inventory: Vec::new(),
-            equipped_weapons: Vec::new(),
-            equipped_armors: Vec::new(),
-            equipped_items_detail: HashMap::new(),
-
-            hand_item: None,
+            equipped_weapon: None,
+            equipped_armor: None,
             last_search_result: None,
             is_alive: true,
             is_bound: false,
@@ -197,14 +189,16 @@ impl Player {
         }
     }
 
-    /// 检查是否可以装备指定类型的物品（使用规则引擎配置）
-    pub fn can_equip_weapon(&self, rule_engine: &GameRuleEngine) -> bool {
-        self.equipped_weapons.len() < rule_engine.player_config.max_equipped_weapons as usize
-    }
-
-    /// 检查是否可以装备防具（使用规则引擎配置）
-    pub fn can_equip_armor(&self, rule_engine: &GameRuleEngine) -> bool {
-        self.equipped_armors.len() < rule_engine.player_config.max_equipped_armors as usize
+    /// 计算总物品数量（背包 + 已装备武器 + 已装备防具）
+    pub fn get_total_item_count(&self) -> usize {
+        let mut count = self.inventory.len();
+        if self.equipped_weapon.is_some() {
+            count += 1;
+        }
+        if self.equipped_armor.is_some() {
+            count += 1;
+        }
+        count
     }
 
     /// 应用持续伤害效果
@@ -239,58 +233,44 @@ impl Player {
         self.bleed_rounds_remaining > 0
     }
 
-    /// 装备武器
-    pub fn equip_weapon(&mut self, weapon_id: String, weapon: Item) {
-        self.equipped_weapons.push(weapon_id.clone());
-        self.equipped_items_detail.insert(weapon_id, weapon);
+    /// 装备武器（如已有装备则返回旧装备）
+    pub fn equip_weapon(&mut self, weapon: Item) -> Option<Item> {
+        self.equipped_weapon.replace(weapon)
     }
 
-    /// 装备防具
-    pub fn equip_armor(&mut self, armor_id: String, armor: Item) {
-        self.equipped_armors.push(armor_id.clone());
-        self.equipped_items_detail.insert(armor_id, armor);
+    /// 装备防具（如已有装备则返回旧装备）
+    pub fn equip_armor(&mut self, armor: Item) -> Option<Item> {
+        self.equipped_armor.replace(armor)
     }
 
-    /// 卸下武器
-    pub fn unequip_weapon(&mut self, weapon_id: &str) -> Option<Item> {
-        if let Some(pos) = self.equipped_weapons.iter().position(|id| id == weapon_id) {
-            self.equipped_weapons.remove(pos);
-            self.equipped_items_detail.remove(weapon_id)
-        } else {
-            None
-        }
+    /// 卸下武器并返回
+    pub fn unequip_weapon(&mut self) -> Option<Item> {
+        self.equipped_weapon.take()
     }
 
-    /// 卸下防具
-    pub fn unequip_armor(&mut self, armor_id: &str) -> Option<Item> {
-        if let Some(pos) = self.equipped_armors.iter().position(|id| id == armor_id) {
-            self.equipped_armors.remove(pos);
-            self.equipped_items_detail.remove(armor_id)
-        } else {
-            None
-        }
+    /// 卸下防具并返回
+    pub fn unequip_armor(&mut self) -> Option<Item> {
+        self.equipped_armor.take()
     }
 
     /// 获取总防御值
     pub fn get_total_defense(&self) -> i32 {
-        self.equipped_armors
-            .iter()
-            .filter_map(|armor_id| self.equipped_items_detail.get(armor_id))
-            .filter_map(|item| item.properties.get("defense"))
-            .filter_map(|def| def.as_i64())
+        self.equipped_armor
+            .as_ref()
+            .and_then(|item| item.properties.get("defense"))
+            .and_then(|def| def.as_i64())
             .map(|def| def as i32)
-            .sum()
+            .unwrap_or(0)
     }
 
-    /// 获取所有武器的总伤害
-    pub fn get_total_weapon_damage(&self) -> i32 {
-        self.equipped_weapons
-            .iter()
-            .filter_map(|weapon_id| self.equipped_items_detail.get(weapon_id))
-            .filter_map(|item| item.properties.get("damage"))
-            .filter_map(|dmg| dmg.as_i64())
+    /// 获取武器伤害值
+    pub fn get_weapon_damage(&self) -> i32 {
+        self.equipped_weapon
+            .as_ref()
+            .and_then(|item| item.properties.get("damage"))
+            .and_then(|dmg| dmg.as_i64())
             .map(|dmg| dmg as i32)
-            .sum()
+            .unwrap_or(0)
     }
 }
 

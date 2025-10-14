@@ -68,39 +68,18 @@
       <h4>装备详情</h4>
       <div class="equipment-detail">
         <div class="equipment-category">
-          <h5>武器 ({{ player.equipped_weapons.length }}/{{ maxWeapons }})</h5>
+          <h5>武器</h5>
           <div class="equipment-list">
-            <div 
-              v-for="weaponId in player.equipped_weapons" 
-              :key="weaponId"
-              class="equipment-item"
-            >
-              <ItemDisplay :item="player.equipped_items_detail[weaponId]" />
-            </div>
+            <ItemDisplay v-if="player.equipped_weapon" :item="player.equipped_weapon" />
+            <span v-else class="no-item">未装备</span>
           </div>
         </div>
         
         <div class="equipment-category">
-          <h5>防具 ({{ player.equipped_armors.length }}/{{ maxArmors }})</h5>
+          <h5>防具</h5>
           <div class="equipment-list">
-            <div 
-              v-for="armorId in player.equipped_armors" 
-              :key="armorId"
-              class="equipment-item"
-            >
-              <ItemDisplay :item="player.equipped_items_detail[armorId]" />
-            </div>
-          </div>
-        </div>
-        
-        <div class="equipment-category">
-          <h5>手持物品</h5>
-          <div class="hand-item">
-            <ItemDisplay 
-              v-if="player.hand_item" 
-              :item="getHandItemDetail(player.hand_item)" 
-            />
-            <span v-else class="no-item">无</span>
+            <ItemDisplay v-if="player.equipped_armor" :item="player.equipped_armor" />
+            <span v-else class="no-item">未装备</span>
           </div>
         </div>
       </div>
@@ -179,10 +158,6 @@ const statusText = computed(() => {
   if (props.player.rest_mode) return '静养模式'
   return '正常'
 })
-
-const getHandItemDetail = (handItemId: string): Item | null => {
-  return props.player.equipped_items_detail[handItemId] || null
-}
 
 const formatSearchTime = (timestamp: string | null): string => {
   if (!timestamp) return '无'

@@ -293,12 +293,12 @@ impl GameState {
             return Ok(action_result);
         }
         
-        // 使用规则引擎检查背包容量
+        // 使用规则引擎检查背包容量（使用总物品数量）
         {
             let player = self.players.get(player_id).ok_or("玩家未找到".to_string())?;
             let max_backpack_items = self.rule_engine.player_config.max_backpack_items as usize;
             
-            if player.inventory.len() >= max_backpack_items {
+            if player.get_total_item_count() >= max_backpack_items {
                 // 背包已满，返回Info提示
                 let data = serde_json::json!({
                     "message": "背包已满，无法拾取更多物品"
@@ -413,7 +413,7 @@ impl GameState {
         }
         
         // 检查前置条件：上一次搜索结果为玩家
-        let (has_weapons, last_search_result_valid) = {
+        let (has_weapon, last_search_result_valid) = {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
             
             let search_valid = if let Some(ref search_result) = player.last_search_result {
@@ -422,7 +422,7 @@ impl GameState {
                 false
             };
             
-            (!player.equipped_weapons.is_empty(), search_valid)
+            (player.equipped_weapon.is_some(), search_valid)
         };
         
         if !last_search_result_valid {
@@ -491,9 +491,10 @@ impl GameState {
         }
         
         // 根据是否装备武器计算伤害
-        let (damage, attack_method) = if has_weapons {
-            // 有武器：使用武器伤害（简化处理）
-            (20, "武器攻击")
+        let (damage, attack_method) = if has_weapon {
+            // 有武器：使用武器伤害
+            let weapon_damage = self.players.get(player_id).unwrap().get_weapon_damage();
+            (weapon_damage, "武器攻击")
         } else {
             // 无武器：使用规则引擎获取挥拳伤害
             (self.rule_engine.get_unarmed_damage(), "挥拳攻击")
@@ -576,43 +577,11 @@ impl GameState {
         }
         
         // 获取玩家引用
-        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+        let player = self.players.get_mut(player_id).ok_or("玩家未找到".to_string())?;
         
-        // 检查前置条件：玩家处于存活状态，背包中有指定物品
-        if !player.is_alive {
-            // 用Info类型返回错误提示
-            let data = serde_json::json!({});
-            let action_result = ActionResult::new_info_message(
-                data, 
-                vec![player_id.to_string()], 
-                "玩家已死亡，无法进行操作".to_string(),
-                false
-            );
-            return Ok(action_result);
-        }
-
         // 验证玩家背包中是否存在指定物品
-        if let Some(_item_index) = player.inventory.iter().position(|item| item.id == item_id) {
-            // 消耗体力值
-            player.strength -= equip_cost;
-            
-            // 更新玩家当前手持物品
-            player.hand_item = Some(item_id.to_string());
-            
-            // 向该玩家发送手持物品状态更新
-            let data = serde_json::json!({
-                "hand_item": item_id,
-                "strength": player.strength
-            });
-            
-            // 创建动作结果，只广播给发起者本人
-            let action_result = ActionResult::new_system_message(
-                data, 
-                vec![player_id.to_string()], 
-                format!("玩家 {} 装备了物品 {}", player.name, item_id)
-            );
-            Ok(action_result)
-        } else {
+        let item_index = player.inventory.iter().position(|item| item.id == item_id);
+        if item_index.is_none() {
             // 用Info类型返回错误提示
             let data = serde_json::json!({});
             let action_result = ActionResult::new_info_message(
@@ -622,6 +591,80 @@ impl GameState {
                 false
             );
             return Ok(action_result);
+        }
+        
+        let item_index = item_index.unwrap();
+        let item = player.inventory[item_index].clone();
+        let item_name = item.name.clone();
+        let player_name = player.name.clone();
+        
+        // 检查物品类型
+        match item.item_type {
+            ItemType::Weapon => {
+                // 装备武器
+                player.inventory.remove(item_index);
+                
+                // 如果已有武器，卸下旧武器到背包
+                if let Some(old_weapon) = player.equip_weapon(item) {
+                    player.inventory.push(old_weapon);
+                }
+                
+                // 消耗体力值
+                player.strength -= equip_cost;
+                
+                // 向该玩家发送装备状态更新
+                let data = serde_json::json!({
+                    "equipped_weapon": player.equipped_weapon,
+                    "inventory": player.inventory,
+                    "strength": player.strength
+                });
+                
+                // 创建动作结果，只广播给发起者本人
+                let action_result = ActionResult::new_system_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("玩家 {} 装备了武器 {}", player_name, item_name)
+                );
+                Ok(action_result)
+            }
+            ItemType::Equipment => {
+                // 装备防具
+                player.inventory.remove(item_index);
+                
+                // 如果已有防具，卸下旧防具到背包
+                if let Some(old_armor) = player.equip_armor(item) {
+                    player.inventory.push(old_armor);
+                }
+                
+                // 消耗体力值
+                player.strength -= equip_cost;
+                
+                // 向该玩家发送装备状态更新
+                let data = serde_json::json!({
+                    "equipped_armor": player.equipped_armor,
+                    "inventory": player.inventory,
+                    "strength": player.strength
+                });
+                
+                // 创建动作结果，只广播给发起者本人
+                let action_result = ActionResult::new_system_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("玩家 {} 装备了防具 {}", player_name, item_name)
+                );
+                Ok(action_result)
+            }
+            _ => {
+                // 非装备类物品不能装备
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    "该物品不是装备，无法装备".to_string(),
+                    false
+                );
+                Ok(action_result)
+            }
         }
     }
 
@@ -636,126 +679,124 @@ impl GameState {
         }
         
         // 获取玩家引用
-        let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
+        let player = self.players.get_mut(player_id).ok_or("玩家未找到".to_string())?;
         
-        if player.hand_item.is_none() {
+        // 验证玩家背包中是否存在指定物品
+        let item_index = player.inventory.iter().position(|item| item.id == item_id);
+        if item_index.is_none() {
             // 用Info类型返回错误提示
             let data = serde_json::json!({});
             let action_result = ActionResult::new_info_message(
                 data, 
                 vec![player_id.to_string()], 
-                "当前没有手持道具".to_string(),
+                "背包中没有该道具".to_string(),
                 false
             );
             return Ok(action_result);
         }
         
-        // 验证手持的是否是指定物品
-        if player.hand_item.as_ref() != Some(&item_id.to_string()) {
-            // 用Info类型返回错误提示
+        let item_index = item_index.unwrap();
+        let item = player.inventory[item_index].clone();
+        let item_name = item.name.clone();
+        let player_name = player.name.clone();
+        
+        // 检查物品类型，只能使用消耗品
+        if item.item_type != ItemType::Consumable {
             let data = serde_json::json!({});
             let action_result = ActionResult::new_info_message(
                 data, 
                 vec![player_id.to_string()], 
-                "指定的道具不是当前手持道具".to_string(),
+                "该物品不是消耗品，无法使用".to_string(),
                 false
             );
             return Ok(action_result);
         }
-
-        // 查找物品信息
-        if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
-            let item = &player.inventory[item_index];
-            
-            // 消耗体力值
-            player.strength -= use_cost;
-            
-            // 根据道具类型执行相应效果
-            match item.item_type {
-                ItemType::Consumable => {
-                    // 如果是消耗品：恢复生命值、传送等，并从玩家背包中移除消耗品
-                    // 这里我们简化处理，假设所有消耗品都恢复20点生命值
-                    player.life += 20;
+        
+        // 解析消耗品效果
+        let effect_type = item.properties.get("effect_type").and_then(|v| v.as_str());
+        let effect_value = item.properties.get("effect_value").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let cure_bleed = item.properties.get("cure_bleed").and_then(|v| v.as_bool()).unwrap_or(false);
+        
+        // 从背包移除消耗品
+        player.inventory.remove(item_index);
+        
+        // 执行效果
+        match effect_type {
+            Some("heal") => {
+                // 治疗效果
+                if cure_bleed && player.has_bleed_effect() {
+                    // 解除流血效果
+                    player.clear_bleed_effect();
+                    
+                    // 判断是否是红花丹类（强效治疗，同时恢复生命）
+                    // 红花丹类通过 effect_value > 0 区分
+                    if effect_value > 0 {
+                        // 红花丹类：解除流血 + 恢复生命
+                        player.life += effect_value;
+                        if player.life > player.max_life {
+                            player.life = player.max_life;
+                        }
+                    }
+                    // 绗带类：仅解除流血，不增加生命
+                } else {
+                    // 没有流血效果，正常恢复生命
+                    player.life += effect_value;
                     if player.life > player.max_life {
-                        player.life = player.max_life; // 使用玩家的最大生命值
+                        player.life = player.max_life;
                     }
-                    
-                    // 从玩家背包中移除消耗品
-                    player.inventory.remove(item_index);
-                    
-                    // 清空手持物品
-                    player.hand_item = None;
-                    
-                    // 更新玩家状态
-                    let data = serde_json::json!({
-                        "life": player.life,
-                        "inventory": player.inventory,
-                        "hand_item": null,
-                        "strength": player.strength
-                    });
-                    
-                    // 创建动作结果，只广播给发起者本人
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("玩家 {} 使用了消耗品 {}", player.name, item_id)
-                    );
-                    Ok(action_result)
                 }
-                ItemType::Weapon => {
-                    // 如果是装备类：装备到对应位置
-                    match item.item_type {
-                        ItemType::Weapon => {
-                            if player.can_equip_weapon(&self.rule_engine) {
-                                player.equip_weapon(item_id.to_string(), item.clone());
-                            }
-                        }
-                        ItemType::Equipment => {
-                            if player.can_equip_armor(&self.rule_engine) {
-                                player.equip_armor(item_id.to_string(), item.clone());
-                            }
-                        }
-                        _ => {}
-                    }
-                    
-                    // 更新玩家状态
-                    let data = serde_json::json!({
-                        "equipped_weapons": player.equipped_weapons,
-                        "equipped_armors": player.equipped_armors,
-                        "strength": player.strength
-                    });
-                    
-                    // 创建动作结果，只广播给发起者本人
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("玩家 {} 装备了武器 {}", player.name, item_id)
-                    );
-                    Ok(action_result)
-                }
-                ItemType::Equipment => {
-                    // 其他装备类型处理
-                    if player.can_equip_armor(&self.rule_engine) {
-                        player.equip_armor(item_id.to_string(), item.clone());
-                    }
-                    
-                    // 更新玩家状态
-                    let data = serde_json::json!({
-                        "equipped_armors": player.equipped_armors,
-                        "strength": player.strength
-                    });
-                    
-                    // 创建动作结果，只广播给发起者本人
-                    let action_result = ActionResult::new_system_message(
-                        data, 
-                        vec![player_id.to_string()], 
-                        format!("玩家 {} 装备了物品 {}", player.name, item_id)
-                    );
-                    Ok(action_result)
-                }
+                
+                // 消耗体力值
+                player.strength -= use_cost;
+                
+                let data = serde_json::json!({
+                    "life": player.life,
+                    "bleed_damage": player.bleed_damage,
+                    "bleed_rounds_remaining": player.bleed_rounds_remaining,
+                    "inventory": player.inventory,
+                    "strength": player.strength
+                });
+                
+                let action_result = ActionResult::new_system_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("玩家 {} 使用了 {}", player_name, item_name)
+                );
+                Ok(action_result)
             }
-        } else {
-            Err("Item not found in player's inventory".to_string())
+            Some("strength") => {
+                // 体力恢复效果
+                player.strength += effect_value;
+                if player.strength > player.max_strength {
+                    player.strength = player.max_strength;
+                }
+                
+                // 消耗使用体力（在恢复后扣除）
+                player.strength -= use_cost;
+                
+                let data = serde_json::json!({
+                    "strength": player.strength,
+                    "inventory": player.inventory
+                });
+                
+                let action_result = ActionResult::new_system_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("玩家 {} 使用了 {}", player_name, item_name)
+                );
+                Ok(action_result)
+            }
+            _ => {
+                // 未知效果类型
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    format!("消耗品 {} 没有定义效果", item_name),
+                    false
+                );
+                Ok(action_result)
+            }
         }
     }
 
@@ -798,15 +839,9 @@ impl GameState {
                 place.items.push(item);
             }
             
-            // 如果丢弃的是手持物品，清空手持物品状态
-            if player.hand_item.as_ref() == Some(&item_id.to_string()) {
-                player.hand_item = None;
-            }
-            
             // 向该玩家发送背包更新
             let data = serde_json::json!({
                 "inventory": player.inventory,
-                "hand_item": player.hand_item,
                 "strength": player.strength
             });
             
@@ -889,6 +924,99 @@ impl GameState {
             format!("玩家 {} 向导演发送消息: {}", player.name, message)
         );
         Ok(action_result)
+    }
+    
+    /// 处理卸下装备行动
+    pub fn handle_unequip_action(&mut self, player_id: &str, slot_type: &str) -> Result<ActionResult, String> {
+        // 使用公用函数检查玩家基础状态
+        if let Err(action_result) = self.check_player_basic_status(player_id, None) {
+            return Ok(action_result);
+        }
+        
+        // 获取玩家引用
+        let player = self.players.get_mut(player_id).ok_or("玩家未找到".to_string())?;
+        let player_name = player.name.clone();
+        
+        // 检查背包空间
+        // let max_backpack_items = self.rule_engine.player_config.max_backpack_items as usize;
+        // if player.get_total_item_count() >= max_backpack_items {
+        //     let data = serde_json::json!({});
+        //     let action_result = ActionResult::new_info_message(
+        //         data, 
+        //         vec![player_id.to_string()], 
+        //         "背包已满，无法卸下装备".to_string(),
+        //         false
+        //     );
+        //     return Ok(action_result);
+        // }
+        
+        // 根据槽位类型卸下装备
+        match slot_type {
+            "weapon" => {
+                if let Some(weapon) = player.unequip_weapon() {
+                    let weapon_name = weapon.name.clone();
+                    player.inventory.push(weapon);
+                    
+                    let data = serde_json::json!({
+                        "equipped_weapon": player.equipped_weapon,
+                        "inventory": player.inventory
+                    });
+                    
+                    let action_result = ActionResult::new_system_message(
+                        data, 
+                        vec![player_id.to_string()], 
+                        format!("玩家 {} 卸下了武器 {}", player_name, weapon_name)
+                    );
+                    Ok(action_result)
+                } else {
+                    let data = serde_json::json!({});
+                    let action_result = ActionResult::new_info_message(
+                        data, 
+                        vec![player_id.to_string()], 
+                        "当前未装备武器".to_string(),
+                        false
+                    );
+                    Ok(action_result)
+                }
+            }
+            "armor" => {
+                if let Some(armor) = player.unequip_armor() {
+                    let armor_name = armor.name.clone();
+                    player.inventory.push(armor);
+                    
+                    let data = serde_json::json!({
+                        "equipped_armor": player.equipped_armor,
+                        "inventory": player.inventory
+                    });
+                    
+                    let action_result = ActionResult::new_system_message(
+                        data, 
+                        vec![player_id.to_string()], 
+                        format!("玩家 {} 卸下了防具 {}", player_name, armor_name)
+                    );
+                    Ok(action_result)
+                } else {
+                    let data = serde_json::json!({});
+                    let action_result = ActionResult::new_info_message(
+                        data, 
+                        vec![player_id.to_string()], 
+                        "当前未装备防具".to_string(),
+                        false
+                    );
+                    Ok(action_result)
+                }
+            }
+            _ => {
+                let data = serde_json::json!({});
+                let action_result = ActionResult::new_info_message(
+                    data, 
+                    vec![player_id.to_string()], 
+                    "无效的装备槽位类型".to_string(),
+                    false
+                );
+                Ok(action_result)
+            }
+        }
     }
     
     /// 汇总当前地点的所有搜索目标
@@ -1068,21 +1196,12 @@ impl GameState {
             let dead_player = &self.players[dead_player_id];
             let mut all_items = dead_player.inventory.clone();
             
-            // 添加装备的物品到掉落列表
-            for weapon_id in &dead_player.equipped_weapons {
-                if let Some(weapon) = dead_player.equipped_items_detail.get(weapon_id) {
-                    all_items.push(weapon.clone());
-                }
+            // 添加装备的武器和防具到掉落列表
+            if let Some(weapon) = &dead_player.equipped_weapon {
+                all_items.push(weapon.clone());
             }
-            for armor_id in &dead_player.equipped_armors {
-                if let Some(armor) = dead_player.equipped_items_detail.get(armor_id) {
-                    all_items.push(armor.clone());
-                }
-            }
-            if let Some(hand_item_id) = &dead_player.hand_item {
-                if let Some(hand_item) = dead_player.equipped_items_detail.get(hand_item_id) {
-                    all_items.push(hand_item.clone());
-                }
+            if let Some(armor) = &dead_player.equipped_armor {
+                all_items.push(armor.clone());
             }
             
             (dead_player.location.clone(), all_items)
@@ -1132,10 +1251,8 @@ impl GameState {
         // 清空死者的装备和背包
         if let Some(dead_player) = self.players.get_mut(dead_player_id) {
             dead_player.inventory.clear();
-            dead_player.equipped_weapons.clear();
-            dead_player.equipped_armors.clear();
-            dead_player.equipped_items_detail.clear();
-            dead_player.hand_item = None;
+            dead_player.equipped_weapon = None;
+            dead_player.equipped_armor = None;
         }
         
         effects

@@ -2,87 +2,141 @@
   <el-card class="inventory-panel">
     <template #header>
       <div class="card-header">
-        <h3>背包</h3>
-        <el-tag v-if="player" type="info">物品数量: {{ player.inventory.length }}</el-tag>
+        <h3>物品管理</h3>
+        <el-tag v-if="player" type="info">总物品数: {{ getTotalItemCount() }}</el-tag>
       </div>
     </template>
 
     <div class="inventory-content">
-      <!-- 空背包提示 -->
-      <el-empty 
-        v-if="!player || player.inventory.length === 0" 
-        description="背包为空" 
-        :image-size="80"
-      />
-
-      <!-- 背包物品列表 -->
-      <div v-else class="inventory-items">
-        <div 
-          v-for="item in player.inventory" 
-          :key="item.id"
-          class="inventory-item"
-          :class="{ 'equipped': isEquipped(item.id), 'hand-item': isHandItem(item.id) }"
-        >
-          <div class="item-info">
-            <div class="item-name">{{ item.name }}</div>
-            <div class="item-type">
-              <el-tag :type="getItemTypeTagType(item.item_type)">
-                {{ getItemTypeLabel(item.item_type) }}
-              </el-tag>
+      <!-- 装备槽位区域 -->
+      <div class="equipment-slots">
+        <h4>装备槽位</h4>
+        
+        <div class="equipment-grid">
+          <!-- 武器槽 -->
+          <div class="equipment-slot weapon-slot">
+            <div class="slot-header">
+              <el-tag type="danger" size="small">武器</el-tag>
+            </div>
+            <div v-if="player?.equipped_weapon" class="slot-content">
+              <div class="item-info">
+                <div class="item-name">{{ player.equipped_weapon.name }}</div>
+                <div class="item-properties">
+                  <span v-if="player.equipped_weapon.properties.damage">
+                    伤害: {{ player.equipped_weapon.properties.damage }}
+                  </span>
+                </div>
+              </div>
+              <el-button 
+                type="warning" 
+                size="small" 
+                @click="unequipWeapon"
+                :loading="unequippingWeapon"
+              >
+                卸下
+              </el-button>
+            </div>
+            <div v-else class="slot-empty">
+              <el-empty description="未装备武器" :image-size="50" />
             </div>
           </div>
-          
-          <div class="item-actions">
-            <!-- 装备按钮 -->
-            <el-button 
-              v-if="canEquipItem(item)" 
-              type="primary" 
-              size="small" 
-              @click="equipItem(item.id)"
-              :loading="loadingItems.includes(item.id)"
-            >
-              装备
-            </el-button>
-            
-            <!-- 使用按钮 -->
-            <el-button 
-              v-else-if="canUseItem(item)" 
-              type="success" 
-              size="small" 
-              @click="useItem(item.id)"
-              :loading="loadingItems.includes(item.id)"
-            >
-              使用
-            </el-button>
-            
-            <!-- 丢弃按钮 -->
-            <el-button 
-              type="danger" 
-              size="small" 
-              @click="discardItem(item.id)"
-              :loading="loadingItems.includes(item.id)"
-            >
-              丢弃
-            </el-button>
+
+          <!-- 防具槽 -->
+          <div class="equipment-slot armor-slot">
+            <div class="slot-header">
+              <el-tag type="primary" size="small">防具</el-tag>
+            </div>
+            <div v-if="player?.equipped_armor" class="slot-content">
+              <div class="item-info">
+                <div class="item-name">{{ player.equipped_armor.name }}</div>
+                <div class="item-properties">
+                  <span v-if="player.equipped_armor.properties.defense">
+                    防御: {{ player.equipped_armor.properties.defense }}
+                  </span>
+                </div>
+              </div>
+              <el-button 
+                type="warning" 
+                size="small" 
+                @click="unequipArmor"
+                :loading="unequippingArmor"
+              >
+                卸下
+              </el-button>
+            </div>
+            <div v-else class="slot-empty">
+              <el-empty description="未装备防具" :image-size="50" />
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 手持物品显示 -->
-      <div v-if="player && player.hand_item" class="hand-item-section">
-        <h4>手持物品</h4>
-        <div class="hand-item-display">
-          <el-tag type="success" size="large">
-            {{ getHandItemName() }}
-          </el-tag>
-          <el-button 
-            type="warning" 
-            size="small" 
-            @click="putDownHandItem"
-            :loading="puttingDownHandItem"
+      <!-- 背包物品列表 -->
+      <div class="backpack-section">
+        <h4>背包</h4>
+        
+        <!-- 空背包提示 -->
+        <el-empty 
+          v-if="!player || player.inventory.length === 0" 
+          description="背包为空" 
+          :image-size="80"
+        />
+
+        <!-- 背包物品列表 -->
+        <div v-else class="inventory-items">
+          <div 
+            v-for="item in player.inventory" 
+            :key="item.id"
+            class="inventory-item"
           >
-            放下
-          </el-button>
+            <div class="item-info">
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-type">
+                <el-tag :type="getItemTypeTagType(item.item_type)" size="small">
+                  {{ getItemTypeLabel(item.item_type) }}
+                </el-tag>
+              </div>
+              <div v-if="hasItemProperties(item)" class="item-properties">
+                <span v-if="item.properties.damage">伤害: {{ item.properties.damage }}</span>
+                <span v-if="item.properties.defense">防御: {{ item.properties.defense }}</span>
+                <span v-if="item.properties.effect_value">效果: {{ item.properties.effect_value }}</span>
+              </div>
+            </div>
+            
+            <div class="item-actions">
+              <!-- 装备按钮（仅武器和防具） -->
+              <el-button 
+                v-if="item.item_type === 'weapon' || item.item_type === 'equipment'" 
+                type="primary" 
+                size="small" 
+                @click="equipItem(item.id)"
+                :loading="loadingItems.includes(item.id)"
+              >
+                装备
+              </el-button>
+              
+              <!-- 使用按钮（仅消耗品） -->
+              <el-button 
+                v-if="item.item_type === 'consumable'" 
+                type="success" 
+                size="small" 
+                @click="useItem(item.id)"
+                :loading="loadingItems.includes(item.id)"
+              >
+                使用
+              </el-button>
+              
+              <!-- 丢弃按钮 -->
+              <el-button 
+                type="danger" 
+                size="small" 
+                @click="discardItem(item.id)"
+                :loading="loadingItems.includes(item.id)"
+              >
+                丢弃
+              </el-button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -90,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { Player, Item } from '@/types/gameStateTypes'
 
@@ -102,29 +156,29 @@ const emit = defineEmits<{
   (e: 'equip-item', itemId: string): void
   (e: 'use-item', itemId: string): void
   (e: 'discard-item', itemId: string): void
-  (e: 'put-down-hand-item'): void
+  (e: 'unequip-weapon'): void
+  (e: 'unequip-armor'): void
 }>()
 
 // 响应式数据
 const loadingItems = ref<string[]>([])
-const puttingDownHandItem = ref(false)
-
-// 计算属性
-const isEquipped = computed(() => (itemId: string) => {
-  return props.player?.equipped_weapons.includes(itemId) || 
-         props.player?.equipped_armors.includes(itemId)
-})
-
-const isHandItem = computed(() => (itemId: string) => {
-  return props.player?.hand_item === itemId
-})
+const unequippingWeapon = ref(false)
+const unequippingArmor = ref(false)
 
 // 方法
+const getTotalItemCount = () => {
+  if (!props.player) return 0
+  let count = props.player.inventory.length
+  if (props.player.equipped_weapon) count++
+  if (props.player.equipped_armor) count++
+  return count
+}
+
 const getItemTypeLabel = (itemType: string) => {
   switch (itemType) {
     case 'weapon': return '武器'
     case 'consumable': return '消耗品'
-    case 'equipment': return '装备'
+    case 'equipment': return '防具'
     default: return '未知'
   }
 }
@@ -138,63 +192,45 @@ const getItemTypeTagType = (itemType: string) => {
   }
 }
 
-const canEquipItem = (item: Item) => {
-  // 只有装备和武器可以装备
-  return (item.item_type === 'equipment' || item.item_type === 'weapon') && 
-         !props.player?.equipped_weapons.includes(item.id) &&
-         !props.player?.equipped_armors.includes(item.id)
-}
-
-const canUseItem = (item: Item) => {
-  // 只有消耗品可以使用
-  return item.item_type === 'consumable'
-}
-
-const getHandItemName = () => {
-  if (!props.player || !props.player.hand_item) return ''
-  
-  const handItem = props.player.inventory.find(item => item.id === props.player?.hand_item)
-  return handItem ? handItem.name : '未知物品'
+const hasItemProperties = (item: Item) => {
+  return item.properties && Object.keys(item.properties).length > 0
 }
 
 const equipItem = async (itemId: string) => {
   if (!props.player) return
   
-  // 设置加载状态
   loadingItems.value.push(itemId)
   
   try {
-    // 发送装备事件
     emit('equip-item', itemId)
   } catch (error) {
     ElMessage.error('装备物品失败')
   } finally {
-    // 移除加载状态
-    loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    setTimeout(() => {
+      loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    }, 500)
   }
 }
 
 const useItem = async (itemId: string) => {
   if (!props.player) return
   
-  // 设置加载状态
   loadingItems.value.push(itemId)
   
   try {
-    // 发送使用事件
     emit('use-item', itemId)
   } catch (error) {
     ElMessage.error('使用物品失败')
   } finally {
-    // 移除加载状态
-    loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    setTimeout(() => {
+      loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    }, 500)
   }
 }
 
 const discardItem = async (itemId: string) => {
   if (!props.player) return
   
-  // 确认丢弃
   try {
     await ElMessageBox.confirm(
       '确定要丢弃这个物品吗？此操作不可撤销。',
@@ -206,36 +242,51 @@ const discardItem = async (itemId: string) => {
       }
     )
     
-    // 设置加载状态
     loadingItems.value.push(itemId)
     
     try {
-      // 发送丢弃事件
       emit('discard-item', itemId)
     } catch (error) {
       ElMessage.error('丢弃物品失败')
     } finally {
-      // 移除加载状态
-      loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+      setTimeout(() => {
+        loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+      }, 500)
     }
   } catch {
-    // 用户取消操作
     return
   }
 }
 
-const putDownHandItem = async () => {
-  if (!props.player || !props.player.hand_item) return
+const unequipWeapon = async () => {
+  if (!props.player?.equipped_weapon) return
   
-  puttingDownHandItem.value = true
+  unequippingWeapon.value = true
   
   try {
-    // 发送放下手持物品事件
-    emit('put-down-hand-item')
+    emit('unequip-weapon')
   } catch (error) {
-    ElMessage.error('放下物品失败')
+    ElMessage.error('卸下武器失败')
   } finally {
-    puttingDownHandItem.value = false
+    setTimeout(() => {
+      unequippingWeapon.value = false
+    }, 500)
+  }
+}
+
+const unequipArmor = async () => {
+  if (!props.player?.equipped_armor) return
+  
+  unequippingArmor.value = true
+  
+  try {
+    emit('unequip-armor')
+  } catch (error) {
+    ElMessage.error('卸下防具失败')
+  } finally {
+    setTimeout(() => {
+      unequippingArmor.value = false
+    }, 500)
   }
 }
 </script>
@@ -266,7 +317,71 @@ const putDownHandItem = async () => {
 .inventory-content {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+/* 装备槽位区域 */
+.equipment-slots h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
+}
+
+.equipment-slot {
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 10px;
+  background-color: white;
+}
+
+.equipment-slot.weapon-slot {
+  border-color: #f56c6c;
+}
+
+.equipment-slot.armor-slot {
+  border-color: #409eff;
+}
+
+.slot-header {
+  margin-bottom: 10px;
+}
+
+.slot-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slot-empty {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-properties {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.item-properties span {
+  margin-right: 8px;
+}
+
+/* 背包区域 */
+.backpack-section h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .inventory-items {
@@ -290,16 +405,6 @@ const putDownHandItem = async () => {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-.inventory-item.equipped {
-  border-color: #409eff;
-  background-color: #ecf5ff;
-}
-
-.inventory-item.hand-item {
-  border-color: #67c23a;
-  background-color: #f0f9eb;
-}
-
 .item-info {
   display: flex;
   flex-direction: column;
@@ -321,23 +426,11 @@ const putDownHandItem = async () => {
   gap: 5px;
 }
 
-.hand-item-section h4 {
-  margin: 0 0 10px 0;
-  color: #333;
-  font-size: 14px;
-}
-
-.hand-item-display {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid #d1edc4;
-  border-radius: 4px;
-  background-color: #f0f9eb;
-}
-
 @media (max-width: 768px) {
+  .equipment-grid {
+    grid-template-columns: 1fr;
+  }
+  
   .inventory-item {
     flex-direction: column;
     align-items: flex-start;
@@ -346,12 +439,6 @@ const putDownHandItem = async () => {
   
   .item-actions {
     align-self: flex-end;
-  }
-  
-  .hand-item-display {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
   }
 }
 </style>
