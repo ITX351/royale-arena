@@ -18,6 +18,8 @@ use crate::game::models::GameStatus;
 
 use crate::websocket::game_connection_manager::GameConnectionManager;
 use crate::websocket::broadcaster::MessageBroadcaster;
+use crate::websocket::player_action_scheduler::{PlayerActionScheduler, ActionParams};
+use crate::websocket::director_action_scheduler::{DirectorActionScheduler, DirectorActionParams};
 
 /// WebSocket服务
 #[derive(Clone)]
@@ -333,8 +335,6 @@ impl WebSocketService {
             .ok_or("Missing action field")?;
         
         // 获取游戏状态引用
-        // let game = self.app_state.game_service.get_game_by_id(game_id).await
-        //     .map_err(|e| format!("Failed to get game: {}", e))?;
         let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id).await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
 
@@ -342,61 +342,16 @@ impl WebSocketService {
             // 获取可写的游戏状态锁
             let mut game_state = game_state_ref.write().await;
 
-            // 根据行动类型处理
-            match action {
-                "born" => {
-                    let place_name = action_data.get("place_name").and_then(|v| v.as_str())
-                        .ok_or("Missing place_name field")?;
-                    game_state.handle_born_action(player_id, place_name)
-                }
-                "move" => {
-                    let target_place = action_data.get("target_place").and_then(|v| v.as_str())
-                        .ok_or("Missing target_place field")?;
-                    game_state.handle_move_action(player_id, target_place)
-                }
-                "search" => {
-                    game_state.handle_search_action(player_id)
-                }
-                "pick" => {
-                    game_state.handle_pick_action(player_id)
-                }
-                "attack" => {
-                    game_state.handle_attack_action(player_id)
-                }
-                "equip" => {
-                    let item_id = action_data.get("item_id").and_then(|v| v.as_str())
-                        .ok_or("Missing item_id field")?;
-                    game_state.handle_equip_action(player_id, item_id)
-                }
-                "use" => {
-                    let item_id = action_data.get("item_id").and_then(|v| v.as_str())
-                        .ok_or("Missing item_id field")?;
-                    game_state.handle_use_action(player_id, item_id)
-                }
-                "throw" => {
-                    let item_id = action_data.get("item_id").and_then(|v| v.as_str())
-                        .ok_or("Missing item_id field")?;
-                    game_state.handle_throw_action(player_id, item_id)
-                }
-                "unequip" => {
-                    let slot_type = action_data.get("slot_type").and_then(|v| v.as_str())
-                        .ok_or("Missing slot_type field")?;
-                    game_state.handle_unequip_action(player_id, slot_type)
-                }
-                "deliver" => {
-                    let target_player_id = action_data.get("target_player_id").and_then(|v| v.as_str())
-                        .ok_or("Missing target_player_id field")?;
-                    let message = action_data.get("message").and_then(|v| v.as_str())
-                        .ok_or("Missing message field")?;
-                    game_state.handle_deliver_action(player_id, target_player_id, message)
-                }
-                "send" => {
-                    let message = action_data.get("message").and_then(|v| v.as_str())
-                        .ok_or("Missing message field")?;
-                    game_state.handle_send_action(player_id, message)
-                }
-                _ => Err("Unknown action".to_string()),
-            }
+            // 使用调度器处理行动
+            let action_params = ActionParams::from_json(&action_data)
+                .map_err(|e| format!("Failed to parse action params: {}", e))?;
+            
+            PlayerActionScheduler::dispatch(
+                &mut game_state,
+                player_id,
+                action,
+                action_params
+            )
         };
 
         // 根据动作结果进行广播
@@ -455,151 +410,21 @@ impl WebSocketService {
         let action = action_data.get("action").and_then(|v| v.as_str())
             .ok_or("Missing action field")?;
         // 获取游戏状态引用
-        // let game = self.app_state.game_service.get_game_by_id(game_id).await
-        //     .map_err(|e| format!("Failed to get game: {}", e))?;
         let game_state_ref = self.app_state.game_state_manager.get_game_state(&game_id).await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
 
         let result = {
             let mut game_state = game_state_ref.write().await;
-            match action {
-                "set_night_start_time" => {
-                    // 设置夜晚开始时间
-                    let timestamp = action_data.get("timestamp").and_then(|v| v.as_str())
-                        .ok_or("Missing timestamp field")?;
-                    game_state.handle_set_night_start_time(timestamp)
-                }
-                "set_night_end_time" => {
-                    // 设置夜晚结束时间
-                    let timestamp = action_data.get("timestamp").and_then(|v| v.as_str())
-                        .ok_or("Missing timestamp field")?;
-                    game_state.handle_set_night_end_time(timestamp)
-                }
-                "modify_place" => {
-                    // 调整地点状态
-                    let place_name = action_data.get("place_name").and_then(|v| v.as_str())
-                        .ok_or("Missing place_name field")?;
-                    let is_destroyed = action_data.get("is_destroyed").and_then(|v| v.as_bool())
-                        .ok_or("Missing is_destroyed field")?;
-                    game_state.handle_modify_place(place_name, is_destroyed)
-                }
-                "set_destroy_places" => {
-                    // 设置缩圈地点
-                    let places = action_data.get("places").and_then(|v| v.as_array())
-                        .ok_or("Missing places field")?;
-                    game_state.handle_set_destroy_places(places)
-                }
-                "weather" => {
-                    // 调整天气
-                    let weather = action_data.get("weather").and_then(|v| v.as_f64())
-                        .ok_or("Missing weather field")?;
-                    game_state.handle_weather(weather)
-                }
-                "life" => {
-                    // 调整生命值
-                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                        .ok_or("Missing player_id field")?;
-                    let life_change = action_data.get("life_change").and_then(|v| v.as_i64())
-                        .ok_or("Missing life_change field")?;
-                    game_state.handle_life(player_id, life_change)
-                }
-                "strength" => {
-                    // 调整体力值
-                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                        .ok_or("Missing player_id field")?;
-                    let strength_change = action_data.get("strength_change").and_then(|v| v.as_i64())
-                        .ok_or("Missing strength_change field")?;
-                    game_state.handle_strength(player_id, strength_change)
-                }
-                "move_player" => {
-                    // 移动角色
-                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                        .ok_or("Missing player_id field")?;
-                    let target_place = action_data.get("target_place").and_then(|v| v.as_str())
-                        .ok_or("Missing target_place field")?;
-                    game_state.handle_move_player(player_id, target_place)
-                }
-                "give" => {
-                    // 增减道具
-                    let target_type = action_data.get("target_type").and_then(|v| v.as_str())
-                        .ok_or("Missing target_type field")?;
-                    let item_data = action_data.get("item").ok_or("Missing item field")?;
-                    let item: crate::websocket::models::Item = serde_json::from_value(item_data.clone())
-                        .map_err(|_| "Invalid item format".to_string())?;
-                    
-                    let player_id = action_data.get("player_id").and_then(|v| v.as_str());
-                    let place_name = action_data.get("place_name").and_then(|v| v.as_str());
-                    game_state.handle_give(target_type, item, player_id.as_deref(), place_name.as_deref())
-                }
-                "rope" | "unrope" => {
-                    // 捆绑/松绑
-                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                        .ok_or("Missing player_id field")?;
-                    let action_type = action_data.get("action_type").and_then(|v| v.as_str())
-                        .ok_or("Missing action_type field")?;
-                    game_state.handle_rope_action(player_id, action_type)
-                }
-                "broadcast" => {
-                    // 广播消息
-                    let message = action_data.get("message").and_then(|v| v.as_str())
-                        .ok_or("Missing message field")?;
-                    game_state.handle_broadcast(message)
-                }
-                "director_message_to_player" => {
-                    // 导演向特定玩家发送消息
-                    let player_id = action_data.get("player_id").and_then(|v| v.as_str())
-                        .ok_or("Missing player_id field")?;
-                    let message = action_data.get("message").and_then(|v| v.as_str())
-                        .ok_or("Missing message field")?;
-                    game_state.handle_director_message_to_player(player_id, message)
-                }
-                "batch_airdrop" => {
-                    // 批量空投
-                    let airdrops_data = action_data.get("airdrops").and_then(|v| v.as_array())
-                        .ok_or("Missing airdrops field")?;
-                    
-                    let mut airdrops = Vec::new();
-                    for airdrop_data in airdrops_data {
-                        let item_name = airdrop_data.get("item_name").and_then(|v| v.as_str())
-                            .ok_or("Missing item_name field in airdrop")?;
-                        let place_name = airdrop_data.get("place_name").and_then(|v| v.as_str())
-                            .ok_or("Missing place_name field in airdrop")?;
-                        
-                        airdrops.push(super::models::AirdropItem {
-                            item_name: item_name.to_string(),
-                            place_name: place_name.to_string(),
-                        });
-                    }
-                    
-                    game_state.handle_batch_airdrop(airdrops)
-                }
-                "batch_item_deletion" => {
-                    // 批量物品删除
-                    let clear_all = action_data.get("clear_all").and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-                    
-                    let mut deletions = Vec::new();
-                    if !clear_all {
-                        let deletions_data = action_data.get("deletions").and_then(|v| v.as_array())
-                            .ok_or("Missing deletions field")?;
-                        
-                        for deletion_data in deletions_data {
-                            let place_name = deletion_data.get("place_name").and_then(|v| v.as_str())
-                                .ok_or("Missing place_name field in deletion")?;
-                            let item_name = deletion_data.get("item_name").and_then(|v| v.as_str())
-                                .map(|s| s.to_string());
-                            
-                            deletions.push(super::models::ItemDeletionItem {
-                                place_name: place_name.to_string(),
-                                item_name,
-                            });
-                        }
-                    }
-                    
-                    game_state.handle_batch_item_deletion(deletions, clear_all)
-                }
-                _ => Err("Unknown director action".to_string()),
-            }
+            
+            // 使用调度器处理导演行动
+            let action_params = DirectorActionParams::from_json(&action_data)
+                .map_err(|e| format!("Failed to parse director action params: {}", e))?;
+            
+            DirectorActionScheduler::dispatch(
+                &mut game_state,
+                action,
+                action_params
+            )
         };
 
         // 根据动作结果进行广播

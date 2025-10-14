@@ -137,8 +137,6 @@ pub struct Player {
     pub is_alive: bool,
     /// 是否被捆绑（禁止行动）
     pub is_bound: bool,
-    /// 出生状态标记
-    pub is_born: bool,
     /// 是否处于静养模式
     pub rest_mode: bool,
     /// 当前静养恢复生命值
@@ -177,7 +175,6 @@ impl Player {
             last_search_result: None,
             is_alive: true,
             is_bound: false,
-            is_born: false,
             rest_mode: false,
             rest_life_recovery: 0,
             rest_moves_used: 0,
