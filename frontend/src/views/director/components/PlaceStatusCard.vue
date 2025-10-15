@@ -3,14 +3,23 @@
     <template #header>
       <div class="card-header">
         <h3>地点状态管理</h3>
-        <el-button 
-          type="danger" 
-          size="small" 
-          @click="handleClearAllItems"
-          :disabled="!hasAnyItems"
-        >
-          清空全场物品
-        </el-button>
+        <div class="button-group">
+          <el-button 
+            type="danger" 
+            size="small" 
+            @click="handleClearAllItems"
+            :disabled="!hasAnyItems"
+          >
+            清空全场物品
+          </el-button>
+          <el-button 
+            type="primary" 
+            size="small" 
+            @click="showPlainTextDialog('place')"
+          >
+            复制状态
+          </el-button>
+        </div>
       </div>
     </template>
     <div class="place-status-content">
@@ -74,11 +83,32 @@
         </el-table-column>
       </el-table>
     </div>
+    
+    <!-- 纯文本显示对话框 -->
+    <el-dialog v-model="plainTextDialogVisible" :title="dialogTitle" width="600px">
+      <el-input 
+        type="textarea" 
+        v-model="plainTextContent" 
+        :rows="10" 
+        readonly
+      />
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="plainTextDialogVisible = false">关闭</el-button>
+          <el-button 
+            type="primary" 
+            @click="copyPlainTextContent"
+          >
+            复制到剪贴板
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
@@ -95,6 +125,11 @@ const emit = defineEmits<{
 }>()
 
 const store = useGameStateStore()
+
+// 纯文本对话框相关
+const plainTextDialogVisible = ref(false)
+const plainTextContent = ref('')
+const dialogTitle = ref('')
 
 // 计算属性
 const placeList = computed<Place[]>(() => {
@@ -114,7 +149,7 @@ const getPlayerName = (playerId: string): string => {
 
 // 地点状态调整方法
 const handlePlaceStatusChange = (placeName: string, isDestroyed: boolean | string | number) => {
-  // 确俛isDestroyed是布尔值
+  // 确保isDestroyed是布尔值
   const isDestroyedBool = Boolean(isDestroyed)
   // 调用store中的方法调整地点状态
   store.togglePlaceStatus(placeName, isDestroyedBool)
@@ -185,22 +220,60 @@ const handleClearAllItems = async () => {
     // 用户取消操作
   }
 }
+
+// 显示纯文本对话框
+const showPlainTextDialog = (type: 'place' | 'player') => {
+  if (type === 'place') {
+    // 创建地点状态的表格文本表示
+    let statusText = '地点名称\t状态\n'
+    statusText += '--------\t--------\n'
+    
+    // 只显示未摧毁的地点
+    placeList.value
+      .filter(place => !place.is_destroyed)
+      .forEach(place => {
+        statusText += `${place.name}\t未摧毁\n`
+      })
+    
+    plainTextContent.value = statusText
+    dialogTitle.value = '地点状态 (未摧毁)'
+  }
+  
+  plainTextDialogVisible.value = true
+}
+
+// 复制纯文本内容到剪贴板
+const copyPlainTextContent = () => {
+  navigator.clipboard.writeText(plainTextContent.value).then(() => {
+    ElMessage.success('内容已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
 </script>
 
 <style scoped>
 .place-status-card {
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .card-header h3 {
   margin: 0;
   color: #303133;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
 }
 
 .place-status-content {
@@ -247,5 +320,11 @@ const handleClearAllItems = async () => {
 .clear-place-btn {
   margin-top: 5px;
   width: 100%;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

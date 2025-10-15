@@ -173,14 +173,14 @@ export const useGameStateStore = defineStore('gameState', () => {
     })
   }
 
-  // 玩家生命值调整
-  const updatePlayerLife = (playerId: string, change: number) => {
-    sendDirectorAction('life', { player_id: playerId, life_change: change })
+  // 设置玩家生命值（绝对值）
+  const setPlayerLife = (playerId: string, life: number) => {
+    sendDirectorAction('life', { player_id: playerId, life: life })
   }
 
-  // 玩家体力值调整
-  const updatePlayerStrength = (playerId: string, change: number) => {
-    sendDirectorAction('strength', { player_id: playerId, strength_change: change })
+  // 设置玩家体力值（绝对值）
+  const setPlayerStrength = (playerId: string, strength: number) => {
+    sendDirectorAction('strength', { player_id: playerId, strength: strength })
   }
 
   // 玩家移动
@@ -218,7 +218,7 @@ export const useGameStateStore = defineStore('gameState', () => {
   }
 
   const sendDirectorMessageToPlayer = (playerId: string, message: string) => {
-    sendDirectorAction('director_message_to_player', { player_id: playerId, message })
+    sendDirectorAction('message_to_player', { player_id: playerId, message })
   }
 
   // 批量空投（统一接口，支持单次和批量）
@@ -229,6 +229,16 @@ export const useGameStateStore = defineStore('gameState', () => {
   // 批量物品删除（统一接口，支持单个删除、地点清空和全场清空）
   const sendBatchItemDeletion = (deletions: Array<{ place_name: string, item_name?: string }>, clearAll: boolean = false) => {
     sendDirectorAction('batch_item_deletion', { deletions, clear_all: clearAll })
+  }
+
+  // 新增方法：向玩家添加物品（使用物品名称）
+  const addPlayerItem = (playerId: string, itemName: string) => {
+    sendDirectorAction('add_player_item', { player_id: playerId, item_name: itemName })
+  }
+
+  // 新增方法：从玩家移除物品（使用物品名称）
+  const removePlayerItem = (playerId: string, itemName: string) => {
+    sendDirectorAction('remove_player_item', { player_id: playerId, item_name: itemName })
   }
 
   const handleWebSocketEvent = (event: WebSocketEvent) => {
@@ -301,8 +311,8 @@ export const useGameStateStore = defineStore('gameState', () => {
     setNightTime,
     setDestroyPlaces,
     togglePlaceStatus,
-    updatePlayerLife,
-    updatePlayerStrength,
+    setPlayerLife,
+    setPlayerStrength,
     movePlayer,
     togglePlayerBinding,
     destroyPlace,
@@ -310,6 +320,8 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorMessageToPlayer,
     sendBatchAirdrop,
     sendBatchItemDeletion,
+    addPlayerItem, // 新增导出
+    removePlayerItem, // 新增导出
     clearError
   }
 })

@@ -22,14 +22,14 @@ pub struct DirectorActionParams {
     
     /// 玩家操作
     pub player_id: Option<String>,
-    pub life_change: Option<i64>,
-    pub strength_change: Option<i64>,
+    pub life: Option<i32>, // 玩家生命值
+    pub strength: Option<i32>, // 玩家体力值
     pub target_place: Option<String>,
     pub action_type: Option<String>, // rope/unrope
     
     /// 道具操作
     pub target_type: Option<String>,
-    pub item: Option<Item>,
+    pub item_name: Option<String>, // 物品名称，用于添加/移除玩家物品
     
     /// 消息操作
     pub message: Option<String>,
@@ -117,17 +117,17 @@ impl DirectorActionScheduler {
             "life" => {
                 let player_id = action_params.player_id
                     .ok_or_else(|| "Missing player_id parameter".to_string())?;
-                let life_change = action_params.life_change
-                    .ok_or_else(|| "Missing life_change parameter".to_string())?;
-                game_state.handle_life(&player_id, life_change)
+                let life = action_params.life
+                    .ok_or_else(|| "Missing life parameter".to_string())?;
+                game_state.handle_set_player_life(&player_id, life)
             }
             
             "strength" => {
                 let player_id = action_params.player_id
                     .ok_or_else(|| "Missing player_id parameter".to_string())?;
-                let strength_change = action_params.strength_change
-                    .ok_or_else(|| "Missing strength_change parameter".to_string())?;
-                game_state.handle_strength(&player_id, strength_change)
+                let strength = action_params.strength
+                    .ok_or_else(|| "Missing strength parameter".to_string())?;
+                game_state.handle_set_player_strength(&player_id, strength)
             }
             
             "move_player" => {
@@ -138,18 +138,20 @@ impl DirectorActionScheduler {
                 game_state.handle_move_player(&player_id, &target_place)
             }
             
-            "give" => {
-                let target_type = action_params.target_type
-                    .ok_or_else(|| "Missing target_type parameter".to_string())?;
-                let item = action_params.item
-                    .ok_or_else(|| "Missing item parameter".to_string())?;
-                
-                game_state.handle_give(
-                    &target_type,
-                    item,
-                    action_params.player_id.as_deref(),
-                    action_params.place_name.as_deref(),
-                )
+            "add_player_item" => {
+                let player_id = action_params.player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let item_name = action_params.item_name
+                    .ok_or_else(|| "Missing item_name parameter".to_string())?;
+                game_state.handle_add_player_item(&player_id, &item_name)
+            }
+            
+            "remove_player_item" => {
+                let player_id = action_params.player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let item_name = action_params.item_name
+                    .ok_or_else(|| "Missing item_name parameter".to_string())?;
+                game_state.handle_remove_player_item(&player_id, &item_name)
             }
             
             "rope" | "unrope" => {

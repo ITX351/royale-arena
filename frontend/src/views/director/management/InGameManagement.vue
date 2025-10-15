@@ -8,19 +8,6 @@
       </template>
       
       <div class="management-content">
-        <!--<el-alert
-          title="游戏中管理功能"
-          type="info"
-          show-icon
-          :closable="false"
-          class="management-info"
-        >
-          <template #default>
-            <p>游戏正在进行中，您可以在此管理游戏进程。</p>
-            <p>目前支持的操作包括暂停游戏和结束游戏。</p>
-          </template>
-        </el-alert>-->
-        
         <!-- 横向排列的控制面板 -->
         <div class="control-section">
           <!-- 第一行：天气控制和夜晚时间设置并排 -->
@@ -138,16 +125,20 @@
           </div>
         </div>
         
-        <!-- 地点状态管理和玩家状态管理卡片 -->
-        <PlaceStatusCard 
-          :places="placeList" 
-          @place-status-change="handlePlaceStatusChange"
-        />
+        <!-- 地点状态管理和玩家状态管理卡片 - 修改为横跨整个屏幕 -->
+        <div class="full-width-section">
+          <PlaceStatusCard 
+            :places="placeList" 
+            @place-status-change="handlePlaceStatusChange"
+          />
+        </div>
         
-        <PlayerStatusCard 
-          :players="playerList" 
-          @player-binding-change="handlePlayerBindingChange"
-        />
+        <div class="full-width-section">
+          <PlayerStatusCard 
+            :players="playerList" 
+            @player-binding-change="handlePlayerBindingChange"
+          />
+        </div>
         
         <!-- 空投设置面板 -->
         <AirdropPanel 
@@ -400,6 +391,16 @@ const handleMessageSent = (message: string, targetType: 'all' | 'player', target
 
 .management-note {
   margin-top: auto;
+}
+
+/* 新增样式 - 全宽部分 */
+.full-width-section {
+  width: 100%;
+}
+
+/* 调整PlaceStatusCard和PlayerStatusCard样式 */
+.full-width-section :deep(.el-card) {
+  width: 100%;
 }
 
 @media (max-width: 768px) {
