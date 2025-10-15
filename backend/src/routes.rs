@@ -8,7 +8,7 @@ use axum::{
 use crate::admin::{admin_login, create_admin, delete_admin, list_admins, update_admin};
 use crate::auth::{jwt_auth_middleware, super_admin_middleware, AuthService};
 use crate::admin::service::AdminService;
-use crate::director::{batch_add_players, batch_delete_players, get_players, update_game_status, manual_save, list_save_files, DirectorService};
+use crate::director::{batch_add_players, batch_delete_players, get_players, update_game_status, manual_save, list_save_files, edit_game, DirectorService};
 use crate::game::{create_game, delete_game, get_game_with_rules, get_games, get_player_messages, update_game, authenticate_game, GameService, GameLogService};
 use crate::game::global_game_state_manager::GlobalGameStateManager;
 use crate::rule_template::{create_template, get_templates, update_template, RuleTemplateService};
@@ -121,6 +121,8 @@ pub fn create_routes(
         .route("/game/{game_id}/save", post(manual_save))
         // 查询存档文件列表接口
         .route("/game/{game_id}/saves", get(list_save_files))
+        // 导演编辑游戏接口
+        .route("/game/{game_id}/edit", put(edit_game))
         .with_state(app_state.clone());
 
     // 玩家接口路由（无需JWT认证，使用玩家密码验证）

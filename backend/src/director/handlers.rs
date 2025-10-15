@@ -157,6 +157,23 @@ pub async fn manual_save(
     Ok(Json(json!(response)))
 }
 
+/// 导演编辑游戏
+pub async fn edit_game(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(query): Query<DirectorPasswordQuery>,
+    Json(request): Json<DirectorEditGameRequest>,
+) -> Result<Json<serde_json::Value>, DirectorError> {
+    let game = state.director_service
+        .edit_game(&state, &game_id, &query.password, request)
+        .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": game
+    })))
+}
+
 /// 查询存档文件列表接口
 pub async fn list_save_files(
     State(state): State<AppState>,

@@ -25,5 +25,6 @@ export const API_ENDPOINTS = {
   DIRECTOR_BATCH_DELETE: (gameId: string) => `/game/${gameId}/players`,
   DIRECTOR_SAVE_GAME: (gameId: string) => `/game/${gameId}/save`,
   DIRECTOR_LIST_SAVES: (gameId: string) => `/game/${gameId}/saves`,
-  DIRECTOR_UPDATE_STATUS: (gameId: string) => `/game/${gameId}/status`
+  DIRECTOR_UPDATE_STATUS: (gameId: string) => `/game/${gameId}/status`,
+  DIRECTOR_EDIT_GAME: (gameId: string) => `/game/${gameId}/edit`
 }

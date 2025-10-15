@@ -2,7 +2,7 @@ use sqlx::{MySqlPool, Row};
 use uuid::Uuid;
 use crate::director::{DirectorError, models::*};
 use crate::routes::AppState;
-use crate::game::models::SaveFileInfo;
+use crate::game::models::{SaveFileInfo, GameWithPlayerCounts};
 
 /// 导演服务层
 #[derive(Clone)]
@@ -435,6 +435,53 @@ impl DirectorService {
             .map_err(|e| DirectorError::OtherError { message: format!("Failed to save game state to disk: {}", e) })?;
         
         Ok(save_file_name)
+    }
+
+    /// 编辑游戏（导演端）
+    pub async fn edit_game(
+        &self,
+        app_state: &AppState,
+        game_id: &str,
+        password: &str,
+        request: DirectorEditGameRequest,
+    ) -> Result<GameWithPlayerCounts, DirectorError> {
+        // 1. 验证导演密码
+        self.verify_director_password(game_id, password).await?;
+        
+        // 2. 验证请求参数
+        request.validate().map_err(|e| DirectorError::ValidationError { message: e })?;
+        
+        // 3. 执行字段更新操作
+        if let Some(ref name) = request.name {
+            sqlx::query("UPDATE games SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(name)
+                .bind(game_id)
+                .execute(&self.pool).await?;
+        }
+        if let Some(ref description) = request.description {
+            sqlx::query("UPDATE games SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(description)
+                .bind(game_id)
+                .execute(&self.pool).await?;
+        }
+        if let Some(max_players) = request.max_players {
+            sqlx::query("UPDATE games SET max_players = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(max_players)
+                .bind(game_id)
+                .execute(&self.pool).await?;
+        }
+        if let Some(ref rules_config) = request.rules_config {
+            sqlx::query("UPDATE games SET rules_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(rules_config)
+                .bind(game_id)
+                .execute(&self.pool).await?;
+        }
+        
+        // 4. 查询并返回更新后的游戏信息
+        let game = app_state.game_service.get_game_by_id_with_player_counts(game_id, true).await
+            .map_err(|e| DirectorError::OtherError { message: format!("Failed to get game: {}", e) })?;
+        
+        Ok(game)
     }
 
     /// 查询存档文件列表

@@ -273,7 +273,7 @@ impl WebSocketService {
         // 处理导演消息
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
-                debug!("Director WS received message: {:?}", &text);
+                debug!("Director WS received message: {}", &text);
                 if let Err(error_msg) = self.handle_director_message(&game_id, &text).await {
                     // 记录错误日志，方便后续排查调试
                     eprintln!("[WebSocket] Director message processing error: {}", error_msg);

@@ -319,7 +319,7 @@ import MarkdownIt from 'markdown-it'
 // 忽略类型检查错误
 // @ts-ignore
 import type { GameWithRules } from '@/types/game'
-import { gameService } from '@/services/gameService'
+import { directorService } from '@/services/directorService'
 import { GameRuleParser, type ParsedGameRules } from '@/utils/gameRuleParser'
 
 // Props
@@ -428,8 +428,8 @@ const saveRules = async () => {
     
     saving.value = true
     
-    // 调用管理员接口更新游戏规则
-    const response = await gameService.updateGame(props.game.id, {
+    // 调用导演接口更新游戏规则
+    const response = await directorService.editGame(props.game.id, props.directorPassword, {
       rules_config: parsedRules
     })
     

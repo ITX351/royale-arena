@@ -2,6 +2,15 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use crate::game::models::{GameStatus, SaveFileInfo};
 
+/// 导演编辑游戏请求
+#[derive(Debug, Deserialize)]
+pub struct DirectorEditGameRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub max_players: Option<i32>,
+    pub rules_config: Option<serde_json::Value>,
+}
+
 /// 批量添加演员请求
 #[derive(Debug, Deserialize)]
 pub struct BatchAddPlayersRequest {
@@ -112,6 +121,35 @@ pub struct UpdateGameStatusResponse {
     pub save_file_name: Option<String>,
 }
 
+impl DirectorEditGameRequest {
+    /// 验证导演编辑游戏请求的数据
+    pub fn validate(&self) -> Result<(), String> {
+        // 验证至少提供一个字段
+        if self.name.is_none() && self.description.is_none() && self.max_players.is_none() && self.rules_config.is_none() {
+            return Err("至少需要提供一个字段进行更新".to_string());
+        }
+
+        // 验证游戏名称
+        if let Some(ref name) = self.name {
+            if name.trim().is_empty() {
+                return Err("游戏名称不能为空".to_string());
+            }
+            if name.len() > 100 {
+                return Err("游戏名称不能超过100个字符".to_string());
+            }
+        }
+
+        // 验证最大玩家数
+        if let Some(max_players) = self.max_players {
+            if max_players < 1 || max_players > 1000 {
+                return Err("最大玩家数必须在1-1000之间".to_string());
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl CreatePlayerRequest {
     /// 验证创建演员请求的数据
     pub fn validate(&self) -> Result<(), String> {
@@ -153,6 +191,72 @@ impl CreatePlayerRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_director_edit_game_request_validation() {
+        // 测试有效请求 - 更新名称
+        let valid_request = DirectorEditGameRequest {
+            name: Some("测试游戏".to_string()),
+            description: None,
+            max_players: None,
+            rules_config: None,
+        };
+        assert!(valid_request.validate().is_ok());
+
+        // 测试有效请求 - 更新多个字段
+        let valid_request = DirectorEditGameRequest {
+            name: Some("测试游戏".to_string()),
+            description: Some("测试描述".to_string()),
+            max_players: Some(50),
+            rules_config: Some(serde_json::json!({"test": "value"})),
+        };
+        assert!(valid_request.validate().is_ok());
+
+        // 测试空请求
+        let empty_request = DirectorEditGameRequest {
+            name: None,
+            description: None,
+            max_players: None,
+            rules_config: None,
+        };
+        assert!(empty_request.validate().is_err());
+
+        // 测试空名称
+        let empty_name_request = DirectorEditGameRequest {
+            name: Some("".to_string()),
+            description: None,
+            max_players: None,
+            rules_config: None,
+        };
+        assert!(empty_name_request.validate().is_err());
+
+        // 测试名称过长
+        let long_name_request = DirectorEditGameRequest {
+            name: Some("a".repeat(101)),
+            description: None,
+            max_players: None,
+            rules_config: None,
+        };
+        assert!(long_name_request.validate().is_err());
+
+        // 测试无效最大玩家数 - 过小
+        let invalid_max_players_request = DirectorEditGameRequest {
+            name: None,
+            description: None,
+            max_players: Some(0),
+            rules_config: None,
+        };
+        assert!(invalid_max_players_request.validate().is_err());
+
+        // 测试无效最大玩家数 - 过大
+        let invalid_max_players_request = DirectorEditGameRequest {
+            name: None,
+            description: None,
+            max_players: Some(1001),
+            rules_config: None,
+        };
+        assert!(invalid_max_players_request.validate().is_err());
+    }
 
     #[test]
     fn test_create_player_request_validation() {

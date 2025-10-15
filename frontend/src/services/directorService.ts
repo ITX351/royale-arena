@@ -150,6 +150,27 @@ export class DirectorService {
   }
 
   /**
+   * 导演编辑游戏属性
+   */
+  async editGame(
+    gameId: string,
+    password: string,
+    data: {
+      name?: string
+      description?: string
+      max_players?: number
+      rules_config?: any
+    }
+  ): Promise<any> {
+    const response = await apiClient.put(
+      API_ENDPOINTS.DIRECTOR_EDIT_GAME(gameId),
+      data,
+      { params: { password } }
+    )
+    return response.data
+  }
+
+  /**
    * 解析批量粘贴数据
    */
   parseBatchPasteData(
