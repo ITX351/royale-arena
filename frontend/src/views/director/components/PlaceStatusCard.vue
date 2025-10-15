@@ -3,86 +3,80 @@
     <template #header>
       <div class="card-header">
         <h3>地点状态管理</h3>
-        <div class="button-group">
-          <el-button 
-            type="danger" 
-            size="small" 
-            @click="handleClearAllItems"
-            :disabled="!hasAnyItems"
-          >
-            清空全场物品
-          </el-button>
+        <div class="header-actions">
           <el-button 
             type="primary" 
             size="small" 
-            @click="showPlainTextDialog('place')"
-          >
-            复制状态
-          </el-button>
+            @click="isCollapsed = !isCollapsed"
+            :icon="isCollapsed ? ArrowDown : ArrowUp"
+            circle
+          />
         </div>
       </div>
     </template>
-    <div class="place-status-content">
-      <el-table :data="placeList" style="width: 100%" size="small" max-height="500">
-        <el-table-column prop="name" label="地点名称" width="120" />
-        <el-table-column label="状态" width="120">
-          <template #default="scope">
-            <el-switch
-              v-model="scope.row.is_destroyed"
-              active-text="已摧毁"
-              inactive-text="未摧毁"
-              @change="val => handlePlaceStatusChange(scope.row.name, val)"
-              size="small"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="玩家列表" min-width="150">
-          <template #default="scope">
-            <div class="players-list">
-              <el-tag 
-                v-for="playerId in scope.row.players" 
-                :key="playerId" 
+    <el-collapse-transition>
+      <div v-show="!isCollapsed" class="place-status-content">
+        <el-table :data="placeList" style="width: 100%" size="small" max-height="500">
+          <el-table-column prop="name" label="地点名称" width="120" />
+          <el-table-column label="状态" width="120">
+            <template #default="scope">
+              <el-switch
+                v-model="scope.row.is_destroyed"
+                active-text="已摧毁"
+                inactive-text="未摧毁"
+                @change="val => handlePlaceStatusChange(scope.row.name, val)"
                 size="small"
-                class="player-tag"
-              >
-                {{ getPlayerName(playerId) }}
-              </el-tag>
-              <span v-if="scope.row.players.length === 0" class="empty-text">无</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="物品列表" min-width="250">
-          <template #default="scope">
-            <div class="items-list">
-              <div 
-                v-for="(item, index) in scope.row.items" 
-                :key="index" 
-                class="item-row"
-              >
-                <span class="item-name">{{ item.name }}</span>
-                <el-button 
-                  type="danger" 
-                  size="small" 
-                  @click="handleDeleteItem(scope.row.name, item.name)"
-                  :icon="Delete"
-                  circle
-                />
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="玩家列表" min-width="150">
+            <template #default="scope">
+              <div class="players-list">
+                <el-tag 
+                  v-for="playerId in scope.row.players" 
+                  :key="playerId" 
+                  size="small"
+                  class="player-tag"
+                >
+                  {{ getPlayerName(playerId) }}
+                </el-tag>
+                <span v-if="scope.row.players.length === 0" class="empty-text">无</span>
               </div>
-              <div v-if="scope.row.items.length === 0" class="empty-text">无</div>
-              <el-button 
-                v-if="scope.row.items.length > 0"
-                type="warning" 
-                size="small" 
-                @click="handleClearPlaceItems(scope.row.name)"
-                class="clear-place-btn"
-              >
-                清空地点
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="物品列表" min-width="250">
+            <template #default="scope">
+              <div class="items-list">
+                <div 
+                  v-for="(item, index) in scope.row.items" 
+                  :key="index" 
+                  class="item-row"
+                >
+                  <span class="item-name">{{ item.name }}</span>
+                  <el-button 
+                    type="danger" 
+                    size="small" 
+                    @click="handleDeleteItem(scope.row.name, item.name)"
+                    :icon="Delete"
+                    circle
+                  />
+                </div>
+                <div v-if="scope.row.items.length === 0" class="empty-text">无</div>
+                <el-button 
+                  v-if="scope.row.items.length > 0"
+                  type="warning" 
+                  size="small" 
+                  @click="handleClearPlaceItems(scope.row.name)"
+                  class="clear-place-btn"
+                >
+                  清空地点
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-collapse-transition>
     
     <!-- 纯文本显示对话框 -->
     <el-dialog v-model="plainTextDialogVisible" :title="dialogTitle" width="600px">
@@ -110,7 +104,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Delete } from '@element-plus/icons-vue'
+import { Delete, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { DirectorPlace as Place } from '@/types/gameStateTypes'
 
@@ -125,6 +119,9 @@ const emit = defineEmits<{
 }>()
 
 const store = useGameStateStore()
+
+// 折叠状态
+const isCollapsed = ref(true)
 
 // 纯文本对话框相关
 const plainTextDialogVisible = ref(false)
@@ -269,6 +266,12 @@ const copyPlainTextContent = () => {
 .card-header h3 {
   margin: 0;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .button-group {

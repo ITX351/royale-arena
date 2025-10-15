@@ -73,6 +73,17 @@
             </span>
           </div>
           <div class="log-content-text">{{ message.log_message }}</div>
+          <!-- 更新回复按钮显示条件 -->
+          <div v-if="props.isDirector && message.message_type === 'UserDirected' && isPlayerToDirectorMessage(message.log_message)" class="reply-section">
+            <el-button 
+              size="small" 
+              type="primary" 
+              @click="handleReply(message)"
+              class="reply-button"
+            >
+              回复
+            </el-button>
+          </div>
         </div>
         
         <!-- 空状态 -->
@@ -113,6 +124,12 @@ import { formatTimestamp } from '@/utils/gameUtils'
 const props = defineProps<{
   messages: ActionResult[]
   players: Array<{ id: string; name: string }>
+  isDirector?: boolean // 新增属性，用于区分是否为导演端
+}>()
+
+// 定义事件发射
+const emit = defineEmits<{
+  (e: 'reply-to-player', playerId: string): void
 }>()
 
 // 响应式状态
@@ -219,6 +236,29 @@ const hideExtraMessages = () => {
 const isNewMessage = (timestamp: string) => {
   const result = newMessages.value.has(timestamp);
   return result;
+}
+
+// 新增方法：提取玩家名称
+const extractPlayerName = (message: string) => {
+  const match = message.match(/玩家 (.*?) 向导演发送消息: /);
+  return match ? match[1] : null;
+}
+
+// 新增方法：检查是否为玩家向导演发送的消息
+const isPlayerToDirectorMessage = (message: string) => {
+  return message.includes('向导演发送消息:');
+}
+
+// 新增方法：处理回复按钮点击
+const handleReply = (message: ActionResult) => {
+  const playerName = extractPlayerName(message.log_message);
+  if (playerName) {
+    const player = props.players.find(p => p.name === playerName);
+    if (player) {
+      // 触发事件，通知父组件跳转到BroadcastMessage并设置目标玩家
+      emit('reply-to-player', player.id);
+    }
+  }
 }
 
 // 监听消息变化，标记新消息
@@ -428,6 +468,16 @@ onUnmounted(() => {
 
 .log-item.fade-effect .log-content-text {
   color: white !important;
+}
+
+.reply-section {
+  margin-top: 8px;
+  text-align: right;
+}
+
+.reply-button {
+  padding: 4px 8px;
+  font-size: 12px;
 }
 
 .empty-state {

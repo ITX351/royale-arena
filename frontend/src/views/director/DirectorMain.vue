@@ -60,6 +60,7 @@
             :game="gameWithData"
             :director-password="directorPassword"
             @refresh="refreshGame"
+            ref="managementComponentRef"
           />
         </div>
 
@@ -69,7 +70,9 @@
             v-if="shouldShowLogMessage"
             :messages="logMessages"
             :players="playerList"
+            :is-director="true"
             class="shared-log-message"
+            @reply-to-player="handleReplyToPlayer"
           />
         </div>
       </div>
@@ -99,6 +102,9 @@ import '@/styles/director-actor-layout.css'
 const route = useRoute()
 const router = useRouter()
 const gameStateStore = useGameStateStore()
+
+// 添加管理组件引用
+const managementComponentRef = ref<any>(null)
 
 // 响应式状态
 const game = ref<GameWithRules | null>(null)
@@ -232,6 +238,17 @@ const refreshGame = async () => {
 const handleStatusUpdated = () => {
   // 状态更新后刷新游戏信息
   refreshGame()
+}
+
+// 新增方法：处理回复玩家事件
+const handleReplyToPlayer = (playerId: string) => {
+  // 检查管理组件引用是否存在
+  if (managementComponentRef.value) {
+    // 调用管理组件中的方法来设置目标玩家
+    if (typeof managementComponentRef.value.setBroadcastTarget === 'function') {
+      managementComponentRef.value.setBroadcastTarget(playerId);
+    }
+  }
 }
 
 // 监听WebSocket错误 - 修复类型问题

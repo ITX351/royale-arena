@@ -148,6 +148,7 @@
         
         <!-- 广播消息面板 -->
         <BroadcastMessage 
+          ref="broadcastMessageRef"
           :game-id="game.id"
           :players="playerList"
           @message-sent="handleMessageSent"
@@ -180,7 +181,15 @@ const emit = defineEmits<{
   (e: 'request-end'): void
 }>()
 
+// 定义暴露给父组件的方法
+defineExpose({
+  setBroadcastTarget
+})
+
 const store = useGameStateStore()
+
+// 添加BroadcastMessage组件引用
+const broadcastMessageRef = ref<any>(null)
 
 // 天气控制相关
 const weatherValue = ref<number>(1.0)
@@ -267,6 +276,22 @@ const handlePlayerBindingChange = (playerId: string) => {
   const player = store.directorPlayers[playerId]
   if (player) {
     ElMessage.success(`玩家 "${player.name}" 状态已更新`)
+  }
+}
+
+// 新增方法：设置广播目标玩家
+function setBroadcastTarget(playerId: string) {
+  // 检查BroadcastMessage组件引用是否存在
+  if (broadcastMessageRef.value) {
+    // 如果面板是折叠的，先展开它
+    if (typeof broadcastMessageRef.value.expandPanel === 'function') {
+      broadcastMessageRef.value.expandPanel();
+    }
+    
+    // 调用BroadcastMessage组件中的方法来设置目标玩家
+    broadcastMessageRef.value.setTargetPlayer(playerId);
+    // 聚焦到消息输入框
+    broadcastMessageRef.value.focusMessageInput();
   }
 }
 

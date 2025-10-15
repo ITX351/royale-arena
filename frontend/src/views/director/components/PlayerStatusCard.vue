@@ -3,76 +3,87 @@
     <template #header>
       <div class="card-header">
         <h3>玩家状态管理</h3>
-        <el-button 
-          type="primary" 
-          size="small" 
-          @click="showPlainTextDialog('player')"
-        >
-          复制状态
-        </el-button>
+        <div class="header-actions">
+          <el-button 
+            type="primary" 
+            size="small" 
+            @click="showPlainTextDialog('player')"
+          >
+            复制状态
+          </el-button>
+          <el-button 
+            type="primary" 
+            size="small" 
+            @click="isCollapsed = !isCollapsed"
+            :icon="isCollapsed ? ArrowDown : ArrowUp"
+            circle
+          />
+        </div>
       </div>
     </template>
-    <div class="player-status-content">
-      <el-table :data="playerList" style="width: 100%" size="small" max-height="400">
-        <el-table-column prop="name" label="玩家" width="120" />
-        <el-table-column label="生命值" width="150">
-          <template #default="scope">
-            <div class="status-value">
-              <el-input 
-                v-model="scope.row.life"
-                @blur="(event: FocusEvent) => updatePlayerLife(scope.row.id, scope.row.life, (event.target as HTMLInputElement).value)"
-                size="small"
-              />
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="体力值" width="150">
-          <template #default="scope">
-            <div class="status-value">
-              <el-input 
-                v-model="scope.row.strength"
-                @blur="(event: FocusEvent) => updatePlayerStrength(scope.row.id, scope.row.strength, (event.target as HTMLInputElement).value)"
-                size="small"
-              />
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="物品" min-width="200">
-          <template #default="scope">
-            <div class="items-container">
-              <el-tag 
-                v-for="(item, index) in scope.row.inventory" 
-                :key="index" 
-                size="small" 
-                class="item-tag"
-                closable
-                @close="removeItem(scope.row.id, item.name)"
-              >
-                {{ item.name }}
-              </el-tag>
+    <el-collapse-transition>
+      <div v-show="!isCollapsed" class="player-status-content">
+        <el-table :data="playerList" style="width: 100%" size="small" max-height="400">
+          <el-table-column prop="name" label="玩家" width="120" />
+          <el-table-column label="生命值" width="150">
+            <template #default="scope">
+              <div class="status-value">
+                <el-input 
+                  v-model="scope.row.life"
+                  @blur="(event: FocusEvent) => updatePlayerLife(scope.row.id, scope.row.life, (event.target as HTMLInputElement).value)"
+                  size="small"
+                />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="体力值" width="150">
+            <template #default="scope">
+              <div class="status-value">
+                <el-input 
+                  v-model="scope.row.strength"
+                  @blur="(event: FocusEvent) => updatePlayerStrength(scope.row.id, scope.row.strength, (event.target as HTMLInputElement).value)"
+                  size="small"
+                />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="物品" min-width="200">
+            <template #default="scope">
+              <div class="items-container">
+                <el-tag 
+                  v-for="(item, index) in scope.row.inventory" 
+                  :key="index" 
+                  size="small" 
+                  class="item-tag"
+                  closable
+                  @close="removeItem(scope.row.id, item.name)"
+                >
+                  {{ item.name }}
+                </el-tag>
+                <el-button 
+                  type="success" 
+                  size="small" 
+                  @click="showAddItemDialog(scope.row.id)"
+                >
+                  添加物品
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="scope">
               <el-button 
-                type="success" 
                 size="small" 
-                @click="showAddItemDialog(scope.row.id)"
+                :type="scope.row.is_bound ? 'warning' : 'primary'"
+                @click="togglePlayerBinding(scope.row.id)"
               >
-                添加物品
+                {{ scope.row.is_bound ? '松绑' : '捆绑' }}
               </el-button>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120">
-          <template #default="scope">
-            <el-button 
-              size="small" 
-              :type="scope.row.is_bound ? 'warning' : 'primary'"
-              @click="togglePlayerBinding(scope.row.id)"
-            >
-              {{ scope.row.is_bound ? '松绑' : '捆绑' }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-collapse-transition>
     
     <!-- 添加物品对话框 -->
     <el-dialog v-model="addItemDialogVisible" title="添加物品" width="400px">
@@ -127,6 +138,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import { createItemParser, extractExistingItemsFromGameState } from '@/utils/itemParser'
 import type { Player, DirectorGameData } from '@/types/gameStateTypes'
@@ -142,6 +154,9 @@ const emit = defineEmits<{
 }>()
 
 const store = useGameStateStore()
+
+// 折叠状态，默认展开
+const isCollapsed = ref(false)
 
 // 添加物品对话框相关
 const addItemDialogVisible = ref(false)
@@ -279,6 +294,12 @@ const copyPlainTextContent = () => {
 .card-header h3 {
   margin: 0;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .player-status-content {

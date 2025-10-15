@@ -3,69 +3,78 @@
     <template #header>
       <div class="card-header">
         <h3>空投设置</h3>
+        <el-button 
+          type="primary" 
+          size="small" 
+          @click="isCollapsed = !isCollapsed"
+          :icon="isCollapsed ? ArrowDown : ArrowUp"
+          circle
+        />
       </div>
     </template>
 
-    <div class="airdrop-content">
-      <!-- 单次空投区域 -->
-      <div class="single-airdrop-section">
-        <h4>单次空投</h4>
-        <el-form :model="singleAirdropForm" ref="singleAirdropFormRef">
-          <el-form-item label="选择物品">
-            <el-select 
-              v-model="singleAirdropForm.selectedItem" 
-              placeholder="请选择物品"
-              style="width: 100%"
-              filterable
-            >
-              <el-option
-                v-for="item in allItemOptions"
-                :key="item"
-                :label="item"
-                :value="item"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="选择地点">
-            <el-select 
-              v-model="singleAirdropForm.selectedPlace" 
-              placeholder="请选择地点"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="place in availablePlaces"
-                :key="place"
-                :label="place"
-                :value="place"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button 
-              type="primary" 
-              @click="executeSingleAirdrop"
-              :disabled="!singleAirdropForm.selectedItem || !singleAirdropForm.selectedPlace"
-              :loading="executing"
-            >
-              确认空投
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </div>
+    <el-collapse-transition>
+      <div v-show="!isCollapsed" class="airdrop-content">
+        <!-- 单次空投区域 -->
+        <div class="single-airdrop-section">
+          <h4>单次空投</h4>
+          <el-form :model="singleAirdropForm" ref="singleAirdropFormRef">
+            <el-form-item label="选择物品">
+              <el-select 
+                v-model="singleAirdropForm.selectedItem" 
+                placeholder="请选择物品"
+                style="width: 100%"
+                filterable
+              >
+                <el-option
+                  v-for="item in allItemOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="选择地点">
+              <el-select 
+                v-model="singleAirdropForm.selectedPlace" 
+                placeholder="请选择地点"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="place in availablePlaces"
+                  :key="place"
+                  :label="place"
+                  :value="place"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button 
+                type="primary" 
+                @click="executeSingleAirdrop"
+                :disabled="!singleAirdropForm.selectedItem || !singleAirdropForm.selectedPlace"
+                :loading="executing"
+              >
+                确认空投
+              </el-button>
+            </el-form-item>
+          </el-form>
+        </div>
 
-      <el-divider />
+        <el-divider />
 
-      <!-- 批量空投区域 -->
-      <div class="batch-airdrop-section">
-        <h4>批量空投</h4>
-        <el-button 
-          type="success" 
-          @click="openBatchAirdropDialog"
-        >
-          打开批量空投界面
-        </el-button>
+        <!-- 批量空投区域 -->
+        <div class="batch-airdrop-section">
+          <h4>批量空投</h4>
+          <el-button 
+            type="success" 
+            @click="openBatchAirdropDialog"
+          >
+            打开批量空投界面
+          </el-button>
+        </div>
       </div>
-    </div>
+    </el-collapse-transition>
 
     <!-- 批量空投对话框 -->
     <BatchAirdropDialog 
@@ -82,6 +91,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import { createItemParser, extractExistingItemsFromGameState } from '@/utils/itemParser'
 import type { DirectorGameData } from '@/types/gameStateTypes'
@@ -101,6 +111,9 @@ const emit = defineEmits<{
 
 // 使用store
 const store = useGameStateStore()
+
+// 折叠状态，默认折叠
+const isCollapsed = ref(true)
 
 // 响应式状态
 const singleAirdropFormRef = ref()
@@ -193,6 +206,12 @@ const handleBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: str
 <style scoped>
 .airdrop-panel {
   margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .card-header h3 {
