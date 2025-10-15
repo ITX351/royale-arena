@@ -195,15 +195,13 @@ export const useGameStateStore = defineStore('gameState', () => {
     if (player) {
       if (player.is_bound) {
         // 松绑
-        sendDirectorAction('rope', { 
-          player_id: playerId, 
-          action_type: 'unrope' 
+        sendDirectorAction('unrope', { 
+          player_id: playerId
         })
       } else {
         // 捆绑
         sendDirectorAction('rope', { 
-          player_id: playerId, 
-          action_type: 'rope' 
+          player_id: playerId
         })
       }
     }

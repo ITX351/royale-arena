@@ -8,7 +8,7 @@
 
     <div class="broadcast-content">
       <el-form :model="broadcastForm" ref="broadcastFormRef" label-width="80px">
-        <el-form-item label="消息内容" prop="message" :rules="[{ required: true, message: '请输入消息内容', trigger: 'blur' }]">
+        <el-form-item label="消息内容" prop="message">
           <el-input
             v-model="broadcastForm.message"
             type="textarea"
@@ -19,7 +19,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="发送目标" prop="targetType" :rules="[{ required: true, message: '请选择发送目标', trigger: 'change' }]">
+        <el-form-item label="发送目标" prop="targetType">
           <el-radio-group v-model="broadcastForm.targetType">
             <el-radio label="all">广播到所有玩家</el-radio>
             <el-radio label="player">发送给特定玩家</el-radio>
@@ -30,7 +30,6 @@
           v-if="broadcastForm.targetType === 'player'" 
           label="选择玩家" 
           prop="targetPlayer"
-          :rules="[{ required: true, message: '请选择玩家', trigger: 'change' }]"
         >
           <el-select 
             v-model="broadcastForm.targetPlayer" 
@@ -64,6 +63,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ElMessage, ElForm } from 'element-plus'
+import { useGameStateStore } from '@/stores/gameState'
 import type { Player } from '@/types/gameStateTypes'
 
 // 定义组件属性
@@ -76,6 +76,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'message-sent', message: string, targetType: 'all' | 'player', targetPlayer?: string): void
 }>()
+
+// 获取状态管理器
+const store = useGameStateStore()
 
 // 响应式状态
 const broadcastFormRef = ref<InstanceType<typeof ElForm>>()
@@ -91,33 +94,40 @@ const sending = ref(false)
 const sendBroadcast = async () => {
   if (!broadcastFormRef.value) return
   
-  try {
-    await broadcastFormRef.value.validate()
-    
-    sending.value = true
-    
-    // 模拟发送消息过程
-    setTimeout(() => {
-      if (broadcastForm.targetType === 'all') {
-        emit('message-sent', broadcastForm.message, 'all')
-        ElMessage.success('消息已广播给所有玩家')
-      } else {
-        emit('message-sent', broadcastForm.message, 'player', broadcastForm.targetPlayer)
-        const targetPlayer = props.players.find(p => p.id === broadcastForm.targetPlayer)
-        ElMessage.success(`消息已发送给玩家: ${targetPlayer?.name}`)
-      }
-      
-      // 重置表单
-      broadcastForm.message = ''
-      broadcastForm.targetType = 'all'
-      broadcastForm.targetPlayer = ''
-      
-      sending.value = false
-    }, 500)
-  } catch (error) {
-    console.error('表单验证失败:', error)
+  sending.value = true
+  
+  // 手动检查是否填写了消息内容
+  if (!broadcastForm.message.trim()) {
+    ElMessage.warning('请输入消息内容')
     sending.value = false
+    return
   }
+  
+  if (broadcastForm.targetType === 'all') {
+    // 广播给所有玩家
+    store.sendBroadcast(broadcastForm.message)
+    ElMessage.success('消息已广播给所有玩家')
+    emit('message-sent', broadcastForm.message, 'all')
+  } else {
+    // 发送给特定玩家
+    if (broadcastForm.targetPlayer) {
+      store.sendDirectorMessageToPlayer(broadcastForm.targetPlayer, broadcastForm.message)
+      const targetPlayer = props.players.find(p => p.id === broadcastForm.targetPlayer)
+      ElMessage.success(`消息已发送给玩家: ${targetPlayer?.name}`)
+      emit('message-sent', broadcastForm.message, 'player', broadcastForm.targetPlayer)
+    } else {
+      ElMessage.warning('请选择要发送消息的玩家')
+      sending.value = false
+      return
+    }
+  }
+  
+  // 重置表单
+  broadcastForm.message = ''
+  broadcastForm.targetType = 'all'
+  broadcastForm.targetPlayer = ''
+  
+  sending.value = false
 }
 </script>
 

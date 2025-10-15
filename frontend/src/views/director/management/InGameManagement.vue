@@ -264,7 +264,7 @@ const handlePlaceStatusChange = (placeName: string, isDestroyed: boolean) => {
 // 玩家状态管理方法
 const handlePlayerBindingChange = (playerId: string) => {
   // 获取玩家信息用于消息提示
-  const player = store.players[playerId]
+  const player = store.directorPlayers[playerId]
   if (player) {
     ElMessage.success(`玩家 "${player.name}" 状态已更新`)
   }
@@ -277,14 +277,6 @@ const handleAirdropAccepted = (items: any[], place: string) => {
 }
 
 const handleMessageSent = (message: string, targetType: 'all' | 'player', targetPlayer?: string) => {
-  if (targetType === 'all') {
-    ElMessage.success('消息已广播给所有玩家')
-  } else {
-    // 获取玩家信息
-    const players = store.players
-    const targetPlayerName = targetPlayer && players[targetPlayer] ? players[targetPlayer].name : targetPlayer
-    ElMessage.success(`消息已发送给玩家: ${targetPlayerName || '未知'}`)
-  }
   console.log('消息发送:', { message, targetType, targetPlayer })
 }
 </script>
