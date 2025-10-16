@@ -346,6 +346,12 @@ pub enum SearchTarget {
     Item(String),   // 物品ID
 }
 
+/// 动作处理结果集合，包含多个ActionResult
+#[derive(Debug, Clone)]
+pub struct ActionResults {
+    pub results: Vec<ActionResult>,
+}
+
 /// 动作处理结果，包含广播信息
 #[derive(Debug, Clone)]
 pub struct ActionResult {
@@ -377,18 +383,25 @@ impl ActionResult {
     }
     
     /// 创建新的动作处理结果（带系统日志消息）
-    pub fn new_system_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::SystemNotice, true)
+    pub fn new_system_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
+        ActionResult::new(data, broadcast_players, log_message, MessageType::SystemNotice, broadcast_to_director)
     }
     
     /// 创建新的动作处理结果（带用户定向日志消息）
-    pub fn new_user_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::UserDirected, true)
+    pub fn new_user_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
+        ActionResult::new(data, broadcast_players, log_message, MessageType::UserDirected, broadcast_to_director)
     }
     
     /// 创建新的动作处理结果（带Info类型提示消息）
     pub fn new_info_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
         ActionResult::new(data, broadcast_players, log_message, MessageType::Info, broadcast_to_director)
+    }
+    
+    /// 将单个ActionResult转换为ActionResults
+    pub fn as_results(self) -> ActionResults {
+        ActionResults {
+            results: vec![self],
+        }
     }
     
     /// 创建用于返回给前端的数据结构，排除`broadcast_players`字段

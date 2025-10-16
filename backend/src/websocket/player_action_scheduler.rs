@@ -2,7 +2,7 @@
 //! 
 //! 负责玩家行动的权限验证和分发调度
 
-use super::models::{GameState, ActionResult, Player};
+use super::models::{GameState, ActionResult, ActionResults, Player};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -77,7 +77,7 @@ impl PlayerActionScheduler {
         player_id: &str,
         action_type: &str,
         action_params: ActionParams,
-    ) -> Result<ActionResult, String> {
+    ) -> Result<ActionResults, String> {
         // 执行验证
         match action_type {
             "born" => {
@@ -139,7 +139,7 @@ impl PlayerActionScheduler {
             },
             "deliver" => {
                 let deliver_cost = game_state.rule_engine.action_costs.deliver;
-                validate_or_return!(game_state, player_id, vec![ValidationType::Alive, ValidationType::Born, ValidationType::NotBound,
+                validate_or_return!(game_state, player_id, vec![ValidationType::Alive, ValidationType::NotBound,
                      ValidationType::Strength(deliver_cost)]);
                 let target_player_id = action_params.target_player_id.as_ref().ok_or("Missing target_player_id parameter")?;
                 let message = action_params.message.as_ref().ok_or("Missing message parameter")?;
@@ -154,7 +154,7 @@ impl PlayerActionScheduler {
     }
 
     /// 执行单个验证
-    fn validate(game_state: &GameState, player_id: &str, validation: ValidationType) -> Result<(), ActionResult> {
+    fn validate(game_state: &GameState, player_id: &str, validation: ValidationType) -> Result<(), ActionResults> {
         // 首先检查玩家是否存在
         let player = match game_state.players.get(player_id) {
             Some(player) => player,
@@ -165,7 +165,7 @@ impl PlayerActionScheduler {
                     vec![player_id.to_string()],
                     "玩家未找到".to_string(),
                     false
-                ));
+                ).as_results());
             }
         };
         
@@ -183,7 +183,7 @@ impl PlayerActionScheduler {
     // ==================== 权限验证辅助函数 ====================
     
     /// 验证玩家是否存活（从玩家引用）
-    fn check_player_alive_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResult> {
+    fn check_player_alive_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResults> {
         if !player.is_alive {
             let data = serde_json::json!({});
             return Err(ActionResult::new_info_message(
@@ -191,13 +191,13 @@ impl PlayerActionScheduler {
                 vec![player_id.to_string()],
                 "玩家已死亡，无法进行操作".to_string(),
                 false
-            ));
+            ).as_results());
         }
         Ok(())
     }
     
     /// 验证玩家是否已出生（从玩家引用）
-    fn check_player_born_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResult> {
+    fn check_player_born_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResults> {
         if player.location.is_empty() {
             let data = serde_json::json!({});
             return Err(ActionResult::new_info_message(
@@ -205,13 +205,13 @@ impl PlayerActionScheduler {
                 vec![player_id.to_string()],
                 "玩家尚未出生，请先选择出生地点".to_string(),
                 false
-            ));
+            ).as_results());
         }
         Ok(())
     }
     
     /// 验证玩家尚未出生（从玩家引用）
-    fn check_player_not_born_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResult> {
+    fn check_player_not_born_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResults> {
         if !player.location.is_empty() {
             let data = serde_json::json!({});
             return Err(ActionResult::new_info_message(
@@ -219,13 +219,13 @@ impl PlayerActionScheduler {
                 vec![player_id.to_string()],
                 "玩家已经出生，无法重复出生".to_string(),
                 false
-            ));
+            ).as_results());
         }
         Ok(())
     }
     
     /// 验证玩家体力是否充足（从玩家引用）
-    fn check_player_strength_from_ref(player: &Player, player_id: &str, required: i32) -> Result<(), ActionResult> {
+    fn check_player_strength_from_ref(player: &Player, player_id: &str, required: i32) -> Result<(), ActionResults> {
         if player.strength < required {
             let data = serde_json::json!({});
             return Err(ActionResult::new_info_message(
@@ -233,13 +233,13 @@ impl PlayerActionScheduler {
                 vec![player_id.to_string()],
                 "体力不足，无法执行该操作".to_string(),
                 false
-            ));
+            ).as_results());
         }
         Ok(())
     }
     
     /// 验证玩家未被捆绑（从玩家引用）
-    fn check_player_not_bound_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResult> {
+    fn check_player_not_bound_from_ref(player: &Player, player_id: &str) -> Result<(), ActionResults> {
         if player.is_bound {
             let data = serde_json::json!({});
             return Err(ActionResult::new_info_message(
@@ -247,13 +247,13 @@ impl PlayerActionScheduler {
                 vec![player_id.to_string()],
                 "玩家被捆绑，无法自由行动".to_string(),
                 false
-            ));
+            ).as_results());
         }
         Ok(())
     }
     
     /// 验证背包有空闲空间（从玩家引用）
-    fn check_inventory_space_from_ref(player: &Player, game_state: &GameState, player_id: &str) -> Result<(), ActionResult> {
+    fn check_inventory_space_from_ref(player: &Player, game_state: &GameState, player_id: &str) -> Result<(), ActionResults> {
         // 获取背包最大容量
         let max_inventory_size = game_state.rule_engine.player_config.max_backpack_items as usize;
         
@@ -267,7 +267,7 @@ impl PlayerActionScheduler {
                 vec![player_id.to_string()],
                 "背包已满，无法拾取更多物品".to_string(),
                 false
-            ));
+            ).as_results());
         }
         Ok(())
     }

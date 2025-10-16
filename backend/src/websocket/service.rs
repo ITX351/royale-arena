@@ -354,50 +354,8 @@ impl WebSocketService {
             )
         };
 
-        // 根据动作结果进行广播
-        match &result {
-            Ok(action_result) => {
-                // 获取更新后的游戏状态
-                let updated_game_state = game_state_ref.read().await;
-                
-                // 使用新的广播器广播消息给相关玩家
-                let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
-                
-                // 根据broadcast_to_director字段判断是否向导演广播
-                if action_result.broadcast_to_director {
-                    let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
-                }
-                
-                // 使用显式的消息类型而不是通过字符串内容判断
-                let message_type = action_result.message_type.clone();
-                
-                // 仅在非Info类型消息时创建日志记录
-                if message_type != crate::game::MessageType::Info {
-                    // 为每个相关玩家创建日志记录
-                    for broadcast_player_id in &action_result.broadcast_players {
-                        let log_result = self.app_state.game_log_service.create_log(
-                            game_id,
-                            broadcast_player_id,
-                            &action_result.log_message,
-                            message_type.clone(),
-                            action_result.timestamp,  // 传递ActionResult中的时间戳
-                        ).await;
-                        
-                        // 忽略日志记录错误，但记录日志
-                        if let Err(e) = log_result {
-                            eprintln!("Failed to create log record: {}", e);
-                        }
-                    }
-                }
-            }
-            Err(error_msg) => {
-                // 记录错误日志，方便后续排查调试
-                eprintln!("[WebSocket] Player action processing error: {}", error_msg);
-            }
-        }
-
-        // 序列化结果
-        result.map(|action_result| serde_json::to_string(&action_result.to_client_response()).unwrap_or_default())
+        // 统一处理动作结果
+        self.handle_action_results(result, game_state_ref).await
     }
 
     /// 处理导演控制
@@ -427,49 +385,67 @@ impl WebSocketService {
             )
         };
 
-        // 根据动作结果进行广播
-        match &result {
-            Ok(action_result) => {
+        // 统一处理动作结果
+        self.handle_action_results(result, game_state_ref).await
+    }
+
+    /// 统一处理ActionResults结果（完全破坏性修改，不保持向后兼容）
+    async fn handle_action_results(
+        &self,
+        result: Result<ActionResults, String>,
+        game_state_ref: Arc<tokio::sync::RwLock<GameState>>,
+    ) -> Result<String, String> {
+        match result {
+            Ok(action_results) => {
                 // 获取更新后的游戏状态
                 let updated_game_state = game_state_ref.read().await;
                 
-                // 使用新的广播器广播消息给相关玩家
-                let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
-                
-                // 根据broadcast_to_director字段判断是否向导演广播
-                if action_result.broadcast_to_director {
-                    let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
-                }
-                
-                // 使用显式的消息类型而不是通过字符串内容判断
-                let message_type = action_result.message_type.clone();
-                
-                // 仅在非Info类型消息时创建日志记录
-                if message_type != crate::game::MessageType::Info {
-                    // 为每个相关玩家创建日志记录
-                    for broadcast_player_id in &action_result.broadcast_players {
-                        let log_result = self.app_state.game_log_service.create_log(
-                            game_id,
-                            broadcast_player_id,
-                            &action_result.log_message,
-                            message_type.clone(),
-                            action_result.timestamp,  // 传递ActionResult中的时间戳
-                        ).await;
-                        
-                        // 忽略日志记录错误，但记录日志
-                        if let Err(e) = log_result {
-                            eprintln!("Failed to create log record: {}", e);
+                // 处理所有ActionResult
+                for action_result in &action_results.results {
+                    // 使用新的广播器广播消息给相关玩家
+                    let _ = self.message_broadcaster.broadcast_to_players(&updated_game_state, &action_result.broadcast_players, action_result).await;
+                    
+                    // 根据broadcast_to_director字段判断是否向导演广播
+                    if action_result.broadcast_to_director {
+                        let _ = self.message_broadcaster.broadcast_to_directors(&updated_game_state, action_result).await;
+                    }
+                    
+                    // 使用显式的消息类型而不是通过字符串内容判断
+                    let message_type = action_result.message_type.clone();
+                    
+                    // 仅在非Info类型消息时创建日志记录
+                    if message_type != crate::game::MessageType::Info {
+                        // 为每个相关玩家创建日志记录
+                        for broadcast_player_id in &action_result.broadcast_players {
+                            let log_result = self.app_state.game_log_service.create_log(
+                                &updated_game_state.game_id,
+                                broadcast_player_id,
+                                &action_result.log_message,
+                                message_type.clone(),
+                                action_result.timestamp,  // 传递ActionResult中的时间戳
+                            ).await;
+                            
+                            // 忽略日志记录错误，但记录日志
+                            if let Err(e) = log_result {
+                                eprintln!("Failed to create log record: {}", e);
+                            }
                         }
                     }
                 }
+                
+                // 完全破坏性修改：返回所有ActionResult的响应，而不是只返回第一个
+                let responses: Vec<serde_json::Value> = action_results.results
+                    .iter()
+                    .map(|result| result.to_client_response())
+                    .collect();
+                
+                Ok(serde_json::to_string(&responses).unwrap_or_default())
             }
             Err(error_msg) => {
                 // 记录错误日志，方便后续排查调试
-                eprintln!("[WebSocket] Director action processing error: {}", error_msg);
+                eprintln!("[WebSocket] Action processing error: {}", error_msg);
+                Err(error_msg)
             }
         }
-
-        // 序列化结果
-        result.map(|action_result| serde_json::to_string(&action_result.to_client_response()).unwrap_or_default())
     }
 }

@@ -2,7 +2,7 @@
 //! 
 //! 负责导演行动的分发调度，导演拥有特殊权限，无需验证前置条件
 
-use super::models::{GameState, ActionResult, AirdropItem, ItemDeletionItem, Item};
+use super::models::{GameState, ActionResults, AirdropItem, ItemDeletionItem, Item};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -60,13 +60,13 @@ impl DirectorActionScheduler {
     /// - `action_params`: 导演行动参数
     /// 
     /// # 返回值
-    /// - `Ok(ActionResult)`: 行动执行成功或失败
+    /// - `Ok(ActionResults)`: 行动执行成功或失败
     /// - `Err(String)`: 系统级错误
     pub fn dispatch(
         game_state: &mut GameState,
         action_type: &str,
         action_params: DirectorActionParams,
-    ) -> Result<ActionResult, String> {
+    ) -> Result<ActionResults, String> {
         match action_type {
             "set_night_start_time" => {
                 let timestamp = action_params.timestamp
