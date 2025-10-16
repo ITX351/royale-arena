@@ -109,8 +109,7 @@ impl PlayerActionScheduler {
                 let attack_cost = game_state.rule_engine.action_costs.attack;
                 validate_or_return!(game_state, player_id, vec![ValidationType::Alive, ValidationType::Born, ValidationType::NotBound,
                      ValidationType::Strength(attack_cost)]);
-                let target_player_id = action_params.target_player_id.as_ref().ok_or("Missing target_player_id parameter")?;
-                return game_state.handle_attack_action(player_id, target_player_id);
+                return game_state.handle_attack_action(player_id);
             },
             "equip" => {
                 let equip_cost = game_state.rule_engine.action_costs.equip;

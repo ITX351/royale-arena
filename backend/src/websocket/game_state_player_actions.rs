@@ -84,19 +84,16 @@ impl GameState {
             return Ok(action_result);
         }
         
-        // 获取玩家引用
+        // 获取玩家引用并移动玩家到目标位置
         let player = self.players.get_mut(player_id).ok_or("Player not found".to_string())?;
         let player_location = player.location.clone();
         let player_name = player.name.clone();
+        player.location = target_place.to_string();
         
         // 从当前地点移除玩家
         if let Some(current_place) = self.places.get_mut(&player_location) {
             current_place.players.retain(|id| id != player_id);
         }
-        
-        // 更新玩家位置到目标地点
-        let player = self.players.get_mut(player_id).unwrap();
-        player.location = target_place.to_string();
         
         // 将玩家添加到目标地点的玩家列表中
         if let Some(target_place_obj) = self.places.get_mut(target_place) {
@@ -302,26 +299,33 @@ impl GameState {
     }
 
     /// 处理攻击行动
-    pub fn handle_attack_action(&mut self, player_id: &str, target_player_id: &str) -> Result<ActionResult, String> {
+    pub fn handle_attack_action(&mut self, player_id: &str) -> Result<ActionResult, String> {
         // 使用规则引擎获取攻击消耗
         let attack_cost = self.rule_engine.action_costs.attack;
         
         // 检查前置条件：上一次搜索结果为玩家
-        let (has_weapon, last_search_result_valid, player_location) = {
+        let (has_weapon, player_location, target_player_id) = {
             let player = self.players.get(player_id).ok_or("Player not found".to_string())?;
             
-            let search_valid = if let Some(ref search_result) = player.last_search_result {
-                search_result.target_type == SearchResultType::Player
+            let target_player_id = if let Some(ref search_result) = player.last_search_result 
+                && search_result.target_type == SearchResultType::Player {
+                search_result.target_id.clone()
             } else {
-                false
+                let action_result = ActionResult::new_info_message(
+                    serde_json::json!({}), 
+                    vec![player_id.to_string()], 
+                    "上一次搜索结果不是玩家".to_string(),
+                    false
+                );
+                return Ok(action_result);
             };
             
-            (player.equipped_weapon.is_some(), search_valid, player.location.clone())
+            (player.equipped_weapon.is_some(), player.location.clone(), target_player_id)
         };
         
         // 验证目标玩家是否存在且在同一地点
         let (target_player_location, target_player_alive, target_player_name) = {
-            let target_player = self.players.get(target_player_id).ok_or("Target player not found".to_string())?;
+            let target_player = self.players.get(&target_player_id).ok_or("Target player not found".to_string())?;
             (target_player.location.clone(), target_player.is_alive, target_player.name.clone())
         };
         
@@ -371,7 +375,7 @@ impl GameState {
         
         // 减少目标玩家生命值
         let was_killed = {
-            let target_player = self.players.get_mut(target_player_id).ok_or("Target player not found".to_string())?;
+            let target_player = self.players.get_mut(&target_player_id).ok_or("Target player not found".to_string())?;
             target_player.life -= damage;
             
             // 检查目标玩家是否死亡
@@ -393,7 +397,7 @@ impl GameState {
         
         // 获取目标玩家的当前状态
         let (target_player_life, target_player_is_alive) = {
-            let target_player = self.players.get(target_player_id).ok_or("Target player not found".to_string())?;
+            let target_player = self.players.get(&target_player_id).ok_or("Target player not found".to_string())?;
             (target_player.life, target_player.is_alive)
         };
 
