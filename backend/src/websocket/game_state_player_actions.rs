@@ -191,11 +191,8 @@ impl GameState {
             
             if player.get_total_item_count() >= max_backpack_items {
                 // 背包已满，返回Info提示
-                let data = serde_json::json!({
-                    "message": "背包已满，无法拾取更多物品"
-                });
                 let action_result = ActionResult::new_info_message(
-                    data,
+                    serde_json::json!({}), 
                     vec![player_id.to_string()],
                     format!("{} 尝试拾取物品但背包已满", player.name),
                     false // 不向导演广播
@@ -216,9 +213,8 @@ impl GameState {
             
             if !last_search_result_valid {
                 // 用Info类型返回错误提示
-                let data = serde_json::json!({});
                 let action_result = ActionResult::new_info_message(
-                    data, 
+                    serde_json::json!({}), 
                     vec![player_id.to_string()], 
                     "上一次搜索结果不是物品".to_string(),
                     false
@@ -277,13 +273,8 @@ impl GameState {
                 Ok(action_result.as_results())
             } else {
                 // 物品不存在，向该玩家发送捡拾失败消息
-                let data = serde_json::json!({
-                    "message": "Item no longer exists"
-                });
-                
-                // 创建动作结果，只广播给发起者本人
                 let action_result = ActionResult::new_system_message(
-                    data, 
+                    serde_json::json!({}),
                     vec![player_id.to_string()], 
                     format!("{} 试图捡起一个物品但该物品已不存在", 
                         self.players.get(player_id).unwrap().name),
@@ -328,17 +319,13 @@ impl GameState {
         };
         
         // 验证目标玩家是否在同一地点
+        let failed_message = "目标玩家已离开该地点".to_string();
         if target_player_location != player_location {
             // 目标玩家已离开
-            let data = serde_json::json!({
-                "message": "Target player has left the location"
-            });
-            
-            // 用Info类型返回错误提示
             let action_result = ActionResult::new_info_message(
-                data, 
+                serde_json::json!({}), 
                 vec![player_id.to_string()], 
-                "目标玩家已离开该地点".to_string(),
+                failed_message,
                 false
             );
             return Ok(action_result.as_results());
@@ -347,15 +334,10 @@ impl GameState {
         // 验证目标玩家是否已死亡
         if !target_player_alive {
             // 目标玩家已死亡，不能攻击
-            let data = serde_json::json!({
-                "message": "Target player is already dead"
-            });
-            
-            // 用Info类型返回错误提示
             let action_result = ActionResult::new_info_message(
-                data, 
+                serde_json::json!({}), 
                 vec![player_id.to_string()], 
-                "目标玩家已死亡".to_string(),
+                failed_message,
                 false
             );
             return Ok(action_result.as_results());

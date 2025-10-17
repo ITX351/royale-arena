@@ -240,7 +240,7 @@ const isNewMessage = (timestamp: string) => {
 
 // 新增方法：提取玩家名称
 const extractPlayerName = (message: string) => {
-  const match = message.match(/玩家 (.*?) 向导演发送消息: /);
+  const match = message.match(/(.*?) 向导演发送消息: /);
   return match ? match[1] : null;
 }
 
