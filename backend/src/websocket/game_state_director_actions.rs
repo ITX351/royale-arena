@@ -59,13 +59,17 @@ impl GameState {
 
     /// 调整地点状态
     pub fn handle_modify_place(&mut self, place_name: &str, is_destroyed: bool) -> Result<ActionResults, String> {
-        // 更新指定地点的摧毁状态
-        let place = self.places.get_mut(place_name).ok_or("Place not found")?;
-        place.is_destroyed = is_destroyed;
-        
-        // 检查地点内的玩家是否受影响
-        // 如果地点被摧毁，需要处理在该地点的玩家
-        
+        // 更新指定地点的摧毁状态，同时记录需要处理的玩家
+        let players_to_kill = {
+            let place = self.places.get_mut(place_name).ok_or("Place not found")?;
+            place.is_destroyed = is_destroyed;
+            if is_destroyed {
+                place.players.clone()
+            } else {
+                Vec::new()
+            }
+        };
+
         // 构造响应数据
         let data = serde_json::json!({
             "place": {
@@ -73,16 +77,22 @@ impl GameState {
                 "is_destroyed": is_destroyed
             }
         });
-        
-        // 创建动作结果，只广播给导演（不需要通知玩家）
-        let action_result = ActionResult::new_system_message(
-            data, 
-            vec![], 
+
+        let mut results = vec![ActionResult::new_system_message(
+            data,
+            vec![],
             format!("导演调整地点 {} 状态为 {}", place_name, if is_destroyed { "已摧毁" } else { "未摧毁" }),
-            true
-        );
-        
-        Ok(action_result.as_results())
+            true,
+        )];
+
+        if is_destroyed {
+            for player_id in players_to_kill {
+                let mut death_outcome = self.kill_player(&player_id, None, "缩圈")?;
+                results.append(&mut death_outcome.results);
+            }
+        }
+
+        Ok(ActionResults { results })
     }
 
     /// 设置缩圈地点
@@ -246,51 +256,62 @@ impl GameState {
 
     /// 设置玩家生命值
     pub fn handle_set_player_life(&mut self, player_id: &str, life: i32) -> Result<ActionResults, String> {
-        // 更新指定玩家生命值
-        let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+        let (current_life, is_alive, player_name) = {
+            let player = self.players.get(player_id).ok_or("Player not found")?;
+            (player.life, player.is_alive, player.name.clone())
+        };
 
-        // 检查生命值是否发生变化
-        if player.life == life {
-            // 如果没有变化，返回Info消息
+        if current_life == life {
             let data = serde_json::json!({
                 "player_id": player_id,
-                "life": player.life,
-                "is_alive": player.is_alive,
+                "life": current_life,
+                "is_alive": is_alive,
                 "message": "生命值未发生变化"
             });
-            
-            let log_message = format!("导演尝试设置 {} 生命值为 {}，但未发生变化", player.name, life);
-            
-            // 创建Info类型的动作结果，只广播给导演
+            let log_message = format!("导演尝试设置 {} 生命值为 {}，但未发生变化", player_name, life);
             return Ok(ActionResult::new_info_message(data, vec![], log_message, true).as_results());
         }
-        
-        let life_change = life - player.life;
-        player.life = life;
-        
-        // 检查玩家是否死亡或复活
-        if player.life <= 0 {
-            player.life = 0;
-            player.is_alive = false;
-        } else if player.life > 0 && !player.is_alive {
-            player.is_alive = true;
+
+        if current_life == 0 && !is_alive && life > 0 {
+            return self.revive_player(player_id, life);
         }
-        
-        // 构造响应数据
+
+        if current_life > 0 && life <= 0 {
+            return self.kill_player(player_id, None, "导演击杀");
+        }
+
+        let mut target_life = life;
+        if target_life < 0 {
+            target_life = 0;
+        }
+
+        let life_change = target_life - current_life;
+
+        let player = self.players.get_mut(player_id).unwrap();
+        player.life = target_life;
+
         let data = serde_json::json!({
             "player_id": player_id,
             "life": player.life,
             "is_alive": player.is_alive
         });
-        
-        // 创建动作结果，广播给该玩家和所有导演
+
         let action_result = ActionResult::new_system_message(
-            data, 
-            vec![player_id.to_string()], 
-            format!("导演设置 {} 生命值为 {} ({})", player.name, life, if life_change > 0 { format!("+{}", life_change) } else { life_change.to_string() }),
-            true
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "导演设置 {} 生命值为 {} ({})",
+                player_name,
+                target_life,
+                if life_change > 0 {
+                    format!("+{}", life_change)
+                } else {
+                    life_change.to_string()
+                }
+            ),
+            true,
         );
-        
+
         Ok(action_result.as_results())
     }
 

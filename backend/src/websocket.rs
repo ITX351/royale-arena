@@ -3,6 +3,7 @@
 
 pub mod models;
 pub mod service;
+pub mod game_state_common;
 pub mod game_state_director_actions;
 pub mod game_state_player_actions;
 pub mod broadcaster;

@@ -61,7 +61,7 @@
             "name": "royale-arena-backend",
             "kind": "bin"
           },
-          "cwd": "${workspaceFolder}/backend"
+          "cwd": "${workspaceFolder:Backend Service}"
         },
         "program": "${workspaceFolder:Backend Service}/target/debug/royale-arena-backend",
         "cwd": "${workspaceFolder:Backend Service}",
@@ -77,14 +77,14 @@
         "skipFiles": [
           "<node_internals>/**"
         ],
-        "program": "${workspaceFolder}/frontend/node_modules/vite/bin/vite.js",
+        "program": "${workspaceFolder:Frontend App}/node_modules/vite/bin/vite.js",
         "args": [
           "--host",
           "127.0.0.1",
           "--port",
           "5173"
         ],
-        "cwd": "${workspaceFolder}/frontend",
+        "cwd": "${workspaceFolder:Frontend App}",
         "env": {
           "NODE_ENV": "development"
         },
@@ -95,7 +95,7 @@
         "request": "launch",
         "name": "Debug Frontend in Edge",
         "url": "http://localhost:5173",
-        "webRoot": "${workspaceFolder}/frontend/src",
+        "webRoot": "${workspaceFolder:Frontend App}/src",
         "sourceMaps": true,
         "presentation": {
           "hidden": false

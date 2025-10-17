@@ -206,7 +206,7 @@ impl Player {
             
             if self.life <= 0 {
                 self.life = 0;
-                self.is_alive = false;
+                //self.is_alive = false; // TODO: 流血致死
                 return true; // 表示玩家死亡
             }
         }

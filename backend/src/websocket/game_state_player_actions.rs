@@ -361,19 +361,19 @@ impl GameState {
             // 检查目标玩家是否死亡
             if target_player.life <= 0 {
                 target_player.life = 0;
-                target_player.is_alive = false;
                 true
             } else {
                 false
             }
         }; // 释放对目标玩家的可变借用
         
-        // 如果目标玩家被击杀，处理掉落物品
-        let loot_effects = if was_killed {
-            self.handle_player_death_loot(Some(player_id), &target_player_id)
-        } else {
-            Vec::new()
-        };
+        // 如果目标玩家被击杀，执行死亡处理
+        let mut death_results: Option<ActionResults> = None;
+        let mut loot_effects: Vec<String> = Vec::new();
+        if was_killed {
+            let death_outcome = self.kill_player(&target_player_id, Some(player_id), "攻击致死")?;
+            death_results = Some(death_outcome);
+        }
         
         // 获取目标玩家的当前状态
         let (target_player_life, target_player_is_alive) = {
@@ -391,7 +391,6 @@ impl GameState {
             "target_player_is_alive": target_player_is_alive,
             "attack_method": attack_method,
             "damage": damage,
-            "loot_effects": loot_effects // 添加掉落效果信息
         });
         
         // 向被攻击者发送被攻击通知（不包括攻击者身份）
@@ -424,10 +423,13 @@ impl GameState {
             false // 不向导演广播
         );
         
-        // 将两个ActionResult打包成ActionResults返回
-        let action_results = ActionResults {
-            results: vec![full_action_result, diff_action_result],
-        };
+        // 汇总所有ActionResult并返回
+        let mut results = vec![full_action_result, diff_action_result];
+        if let Some(mut extra_results) = death_results {
+            results.append(&mut extra_results.results);
+        }
+
+        let action_results = ActionResults { results };
         
         Ok(action_results)
     }
@@ -687,16 +689,27 @@ impl GameState {
         let player = self.players.get_mut(player_id).unwrap();
 
         // 验证玩家背包中是否存在指定物品
-        if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
+        let item_name = if let Some(item_index) = player.inventory.iter().position(|item| item.id == item_id) {
             // 从玩家背包中移除物品
             let item = player.inventory.remove(item_index);
-            let player_name = player.name.clone();
+            let item_name = item.name.clone();
             let player_location = player.location.clone();
             
             // 将物品添加到当前地点的物品列表
             if let Some(place) = self.places.get_mut(&player_location) {
                 place.items.push(item);
             }
+            item_name
+        } else {
+            // 用Info类型返回错误提示
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data, 
+                vec![player_id.to_string()], 
+                "背包中没有该道具".to_string(),
+                false
+            );
+            return Ok(action_result.as_results());
         }; // 释放player借用
         
         // 消耗体力值
@@ -712,7 +725,7 @@ impl GameState {
         let action_result = ActionResult::new_system_message(
             data, 
             vec![player_id.to_string()], 
-            format!("{} 丢弃了物品 {}", self.players.get(player_id).unwrap().name, item_id),
+            format!("{} 丢弃了物品 {}", self.players.get(player_id).unwrap().name, item_name),
             true
         );
         Ok(action_result.as_results())
@@ -1037,81 +1050,4 @@ impl GameState {
         Ok(action_result.as_results())
     }
     
-    /// 处理玩家死亡后的物品分配
-    pub fn handle_player_death_loot(&mut self, killer_id: Option<&str>, dead_player_id: &str) -> Vec<String> {
-        let mut effects = Vec::new();
-        
-        // 获取死者的所有物品和位置（避免借用冲突）
-        let (dead_player_location, dead_player_items) = {
-            let dead_player = &self.players[dead_player_id];
-            let mut all_items = dead_player.inventory.clone();
-            
-            // 添加装备的武器和防具到掉落列表
-            if let Some(weapon) = &dead_player.equipped_weapon {
-                all_items.push(weapon.clone());
-            }
-            if let Some(armor) = &dead_player.equipped_armor {
-                all_items.push(armor.clone());
-            }
-            
-            (dead_player.location.clone(), all_items)
-        };
-        
-        if let Some(killer_id) = killer_id {
-            // 获取击杀者信息（避免借用冲突）
-            let (killer_current_inventory_size, killer_name) = {
-                let killer = &self.players[killer_id];
-                (killer.inventory.len(), killer.name.clone())
-            };
-            
-            let max_backpack_size = 4; // 从规则配置获取，这里简化为固定值
-            let available_slots = max_backpack_size - killer_current_inventory_size;
-            
-            if available_slots > 0 {
-                // 随机选择可收缴的物品数量
-                let items_to_take = available_slots.min(dead_player_items.len());
-                
-                // 随机打乱物品顺序
-                let mut shuffled_items = dead_player_items.clone();
-                use rand::seq::SliceRandom;
-                let mut rng = rand::rng();
-                shuffled_items.shuffle(&mut rng);
-                
-                // 击杀者获得前N个物品
-                for item in shuffled_items.iter().take(items_to_take) {
-                    self.players.get_mut(killer_id).unwrap().inventory.push(item.clone());
-                    effects.push(format!("击杀者 {} 收缴了物品 {}", 
-                        killer_name, item.name));
-                }
-                
-                // 剩余物品掉落原地
-                let remaining_items: Vec<Item> = shuffled_items.into_iter().skip(items_to_take).collect();
-                self.drop_items_to_ground(&dead_player_location, remaining_items);
-            } else {
-                // 击杀者背包已满，所有物品掉落原地
-                self.drop_items_to_ground(&dead_player_location, dead_player_items);
-                effects.push("击杀者背包已满，所有物品掉落原地".to_string());
-            }
-        } else {
-            // 无击杀者，所有物品掉落原地
-            self.drop_items_to_ground(&dead_player_location, dead_player_items);
-            effects.push("所有物品掉落原地".to_string());
-        }
-        
-        // 清空死者的装备和背包
-        if let Some(dead_player) = self.players.get_mut(dead_player_id) {
-            dead_player.inventory.clear();
-            dead_player.equipped_weapon = None;
-            dead_player.equipped_armor = None;
-        }
-        
-        effects
-    }
-    
-    /// 将物品掉落到指定地点
-    fn drop_items_to_ground(&mut self, location: &str, items: Vec<Item>) {
-        if let Some(place) = self.places.get_mut(location) {
-            place.items.extend(items);
-        }
-    }
 }
