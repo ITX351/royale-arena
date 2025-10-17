@@ -201,6 +201,8 @@ pub struct MessageRecord {
     pub message: String,
     pub player_id: String,
     pub timestamp: DateTime<Utc>,
+    pub visible_to_all_players: bool,
+    pub visible_to_director: bool,
 }
 
 /// 游戏筛选类型

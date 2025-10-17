@@ -2,6 +2,7 @@ use axum::{
     extract::{Path, Query, Request, State},
     response::Json,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -9,6 +10,18 @@ use super::errors::GameError;
 use super::models::*;
 use crate::admin::models::JwtClaims;
 use crate::routes::AppState;
+
+/// 导演密码查询参数
+#[derive(Debug, Deserialize)]
+pub struct DirectorPasswordQuery {
+    pub password: String,
+}
+
+/// 删除日志的时间戳参数
+#[derive(Debug, Deserialize)]
+pub struct DeleteLogsQuery {
+    pub after_timestamp: Option<String>,
+}
 
 /// 创建游戏 (管理员接口)
 pub async fn create_game(
@@ -108,6 +121,53 @@ pub async fn get_player_messages(
     Ok(Json(json!({
         "success": true,
         "data": messages
+    })))
+}
+
+/// 获取导演消息记录 (导演接口)
+pub async fn get_director_messages(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(query): Query<DirectorPasswordQuery>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    // 获取导演消息记录
+    let messages = state
+        .game_log_service
+        .get_director_messages(&game_id, &query.password)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": messages
+    })))
+}
+
+/// 删除游戏日志记录 (管理员接口)
+pub async fn delete_game_logs(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(query): Query<DeleteLogsQuery>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    // 解析时间戳参数
+    let timestamp = if let Some(ts_str) = query.after_timestamp {
+        Some(
+            chrono::DateTime::parse_from_rfc3339(&ts_str)
+                .map_err(|_| GameError::ValidationError("Invalid timestamp format".to_string()))?
+                .with_timezone(&chrono::Utc),
+        )
+    } else {
+        None
+        };
+
+    // 删除日志记录
+    let deleted_count = state
+        .game_log_service
+        .delete_logs_after_timestamp(&game_id, timestamp)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": format!("Deleted {} log records", deleted_count)
     })))
 }
 

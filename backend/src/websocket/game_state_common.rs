@@ -18,7 +18,7 @@ impl DeathDisposition {
             "killer_takes_loot" => Self::KillerTakes,
             "drop_to_ground" => Self::DropToGround,
             "vanish_completely" => Self::Vanish,
-            text if text.contains("收缴") => Self::KillerTakes,
+            text if text.contains("缴获") => Self::KillerTakes,
             text if text.contains("消失") => Self::Vanish,
             _ => Self::DropToGround,
         }

@@ -26,7 +26,9 @@ impl GameLogService {
         player_id: &str,
         message: &str,
         message_type: MessageType,
-        timestamp: DateTime<Utc>, // 添加时间戳参数
+        timestamp: DateTime<Utc>,
+        visible_to_all_players: bool,
+        visible_to_director: bool,
     ) -> Result<MessageRecord, String> {
         let id = Uuid::new_v4().to_string();
 
@@ -35,15 +37,17 @@ impl GameLogService {
 
         let result = sqlx::query!(
             r#"
-            INSERT INTO game_logs (id, game_id, type, message, player_id, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO game_logs (id, game_id, type, message, player_id, timestamp, visible_to_all_players, visible_to_director)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             id,
             game_id,
             type_string,
             message,
             player_id,
-            timestamp // 使用传入的时间戳
+            timestamp,
+            visible_to_all_players,
+            visible_to_director
         )
         .execute(&self.pool)
         .await
@@ -59,7 +63,9 @@ impl GameLogService {
             message_type,
             message: message.to_string(),
             player_id: player_id.to_string(),
-            timestamp, // 使用传入的时间戳
+            timestamp,
+            visible_to_all_players,
+            visible_to_director,
         })
     }
 
@@ -93,13 +99,15 @@ impl GameLogService {
             ));
         }
 
-        // 查询玩家相关的消息记录
+        // 查询玩家相关的消息记录，包括所有标记为visible_to_all_players为true的记录
         let messages = sqlx::query_as!(
             MessageRecord,
             r#"
-            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp
+            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                visible_to_all_players as "visible_to_all_players: bool",
+                visible_to_director as "visible_to_director: bool"
             FROM game_logs 
-            WHERE game_id = ? AND player_id = ?
+            WHERE game_id = ? AND (player_id = ? OR visible_to_all_players = TRUE)
             ORDER BY timestamp ASC
             "#,
             game_id,
@@ -110,5 +118,72 @@ impl GameLogService {
         .map_err(GameError::DatabaseError)?;
 
         Ok(messages)
+    }
+
+    /// 获取导演消息记录
+    pub async fn get_director_messages(
+        &self,
+        game_id: &str,
+        password: &str,
+    ) -> Result<Vec<MessageRecord>, GameError> {
+        // 验证导演密码
+        let game = sqlx::query!(
+            "SELECT id FROM games WHERE id = ? AND director_password = ?",
+            game_id,
+            password
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+
+        if game.is_none() {
+            return Err(GameError::ValidationError(
+                "Invalid director credentials".to_string(),
+            ));
+        }
+
+        // 查询所有标记为visible_to_director为true的记录
+        let messages = sqlx::query_as!(
+            MessageRecord,
+            r#"
+            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                visible_to_all_players as "visible_to_all_players: bool",
+                visible_to_director as "visible_to_director: bool"
+            FROM game_logs 
+            WHERE game_id = ? AND visible_to_director = TRUE
+            ORDER BY timestamp ASC
+            "#,
+            game_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+
+        Ok(messages)
+    }
+
+    /// 删除指定时间戳之后的日志记录
+    pub async fn delete_logs_after_timestamp(
+        &self,
+        game_id: &str,
+        timestamp: Option<DateTime<Utc>>,
+    ) -> Result<u64, GameError> {
+        let rows_affected = if let Some(ts) = timestamp {
+            sqlx::query!(
+                "DELETE FROM game_logs WHERE game_id = ? AND timestamp > ?",
+                game_id,
+                ts
+            )
+            .execute(&self.pool)
+            .await
+        } else {
+            sqlx::query!("DELETE FROM game_logs WHERE game_id = ?", game_id)
+                .execute(&self.pool)
+                .await
+        }
+        .map_err(GameError::DatabaseError)?
+        .rows_affected();
+
+        Ok(rows_affected)
     }
 }

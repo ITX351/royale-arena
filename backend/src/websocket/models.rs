@@ -367,6 +367,8 @@ pub struct ActionResult {
     pub timestamp: DateTime<Utc>,
     /// 是否向导演广播
     pub broadcast_to_director: bool,
+    /// 是否向所有玩家广播，用于写入数据库
+    pub broadcast_to_all: bool,
 }
 
 impl ActionResult {
@@ -385,6 +387,7 @@ impl ActionResult {
             message_type: log_type,
             timestamp: Utc::now(),
             broadcast_to_director,
+            broadcast_to_all: false,
         }
     }
 

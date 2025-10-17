@@ -470,6 +470,8 @@ impl WebSocketService {
                                     &action_result.log_message,
                                     message_type.clone(),
                                     action_result.timestamp, // 传递ActionResult中的时间戳
+                                    action_result.broadcast_to_all, // 传递broadcast_to_all作为visible_to_all_players
+                                    action_result.broadcast_to_director, // 传递broadcast_to_director作为visible_to_director
                                 )
                                 .await;
 

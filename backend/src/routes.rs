@@ -15,7 +15,7 @@ use crate::director::{
 use crate::game::global_game_state_manager::GlobalGameStateManager;
 use crate::game::{
     GameLogService, GameService, authenticate_game, create_game, delete_game, get_game_with_rules,
-    get_games, get_player_messages, update_game,
+    get_games, get_player_messages, update_game, get_director_messages, delete_game_logs
 };
 use crate::rule_template::{RuleTemplateService, create_template, get_templates, update_template};
 use crate::websocket::global_connection_manager::GlobalConnectionManager;
@@ -102,6 +102,8 @@ pub fn create_routes(
         .route("/{game_id}", get(get_game_with_rules))
         .route("/{game_id}", put(update_game))
         .route("/{game_id}", delete(delete_game))
+        // 新增的删除游戏日志路由
+        .route("/{game_id}/logs", delete(delete_game_logs))
         .layer(middleware::from_fn_with_state(
             auth_service.clone(),
             jwt_auth_middleware,
@@ -135,6 +137,8 @@ pub fn create_routes(
         .route("/game/{game_id}/saves", get(list_save_files))
         // 导演编辑游戏接口
         .route("/game/{game_id}/edit", put(edit_game))
+        // 新增的导演查询日志接口
+        .route("/game/{game_id}/director/logs", get(get_director_messages))
         .with_state(app_state.clone());
 
     // 玩家接口路由（无需JWT认证，使用玩家密码验证）

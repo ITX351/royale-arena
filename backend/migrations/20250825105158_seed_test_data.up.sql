@@ -18,8 +18,8 @@ VALUES
 -- 插入测试游戏
 INSERT IGNORE INTO games (id, name, description, director_password, max_players)
 VALUES
-  ('game-001', '测试游戏1', '用于测试的第一个游戏实例', 'director123', 50),
-  ('game-002', '测试游戏2', '用于测试的第二个游戏实例', 'director456', 100);
+  ('game-001', '测试游戏1', '用于测试的第一个游戏实例', '111111', 50),
+  ('game-002', '测试游戏2', '用于测试的第二个游戏实例', '222222', 100);
 
 -- 插入测试演员账户
 INSERT IGNORE INTO actors (id, game_id, name, password, team_id)
