@@ -15,9 +15,7 @@
     "max_strength": 100,
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
-    "max_equipped_weapons": 1,
-    "max_equipped_armors": 1,
-    "max_backpack_items": 4,
+    "max_backpack_items": 6,
     "unarmed_damage": 5
   },
   "action_costs": {
@@ -28,13 +26,13 @@
     "equip": 0,
     "use": 0,
     "throw": 0,
-    "deliver": 105
+    "deliver": 10
   },
   "rest_mode": {
     "life_recovery": 25,
     "max_moves": 1
   },
-  "death_item_disposition": "由击杀者收缴（无击杀者则掉落在原地）",
+  "death_item_disposition": "killer_takes_loot",
   "items": {
     "rarity_levels": [],
     "weapons": [],
@@ -98,9 +96,8 @@
     "max_strength": 100,
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
-    "max_equipped_weapons": 1,
-    "max_equipped_armors": 1,
-    "max_backpack_items": 4
+    "max_backpack_items": 6,
+    "unarmed_damage": 5
   }
 }
 ```
@@ -110,9 +107,7 @@
 - `max_strength`: 玩家的最大体力值
 - `daily_strength_recovery`: 每天白天恢复的体力值
 - `search_cooldown`: 搜索行动的冷却时间（秒）
-- `max_equipped_weapons`: 最多允许装备的武器数量
-- `max_equipped_armors`: 最多允许装备的防具数量
-- `max_backpack_items`: 背包中最多允许存放的其他物品数量（不包括已装备的武器和防具）
+- `max_backpack_items`: 背包中最多允许存放的物品数量（包括已装备的武器和防具）
 - `unarmed_damage`: 无武器攻击时的挥拳伤害值
 
 ## 2. 行动规则
@@ -131,8 +126,7 @@
     "equip": 0,
     "use": 0,
     "throw": 0,
-    "deliver": 105,
-    "unarmed_damage": 5
+    "deliver": 10
   }
 }
 ```
@@ -229,10 +223,10 @@
 - `rarity`: 武器的稀有度等级
 - `properties`: 武器的属性
   - `damage`: 攻击伤害值
-  - `uses`: 使用次数（对于有限使用次数的武器，如橙色终极武器；无限使用的武器不包含此字段）
+  - `uses`: 使用次数（无限使用的武器不包含此字段）
   - `votes`: 攻击时获得的票数加成
-  - `aoe_damage`: 橙色终极武器的范围伤害值（仅限橙色武器）
-  - `bleed_damage`: 橙色终极武器造成的持续伤害值（仅限橙色武器）
+  - `aoe_damage`: 范围伤害值
+  - `bleed_damage`: 持续伤害值
 
 橙色终极武器说明：在攻击目标本体的同时，对所在区域的其他角色也造成伤害（`aoe_damage`）。这些角色之后每天清晨会受到持续伤害（`bleed_damage`），可通过使用药品抵消。武器限用`uses`次。
 
@@ -265,6 +259,7 @@
 - `properties`: 护甲的属性
   - `defense`: 防御力值
   - `votes`: 被攻击时获得的票数加成
+  - `uses`: 使用次数（无限使用的道具不包含此字段）
 
 ### 其他道具 (other_items)
 
@@ -337,9 +332,7 @@
 
 4. 陷阱类道具 (trap)
    - 遥控地雷：使该区域的所有其他角色血量-30
-   - 使用方式有两种：
-     a) 直接使用：不叠加普通攻击伤害，不消耗体力，被杀死角色的道具散落在当地，使用后道具消失
-     b) 装备并搜索、攻击：叠加普攻伤害，正常消耗体力，杀死其他角色可获得全部道具，攻击成功后道具消失
+     使用不叠加普通攻击伤害，不消耗体力，被杀死角色的道具散落在当地，使用后道具消失
 
 ### 消耗品 (consumables)
 
@@ -353,13 +346,13 @@
         "name": "[HP30]绷带",
         "effect_type": "heal",
         "effect_value": 30,
-        "cure_bleed": true
+        "cure_bleed": 1
       },
       {
         "name": "[HP100]红花丹",
         "effect_type": "heal",
         "effect_value": 100,
-        "cure_bleed": true
+        "cure_bleed": 2
       },
       {
         "name": "[MP20]矿泉水",
@@ -375,7 +368,7 @@
 - `name`: 消耗品的显示名称
 - `effect_type`: 效果类型（heal=治疗, strength=恢复体力）
 - `effect_value`: 效果数值
-- `cure_bleed`: 是否能解除持续伤害（仅治疗道具有效）
+- `cure_bleed`: 是否能解除持续伤害，0为无法解除，1为成功解除流血时不加血，2为完全解除流血并增加生命值
 
 消耗品详细功能说明：
 1. 治疗类消耗品

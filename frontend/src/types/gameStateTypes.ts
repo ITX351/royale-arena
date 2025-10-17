@@ -185,8 +185,6 @@ export interface GameRuleConfig {
     max_strength: number;
     daily_strength_recovery: number;
     search_cooldown: number;
-    max_equipped_weapons: number;
-    max_equipped_armors: number;
     max_backpack_items: number;
     unarmed_damage: number;  // 挥拳伤害
   };

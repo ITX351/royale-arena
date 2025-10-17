@@ -10,7 +10,6 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-// 从websocket模块导入游戏模型
 use crate::game::models::{GameStatus, SaveFileInfo};
 use crate::websocket::models::{GameState, Place, Player};
 
@@ -55,7 +54,7 @@ impl GlobalGameStateManager {
         }
 
         // 创建新的游戏状态
-        let mut game_state = GameState::new(game_id.to_string(), rules_config.clone());
+        let mut game_state = GameState::new(game_id.to_string(), rules_config);
 
         // 从数据库加载玩家信息
         let players_result = sqlx::query!(
@@ -77,16 +76,10 @@ impl GlobalGameStateManager {
             }
         }
 
-        // 从游戏规则配置中加载地点信息，而不是从不存在的places表中查询
-        if let Some(map_config) = rules_config.get("map") {
-            if let Some(places_config) = map_config.get("places").and_then(|p| p.as_array()) {
-                for place_name in places_config {
-                    if let Some(name) = place_name.as_str() {
-                        let place = Place::new(name.to_string());
-                        game_state.places.insert(name.to_string(), place);
-                    }
-                }
-            }
+        // 从游戏规则引擎的MapConfig中加载地点信息，而不是从JSON中解析
+        for place_name in &game_state.rule_engine.map_config.places {
+            let place = Place::new(place_name.clone());
+            game_state.places.insert(place_name.clone(), place);
         }
 
         // 将新创建的游戏状态存储到内存中

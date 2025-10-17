@@ -482,12 +482,12 @@ impl GameState {
     }
 
     /// 从已有游戏状态反序列化时重新创建规则引擎
-    pub fn rebuild_rule_engine(&mut self) {
-        let rules_json =
-            serde_json::to_string(&self.rules_config).expect("Failed to serialize rules config");
-        self.rule_engine =
-            GameRuleEngine::from_json(&rules_json).expect("Failed to parse game rules");
-    }
+    // pub fn rebuild_rule_engine(&mut self) {
+    //     let rules_json =
+    //         serde_json::to_string(&self.rules_config).expect("Failed to serialize rules config");
+    //     self.rule_engine =
+    //         GameRuleEngine::from_json(&rules_json).expect("Failed to parse game rules");
+    // }
 
     /// 生成全局状态信息
     pub fn generate_global_state_info(&self) -> serde_json::Value {

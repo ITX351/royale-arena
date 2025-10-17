@@ -19,9 +19,7 @@
     "max_strength": 100,
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
-    "max_equipped_weapons": 1,
-    "max_equipped_armors": 1,
-    "max_backpack_items": 4,
+    "max_backpack_items": 6,
     "unarmed_damage": 5
   },
   "action_costs": {
@@ -32,7 +30,7 @@
     "equip": 0,
     "use": 0,
     "throw": 0,
-    "deliver": 105
+    "deliver": 10
   },
   "rest_mode": {
     "life_recovery": 25,
@@ -99,7 +97,7 @@
         "properties": {
           "damage": 50,
           "uses": 5,
-          "votes": 5,
+          "votes": 0,
           "aoe_damage": 40,
           "bleed_damage": 10
         }
@@ -140,7 +138,7 @@
         "properties": {
           "defense": 25,
           "uses": 3,
-          "votes": 5
+          "votes": 0
         }
       }
     ],
@@ -184,19 +182,19 @@
         "name": "[HP30]绷带",
         "effect_type": "heal",
         "effect_value": 30,
-        "cure_bleed": true
+        "cure_bleed": 1
       },
       {
         "name": "[HP50]止血绷带",
         "effect_type": "heal",
         "effect_value": 50,
-        "cure_bleed": true
+        "cure_bleed": 1
       },
       {
         "name": "[HP100]红花丹",
         "effect_type": "heal",
         "effect_value": 100,
-        "cure_bleed": true
+        "cure_bleed": 2
       },
       {
         "name": "[MP20]矿泉水",

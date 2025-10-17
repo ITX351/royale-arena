@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, Request, State},
     response::Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use serde_json::json;
 use std::collections::HashMap;
 

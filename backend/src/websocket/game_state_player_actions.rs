@@ -399,7 +399,6 @@ impl GameState {
 
         // 如果目标玩家被击杀，执行死亡处理
         let mut death_results: Option<ActionResults> = None;
-        let mut loot_effects: Vec<String> = Vec::new();
         if was_killed {
             let death_outcome = self.kill_player(&target_player_id, Some(player_id), "攻击致死")?;
             death_results = Some(death_outcome);
@@ -656,7 +655,7 @@ impl GameState {
         match effect_type {
             Some("heal") => {
                 // 治疗效果
-                let (life, bleed_damage, bleed_rounds_remaining, inventory) = {
+                let (life, bleed_damage, bleed_rounds_remaining) = {
                     let player = self.players.get_mut(player_id).unwrap();
                     if cure_bleed && player.has_bleed_effect() {
                         // 解除流血效果
@@ -684,7 +683,6 @@ impl GameState {
                         player.life,
                         player.bleed_damage,
                         player.bleed_rounds_remaining,
-                        player.inventory.clone(),
                     )
                 };
 
@@ -695,7 +693,6 @@ impl GameState {
                     "life": life,
                     "bleed_damage": bleed_damage,
                     "bleed_rounds_remaining": bleed_rounds_remaining,
-                    "inventory": inventory,
                     "strength": self.players.get(player_id).unwrap().strength
                 });
 
@@ -709,21 +706,19 @@ impl GameState {
             }
             Some("strength") => {
                 // 体力恢复效果
-                let (inventory, strength) = {
+                {
                     let player = self.players.get_mut(player_id).unwrap();
                     player.strength += effect_value;
                     if player.strength > player.max_strength {
                         player.strength = player.max_strength;
                     }
-                    (player.inventory.clone(), player.strength)
-                };
+                }
 
                 // 消耗使用体力（在恢复后扣除）
                 self.consume_strength(player_id, use_cost)?;
 
                 let data = serde_json::json!({
                     "strength": self.players.get(player_id).unwrap().strength,
-                    "inventory": inventory
                 });
 
                 let action_result = ActionResult::new_system_message(
@@ -1108,12 +1103,11 @@ impl GameState {
         item_id: &str,
         is_visible: bool,
     ) -> Result<ActionResults, String> {
-        let (player_location, item_name) = {
+        let item_name = {
             let player = self.players.get(player_id).unwrap();
-            let location = player.location.clone();
 
             // 查找物品名称
-            let name = if let Some(place) = self.places.get(&location) {
+            if let Some(place) = self.places.get(&player.location) {
                 if let Some(item) = place.items.iter().find(|item| item.id == item_id) {
                     item.name.clone()
                 } else {
@@ -1121,9 +1115,7 @@ impl GameState {
                 }
             } else {
                 return Err("Place not found".to_string());
-            };
-
-            (location, name)
+            }
         };
 
         // 更新玩家的上次搜索结果

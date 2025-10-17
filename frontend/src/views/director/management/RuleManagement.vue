@@ -126,8 +126,6 @@
                                   <p><strong>最大体力值：</strong>{{ parsedRules.player.maxStrength }}</p>
                                   <p><strong>每日体力恢复：</strong>{{ parsedRules.player.dailyStrengthRecovery }}</p>
                                   <p><strong>搜索冷却时间：</strong>{{ parsedRules.player.searchCooldown }}秒</p>
-                                  <p><strong>最大装备武器数：</strong>{{ parsedRules.player.maxEquippedWeapons }}</p>
-                                  <p><strong>最大装备护甲数：</strong>{{ parsedRules.player.maxEquippedArmors }}</p>
                                   <p><strong>背包最大物品数：</strong>{{ parsedRules.player.maxBackpackItems }}</p>
                                 </el-col>
                               </el-row>
@@ -255,7 +253,7 @@
                                     <el-table-column prop="effectValue" label="效果值" />
                                     <el-table-column label="治愈流血">
                                       <template #default="scope">
-                                        {{ scope.row.cureBleed ? '是' : '否' }}
+                                        {{ scope.row.cureBleed == 0 ? '否' : scope.row.cureBleed == 1 ? '抵消' : '治愈' }}
                                       </template>
                                     </el-table-column>
                                   </el-table>

@@ -16,8 +16,6 @@ const TEST_RULES_JSON: &str = r#"{
     "max_strength": 102,
     "daily_strength_recovery": 43,
     "search_cooldown": 4,
-    "max_equipped_weapons": 2,
-    "max_equipped_armors": 3,
     "max_backpack_items": 2,
     "unarmed_damage": 1
   },
@@ -153,19 +151,19 @@ const TEST_RULES_JSON: &str = r#"{
         "name": "[HP30]绷带a",
         "effect_type": "heal",
         "effect_value": 30,
-        "cure_bleed": true
+        "cure_bleed": 1
       },
       {
         "name": "[HP50]止血绷带b",
         "effect_type": "heal",
         "effect_value": 50,
-        "cure_bleed": true
+        "cure_bleed": 1
       },
       {
         "name": "[HP100]红花丹c",
         "effect_type": "heal",
         "effect_value": 100,
-        "cure_bleed": true
+        "cure_bleed": 2
       },
       {
         "name": "[MP20]矿泉水d",
@@ -234,8 +232,6 @@ fn test_game_rule_engine_json_parsing() {
     assert_eq!(rule_engine.player_config.max_strength, 102);
     assert_eq!(rule_engine.player_config.daily_strength_recovery, 43);
     assert_eq!(rule_engine.player_config.search_cooldown, 4);
-    assert_eq!(rule_engine.player_config.max_equipped_weapons, 2);
-    assert_eq!(rule_engine.player_config.max_equipped_armors, 3);
     assert_eq!(rule_engine.player_config.max_backpack_items, 2);
     assert_eq!(rule_engine.player_config.unarmed_damage, 1);
 
@@ -334,7 +330,7 @@ fn test_items_config_parsing() {
     assert_eq!(heal_bandage.name, "[HP30]绷带a");
     assert_eq!(heal_bandage.effect_type, "heal");
     assert_eq!(heal_bandage.effect_value, 30);
-    assert_eq!(heal_bandage.cure_bleed, Some(true));
+    assert_eq!(heal_bandage.cure_bleed, Some(1));
 
     let strength_water = &rule_engine.items_config.consumables[3];
     assert_eq!(strength_water.name, "[MP20]矿泉水d");
@@ -360,45 +356,6 @@ fn test_items_config_parsing() {
     assert_eq!(natural_recipes[0].result, "epic_weapon");
     assert_eq!(natural_recipes[1].ingredients[0], "epic_weapon");
     assert_eq!(natural_recipes[1].result, "legendary_weapon");
-}
-
-/// 测试规则验证功能
-#[test]
-fn test_action_validation() {
-    let rule_engine =
-        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
-
-    // 测试体力足够的情况
-    assert!(rule_engine.validate_action_cost("move", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("search", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("pick", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("attack", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("equip", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("use", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("throw", 10).is_ok());
-    assert!(rule_engine.validate_action_cost("deliver", 10).is_ok());
-
-    // 测试体力不足的情况
-    assert!(rule_engine.validate_action_cost("move", 0).is_err());
-    assert!(rule_engine.validate_action_cost("search", 1).is_err());
-    assert!(rule_engine.validate_action_cost("pick", 2).is_err());
-    assert!(rule_engine.validate_action_cost("attack", 3).is_err());
-    assert!(rule_engine.validate_action_cost("equip", 4).is_err());
-    assert!(rule_engine.validate_action_cost("use", 5).is_err());
-    assert!(rule_engine.validate_action_cost("throw", 6).is_err());
-    assert!(rule_engine.validate_action_cost("deliver", 7).is_err());
-
-    // 测试精确边界
-    assert!(rule_engine.validate_action_cost("move", 1).is_ok());
-    assert!(rule_engine.validate_action_cost("search", 2).is_ok());
-    assert!(rule_engine.validate_action_cost("deliver", 8).is_ok());
-
-    // 测试未知操作
-    assert!(
-        rule_engine
-            .validate_action_cost("unknown_action", 100)
-            .is_err()
-    );
 }
 
 /// 测试武器伤害计算
@@ -444,112 +401,6 @@ fn test_weapon_damage_calculation() {
             .calculate_weapon_damage("unknown_weapon", 0)
             .is_err()
     );
-}
-
-/// 测试消耗品效果
-#[test]
-fn test_consumable_effects() {
-    let rule_engine =
-        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
-
-    // 测试治疗消耗品
-    let heal_effect = rule_engine
-        .get_consumable_effect("[HP30]绷带a")
-        .expect("Failed to get heal bandage effect");
-    assert_eq!(heal_effect.effect_type, "heal");
-    assert_eq!(heal_effect.effect_value, 30);
-    assert_eq!(heal_effect.cure_bleed, Some(true));
-
-    let strong_heal_effect = rule_engine
-        .get_consumable_effect("[HP100]红花丹c")
-        .expect("Failed to get strong heal effect");
-    assert_eq!(strong_heal_effect.effect_type, "heal");
-    assert_eq!(strong_heal_effect.effect_value, 100);
-    assert_eq!(strong_heal_effect.cure_bleed, Some(true));
-
-    // 测试体力恢复消耗品
-    let strength_effect = rule_engine
-        .get_consumable_effect("[MP20]矿泉水d")
-        .expect("Failed to get strength water effect");
-    assert_eq!(strength_effect.effect_type, "strength");
-    assert_eq!(strength_effect.effect_value, 20);
-    assert_eq!(strength_effect.cure_bleed, None);
-
-    let strong_strength_effect = rule_engine
-        .get_consumable_effect("[MP100]威士忌f")
-        .expect("Failed to get strong strength effect");
-    assert_eq!(strong_strength_effect.effect_type, "strength");
-    assert_eq!(strong_strength_effect.effect_value, 100);
-    assert_eq!(strong_strength_effect.cure_bleed, None);
-
-    // 测试未知消耗品
-    assert!(
-        rule_engine
-            .get_consumable_effect("unknown_consumable")
-            .is_err()
-    );
-}
-
-/// 测试装备限制检查
-#[test]
-fn test_equipment_limits() {
-    let rule_engine =
-        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
-
-    // 测试正常装备数量
-    assert!(rule_engine.check_equipment_limit(1, 2).is_ok());
-    assert!(rule_engine.check_equipment_limit(2, 3).is_ok());
-
-    // 测试超出武器装备限制
-    assert!(rule_engine.check_equipment_limit(3, 1).is_err());
-
-    // 测试超出防具装备限制
-    assert!(rule_engine.check_equipment_limit(1, 4).is_err());
-
-    // 测试边界情况
-    assert!(rule_engine.check_equipment_limit(2, 3).is_ok()); // 恰好达到上限
-    assert!(rule_engine.check_equipment_limit(0, 0).is_ok()); // 没有装备任何东西
-}
-
-/// 测试背包容量限制
-#[test]
-fn test_backpack_limits() {
-    let rule_engine =
-        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
-
-    // 测试正常背包容量
-    assert!(rule_engine.check_backpack_limit(0).is_ok());
-    assert!(rule_engine.check_backpack_limit(1).is_ok());
-
-    // 测试背包已满的情况
-    assert!(rule_engine.check_backpack_limit(2).is_err()); // 最大容量为2，已满
-    assert!(rule_engine.check_backpack_limit(3).is_err()); // 超出容量
-
-    // 测试边界情况
-    assert!(rule_engine.check_backpack_limit(1).is_ok()); // 还有一个空位
-}
-
-/// 测试地图相关功能
-#[test]
-fn test_map_functions() {
-    let rule_engine =
-        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
-
-    // 测试有效地点
-    assert!(rule_engine.is_valid_place("位置1"));
-    assert!(rule_engine.is_valid_place("位置5"));
-    assert!(rule_engine.is_valid_place("位置9"));
-
-    // 测试无效地点
-    assert!(!rule_engine.is_valid_place("位置0"));
-    assert!(!rule_engine.is_valid_place("位置10"));
-    assert!(!rule_engine.is_valid_place("不存在的地点"));
-
-    // 测试安全区域
-    assert!(rule_engine.is_safe_place("位置0"));
-    assert!(!rule_engine.is_safe_place("位置1"));
-    assert!(!rule_engine.is_safe_place("位置9"));
-    assert!(!rule_engine.is_safe_place("不存在的地点"));
 }
 
 /// 测试配置获取函数

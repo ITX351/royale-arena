@@ -10,8 +10,6 @@ export interface ParsedGameRules {
     maxStrength: number;
     dailyStrengthRecovery: number;
     searchCooldown: number;
-    maxEquippedWeapons: number;
-    maxEquippedArmors: number;
     maxBackpackItems: number;
     unarmedDamage: number;  // 挥拳伤害
   };
@@ -82,7 +80,7 @@ export interface ParsedGameRules {
       name: string;
       effectType: string;
       effectValue: number;
-      cureBleed: boolean;
+      cureBleed: number;
     }>;
   };
   
@@ -147,8 +145,6 @@ export class GameRuleParser {
         maxStrength: 100,
         dailyStrengthRecovery: 40,
         searchCooldown: 30,
-        maxEquippedWeapons: 1,
-        maxEquippedArmors: 1,
         maxBackpackItems: 4,
         unarmedDamage: 5  // 新增：挥拳伤害默认值
       },
@@ -217,8 +213,6 @@ export class GameRuleParser {
       parsedRules.player.maxStrength = rulesConfig.player.max_strength || 100;
       parsedRules.player.dailyStrengthRecovery = rulesConfig.player.daily_strength_recovery || 40;
       parsedRules.player.searchCooldown = rulesConfig.player.search_cooldown || 30;
-      parsedRules.player.maxEquippedWeapons = rulesConfig.player.max_equipped_weapons || 1;
-      parsedRules.player.maxEquippedArmors = rulesConfig.player.max_equipped_armors || 1;
       parsedRules.player.maxBackpackItems = rulesConfig.player.max_backpack_items || 4;
       parsedRules.player.unarmedDamage = rulesConfig.player.unarmed_damage || 5;  // 从 player 配置读取
     } else {
@@ -392,7 +386,7 @@ export class GameRuleParser {
           name: consumable.name || '',
           effectType: consumable.effect_type || '',
           effectValue: consumable.effect_value || 0,
-          cureBleed: consumable.cure_bleed || false
+          cureBleed: consumable.cure_bleed || 0
         }));
       }
     } else {
@@ -461,16 +455,6 @@ export class GameRuleParser {
       }
       if (typeof rulesConfig.player.max_strength !== 'number') {
         errors.push('玩家最大体力值必须是数字');
-      }
-      
-      // 检查新添加的玩家配置字段
-      if (rulesConfig.player.max_equipped_weapons !== undefined && 
-          typeof rulesConfig.player.max_equipped_weapons !== 'number') {
-        errors.push('玩家最大装备武器数必须是数字');
-      }
-      if (rulesConfig.player.max_equipped_armors !== undefined && 
-          typeof rulesConfig.player.max_equipped_armors !== 'number') {
-        errors.push('玩家最大装备护甲数必须是数字');
       }
       if (rulesConfig.player.max_backpack_items !== undefined && 
           typeof rulesConfig.player.max_backpack_items !== 'number') {

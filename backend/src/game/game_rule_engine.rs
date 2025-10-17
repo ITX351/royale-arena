@@ -32,8 +32,6 @@ pub struct PlayerConfig {
     pub max_strength: i32,
     pub daily_strength_recovery: i32,
     pub search_cooldown: i64,
-    pub max_equipped_weapons: usize,
-    pub max_equipped_armors: usize,
     pub max_backpack_items: usize,
     pub unarmed_damage: i32, // 挥拳伤害
 }
@@ -152,7 +150,7 @@ pub struct ConsumableConfig {
     pub name: String,
     pub effect_type: String,
     pub effect_value: i32,
-    pub cure_bleed: Option<bool>,
+    pub cure_bleed: Option<i32>,
 }
 
 /// 升级器配置
@@ -177,36 +175,6 @@ pub struct DamageResult {
     pub aoe_damage: Option<i32>,
     pub bleed_damage: Option<i32>,
     pub is_fatal: bool,
-}
-
-/// 游戏效果
-#[derive(Debug, Clone)]
-pub enum GameEffect {
-    HealthChange {
-        player_id: String,
-        change: i32,
-    },
-    StrengthChange {
-        player_id: String,
-        change: i32,
-    },
-    ItemTransferred {
-        from_player: String,
-        to_player: String,
-        item_id: String,
-    },
-    BleedEffectApplied {
-        player_id: String,
-        damage: i32,
-        rounds: i32,
-    },
-    BleedEffectRemoved {
-        player_id: String,
-    },
-    ConsumableUsed {
-        effect_type: String,
-        effect_value: i32,
-    },
 }
 
 impl GameRuleEngine {
@@ -288,30 +256,6 @@ impl GameRuleEngine {
         })
     }
 
-    /// 验证玩家操作是否符合规则
-    pub fn validate_action_cost(&self, action: &str, player_strength: i32) -> Result<(), String> {
-        let required_strength = match action {
-            "move" => self.action_costs.move_cost,
-            "search" => self.action_costs.search,
-            "pick" => self.action_costs.pick,
-            "attack" => self.action_costs.attack,
-            "equip" => self.action_costs.equip,
-            "use" => self.action_costs.use_item,
-            "throw" => self.action_costs.throw_item,
-            "deliver" => self.action_costs.deliver,
-            _ => return Err(format!("Unknown action: {}", action)),
-        };
-
-        if player_strength < required_strength {
-            return Err(format!(
-                "Insufficient strength: required {}, have {}",
-                required_strength, player_strength
-            ));
-        }
-
-        Ok(())
-    }
-
     /// 计算武器伤害
     pub fn calculate_weapon_damage(
         &self,
@@ -338,56 +282,6 @@ impl GameRuleEngine {
         })
     }
 
-    /// 获取消耗品效果
-    pub fn get_consumable_effect(
-        &self,
-        consumable_name: &str,
-    ) -> Result<&ConsumableConfig, String> {
-        let consumable = self
-            .items_config
-            .consumables
-            .iter()
-            .find(|c| c.name == consumable_name)
-            .ok_or_else(|| format!("Consumable not found: {}", consumable_name))?;
-
-        Ok(consumable)
-    }
-
-    /// 检查装备数量限制
-    pub fn check_equipment_limit(
-        &self,
-        equipped_weapons: usize,
-        equipped_armors: usize,
-    ) -> Result<(), String> {
-        if equipped_weapons > self.player_config.max_equipped_weapons {
-            return Err(format!(
-                "Too many weapons equipped: max {}, have {}",
-                self.player_config.max_equipped_weapons, equipped_weapons
-            ));
-        }
-
-        if equipped_armors > self.player_config.max_equipped_armors {
-            return Err(format!(
-                "Too many armors equipped: max {}, have {}",
-                self.player_config.max_equipped_armors, equipped_armors
-            ));
-        }
-
-        Ok(())
-    }
-
-    /// 检查背包容量限制
-    pub fn check_backpack_limit(&self, current_items: usize) -> Result<(), String> {
-        if current_items >= self.player_config.max_backpack_items {
-            return Err(format!(
-                "Backpack is full: max {}, have {}",
-                self.player_config.max_backpack_items, current_items
-            ));
-        }
-
-        Ok(())
-    }
-
     /// 获取搜索冷却时间
     pub fn get_search_cooldown(&self) -> i64 {
         self.player_config.search_cooldown
@@ -396,11 +290,6 @@ impl GameRuleEngine {
     /// 获取挥拳伤害
     pub fn get_unarmed_damage(&self) -> i32 {
         self.player_config.unarmed_damage
-    }
-
-    /// 检查地点是否有效
-    pub fn is_valid_place(&self, place_name: &str) -> bool {
-        self.map_config.places.contains(&place_name.to_string())
     }
 
     /// 检查地点是否为安全区
@@ -450,7 +339,7 @@ impl GameRuleEngine {
 
                 // 如果有治疗流血效果，添加该属性
                 if let Some(cure_bleed) = consumable.cure_bleed {
-                    properties["cure_bleed"] = serde_json::Value::Bool(cure_bleed);
+                    properties["cure_bleed"] = serde_json::Value::Number(cure_bleed.into());
                 }
 
                 return Ok(Item {
