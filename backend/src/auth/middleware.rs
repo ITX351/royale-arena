@@ -16,12 +16,13 @@ pub async fn jwt_auth_middleware(
     next: Next,
 ) -> Result<Response, AuthError> {
     // 提取 Authorization header
-    let auth_header = req.headers()
+    let auth_header = req
+        .headers()
         .get(AUTHORIZATION)
         .and_then(|header| header.to_str().ok())
         .and_then(|header| header.strip_prefix("Bearer "))
         .ok_or(AuthError::InvalidToken)?;
-    
+
     match auth_service.validate_token(auth_header).await {
         Ok(claims) => {
             // 将用户信息注入请求扩展中
@@ -31,16 +32,14 @@ pub async fn jwt_auth_middleware(
         Err(service_err) => match service_err {
             crate::errors::ServiceError::Auth(auth_err) => Err(auth_err),
             _ => Err(AuthError::InvalidToken),
-        }
+        },
     }
 }
 
 /// 超级管理员权限中间件
-pub async fn super_admin_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, AuthError> {
-    let claims = req.extensions()
+pub async fn super_admin_middleware(req: Request, next: Next) -> Result<Response, AuthError> {
+    let claims = req
+        .extensions()
         .get::<JwtClaims>()
         .ok_or(AuthError::InvalidToken)?;
 

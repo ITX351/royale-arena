@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use rand::{seq::SliceRandom, rng};
+use rand::{rng, seq::SliceRandom};
 
 use super::models::{ActionResult, ActionResults, GameState, Item};
 
@@ -116,8 +116,7 @@ impl GameState {
 
             match disposition {
                 DeathDisposition::Vanish => {
-                    vanished_item_names
-                        .extend(Self::drain_item_names(&mut loot_items));
+                    vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
                 }
                 DeathDisposition::DropToGround => {
                     if let Some(location) = location_option {
@@ -125,12 +124,10 @@ impl GameState {
                             dropped_item_names
                                 .extend(self.drop_remaining_items(location, &mut loot_items));
                         } else {
-                            vanished_item_names
-                                .extend(Self::drain_item_names(&mut loot_items));
+                            vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
                         }
                     } else {
-                        vanished_item_names
-                            .extend(Self::drain_item_names(&mut loot_items));
+                        vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
                     }
                 }
                 DeathDisposition::KillerTakes => {
@@ -141,7 +138,8 @@ impl GameState {
                             let available_slots = max_backpack.saturating_sub(current_total);
                             if available_slots > 0 {
                                 let take_count = available_slots.min(loot_items.len());
-                                let taken_items: Vec<Item> = loot_items.drain(..take_count).collect();
+                                let taken_items: Vec<Item> =
+                                    loot_items.drain(..take_count).collect();
                                 collected_item_names
                                     .extend(taken_items.iter().map(|item| item.name.clone()));
                                 killer.inventory.extend(taken_items);
@@ -155,12 +153,10 @@ impl GameState {
                                 dropped_item_names
                                     .extend(self.drop_remaining_items(location, &mut loot_items));
                             } else {
-                                vanished_item_names
-                                    .extend(Self::drain_item_names(&mut loot_items));
+                                vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
                             }
                         } else {
-                            vanished_item_names
-                                .extend(Self::drain_item_names(&mut loot_items));
+                            vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
                         }
                     }
                 }
@@ -175,7 +171,10 @@ impl GameState {
         }
 
         let mut log_message = if let Some(killer_name) = killer_name.as_ref() {
-            format!("{} 被 {} 击杀（原因：{}）", player_name, killer_name, reason)
+            format!(
+                "{} 被 {} 击杀（原因：{}）",
+                player_name, killer_name, reason
+            )
         } else {
             format!("{} 因 {} 死亡", player_name, reason)
         };
@@ -203,12 +202,8 @@ impl GameState {
             "vanished_items": vanished_item_names,
         });
 
-        let action_result = ActionResult::new_system_message(
-            data,
-            broadcast_players,
-            log_message,
-            true,
-        );
+        let action_result =
+            ActionResult::new_system_message(data, broadcast_players, log_message, true);
 
         Ok(action_result.as_results())
     }

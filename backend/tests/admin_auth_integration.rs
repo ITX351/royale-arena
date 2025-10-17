@@ -32,12 +32,12 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
     let super_admin_id = Uuid::new_v4().to_string();
     let super_admin_password = "superadmin123";
     let hashed_password = bcrypt::hash(super_admin_password, config.bcrypt_cost)?;
-    
+
     sqlx::query(
         r#"
         INSERT INTO admin_users (id, username, password, is_super_admin)
         VALUES (?, ?, ?, ?)
-        "#
+        "#,
     )
     .bind(&super_admin_id)
     .bind("superadmin")
@@ -51,12 +51,12 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         username: "superadmin".to_string(),
         password: super_admin_password.to_string(),
     };
-    
+
     let login_response = auth_service.login(login_request).await?;
     assert!(login_response.success);
     assert!(!login_response.token.is_empty());
     assert_eq!(login_response.expires_in, 24 * 3600);
-    
+
     let super_admin_token = login_response.token;
 
     // 测试 3: 验证 JWT Token
@@ -70,17 +70,17 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         password: "admin123".to_string(),
         is_super_admin: false,
     };
-    
+
     let created_admin = admin_service.create_admin(create_request).await?;
     assert_eq!(created_admin.username, "admin1");
     assert!(!created_admin.is_super_admin);
-    
+
     let admin1_id = created_admin.id.clone();
 
     // 测试 5: 获取管理员列表
     let admin_list = admin_service.list_admins().await?;
     assert_eq!(admin_list.len(), 2); // 超级管理员 + 普通管理员
-    
+
     // 验证列表中包含两个用户
     let usernames: Vec<&str> = admin_list.iter().map(|u| u.username.as_str()).collect();
     assert!(usernames.contains(&"superadmin"));
@@ -92,8 +92,10 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         password: Some("newpassword123".to_string()),
         is_super_admin: None,
     };
-    
-    let updated_admin = admin_service.update_admin(&admin1_id, update_request).await?;
+
+    let updated_admin = admin_service
+        .update_admin(&admin1_id, update_request)
+        .await?;
     assert_eq!(updated_admin.username, "admin1_updated");
     assert!(!updated_admin.is_super_admin);
 
@@ -102,13 +104,13 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         username: "admin1_updated".to_string(),
         password: "newpassword123".to_string(),
     };
-    
+
     let login_response = auth_service.login(login_request).await?;
     assert!(login_response.success);
 
     // 测试 8: 删除管理员
     admin_service.delete_admin(&admin1_id).await?;
-    
+
     // 验证删除后列表只有1个用户
     let admin_list = admin_service.list_admins().await?;
     assert_eq!(admin_list.len(), 1);
@@ -120,11 +122,11 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
 
     // 测试 10: 尝试创建重复用户名（应该失败）
     let duplicate_request = CreateAdminRequest {
-        username: "superadmin".to_string(),  // 重复的用户名
+        username: "superadmin".to_string(), // 重复的用户名
         password: "password123".to_string(),
         is_super_admin: false,
     };
-    
+
     let duplicate_result = admin_service.create_admin(duplicate_request).await;
     assert!(duplicate_result.is_err());
 
@@ -133,14 +135,14 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         username: "superadmin".to_string(),
         password: "wrongpassword".to_string(),
     };
-    
+
     let invalid_result = auth_service.login(invalid_login).await;
     assert!(invalid_result.is_err());
 
     // 测试 12: 无效 Token 验证（应该失败）
     let invalid_token_result = auth_service.validate_token("invalid.token.here").await;
     assert!(invalid_token_result.is_err());
-    
+
     println!("✅ 所有测试通过！");
     Ok(())
 }

@@ -1,9 +1,7 @@
-use uuid::Uuid;
-use crate::admin::models::{
-    AdminUser, AdminUserResponse, CreateAdminRequest, UpdateAdminRequest,
-};
+use crate::admin::models::{AdminUser, AdminUserResponse, CreateAdminRequest, UpdateAdminRequest};
 use crate::database::DatabasePool;
 use crate::errors::ServiceError;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct AdminService {
@@ -22,7 +20,7 @@ impl AdminService {
             SELECT id, username, password, is_super_admin, created_at, updated_at 
             FROM admin_users 
             ORDER BY created_at DESC
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
@@ -30,7 +28,10 @@ impl AdminService {
         Ok(admins.into_iter().map(AdminUserResponse::from).collect())
     }
 
-    pub async fn create_admin(&self, request: CreateAdminRequest) -> Result<AdminUserResponse, ServiceError> {
+    pub async fn create_admin(
+        &self,
+        request: CreateAdminRequest,
+    ) -> Result<AdminUserResponse, ServiceError> {
         // 检查用户名是否已存在
         if self.username_exists(&request.username).await? {
             return Err(ServiceError::UserAlreadyExists);
@@ -45,7 +46,7 @@ impl AdminService {
             r#"
             INSERT INTO admin_users (id, username, password, is_super_admin)
             VALUES (?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&id)
         .bind(&request.username)
@@ -68,7 +69,9 @@ impl AdminService {
         request: UpdateAdminRequest,
     ) -> Result<AdminUserResponse, ServiceError> {
         // 检查用户是否存在
-        let existing_user = self.find_by_id(id).await?
+        let existing_user = self
+            .find_by_id(id)
+            .await?
             .ok_or(ServiceError::UserNotFound)?;
 
         // 如果要更新用户名，检查是否与其他用户冲突
@@ -81,8 +84,13 @@ impl AdminService {
         }
 
         // 准备更新字段
-        let username = request.username.as_deref().unwrap_or(&existing_user.username);
-        let is_super_admin = request.is_super_admin.unwrap_or(existing_user.is_super_admin);
+        let username = request
+            .username
+            .as_deref()
+            .unwrap_or(&existing_user.username);
+        let is_super_admin = request
+            .is_super_admin
+            .unwrap_or(existing_user.is_super_admin);
 
         // 处理密码更新
         let password = if let Some(new_password) = request.password {
@@ -97,7 +105,7 @@ impl AdminService {
             UPDATE admin_users 
             SET username = ?, password = ?, is_super_admin = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(username)
         .bind(&password)
@@ -115,7 +123,9 @@ impl AdminService {
 
     pub async fn delete_admin(&self, id: &str) -> Result<(), ServiceError> {
         // 检查用户是否存在
-        let user = self.find_by_id(id).await?
+        let user = self
+            .find_by_id(id)
+            .await?
             .ok_or(ServiceError::UserNotFound)?;
 
         // 防止删除超级管理员（可选的业务规则）
@@ -146,7 +156,7 @@ impl AdminService {
             SELECT id, username, password, is_super_admin, created_at, updated_at 
             FROM admin_users 
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -158,15 +168,16 @@ impl AdminService {
             .bind(username)
             .fetch_one(&self.pool)
             .await?;
-        
+
         Ok(count.0 > 0)
     }
 
     async fn count_super_admins(&self) -> Result<i64, sqlx::Error> {
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM admin_users WHERE is_super_admin = TRUE")
-            .fetch_one(&self.pool)
-            .await?;
-        
+        let count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM admin_users WHERE is_super_admin = TRUE")
+                .fetch_one(&self.pool)
+                .await?;
+
         Ok(count.0)
     }
 }

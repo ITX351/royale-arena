@@ -5,9 +5,9 @@ use sqlx::FromRow;
 /// 数据库实体：规则模版
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct RuleTemplate {
-    pub id: String,  // VARCHAR(36) in database
+    pub id: String, // VARCHAR(36) in database
     pub template_name: String,
-    pub description: Option<String>,  // TEXT type in database
+    pub description: Option<String>, // TEXT type in database
     pub is_active: bool,
     pub rules_config: serde_json::Value,
     pub created_at: DateTime<Utc>,
@@ -64,16 +64,16 @@ impl CreateRuleTemplateRequest {
         if self.template_name.trim().is_empty() {
             return Err("模版名称不能为空".to_string());
         }
-        
+
         if self.template_name.len() > 100 {
             return Err("模版名称不能超过100个字符".to_string());
         }
-        
+
         // 验证 rules_config 是否为有效的对象
         if !self.rules_config.is_object() {
             return Err("规则配置必须是有效的JSON对象".to_string());
         }
-        
+
         Ok(())
     }
 }
@@ -82,29 +82,30 @@ impl UpdateRuleTemplateRequest {
     /// 验证请求数据
     pub fn validate(&self) -> Result<(), String> {
         // 至少需要提供一个字段
-        if self.template_name.is_none() 
-            && self.description.is_none() 
-            && self.is_active.is_none() 
-            && self.rules_config.is_none() {
+        if self.template_name.is_none()
+            && self.description.is_none()
+            && self.is_active.is_none()
+            && self.rules_config.is_none()
+        {
             return Err("至少需要提供一个要更新的字段".to_string());
         }
-        
+
         if let Some(ref name) = self.template_name {
             if name.trim().is_empty() {
                 return Err("模版名称不能为空".to_string());
             }
-            
+
             if name.len() > 100 {
                 return Err("模版名称不能超过100个字符".to_string());
             }
         }
-        
+
         if let Some(ref config) = self.rules_config {
             if !config.is_object() {
                 return Err("规则配置必须是有效的JSON对象".to_string());
             }
         }
-        
+
         Ok(())
     }
 }
@@ -145,7 +146,10 @@ mod tests {
             rules_config: json!({"test": true}),
         };
         assert!(empty_name_request.validate().is_err());
-        assert_eq!(empty_name_request.validate().unwrap_err(), "模版名称不能为空");
+        assert_eq!(
+            empty_name_request.validate().unwrap_err(),
+            "模版名称不能为空"
+        );
 
         // 过长名称应该失败
         let long_name_request = CreateRuleTemplateRequest {
@@ -155,7 +159,10 @@ mod tests {
             rules_config: json!({"test": true}),
         };
         assert!(long_name_request.validate().is_err());
-        assert_eq!(long_name_request.validate().unwrap_err(), "模版名称不能超过100个字符");
+        assert_eq!(
+            long_name_request.validate().unwrap_err(),
+            "模版名称不能超过100个字符"
+        );
 
         // 非对象配置应该失败
         let invalid_config_request = CreateRuleTemplateRequest {
@@ -165,7 +172,10 @@ mod tests {
             rules_config: json!("not an object"),
         };
         assert!(invalid_config_request.validate().is_err());
-        assert_eq!(invalid_config_request.validate().unwrap_err(), "规则配置必须是有效的JSON对象");
+        assert_eq!(
+            invalid_config_request.validate().unwrap_err(),
+            "规则配置必须是有效的JSON对象"
+        );
     }
 
     #[test]
@@ -187,7 +197,10 @@ mod tests {
             rules_config: None,
         };
         assert!(empty_update.validate().is_err());
-        assert_eq!(empty_update.validate().unwrap_err(), "至少需要提供一个要更新的字段");
+        assert_eq!(
+            empty_update.validate().unwrap_err(),
+            "至少需要提供一个要更新的字段"
+        );
 
         // 空名称更新应该失败
         let empty_name_update = UpdateRuleTemplateRequest {
@@ -197,7 +210,10 @@ mod tests {
             rules_config: None,
         };
         assert!(empty_name_update.validate().is_err());
-        assert_eq!(empty_name_update.validate().unwrap_err(), "模版名称不能为空");
+        assert_eq!(
+            empty_name_update.validate().unwrap_err(),
+            "模版名称不能为空"
+        );
 
         // 过长名称更新应该失败
         let long_name_update = UpdateRuleTemplateRequest {
@@ -207,7 +223,10 @@ mod tests {
             rules_config: None,
         };
         assert!(long_name_update.validate().is_err());
-        assert_eq!(long_name_update.validate().unwrap_err(), "模版名称不能超过100个字符");
+        assert_eq!(
+            long_name_update.validate().unwrap_err(),
+            "模版名称不能超过100个字符"
+        );
 
         // 非对象配置更新应该失败
         let invalid_config_update = UpdateRuleTemplateRequest {
@@ -217,7 +236,10 @@ mod tests {
             rules_config: Some(json!("not an object")),
         };
         assert!(invalid_config_update.validate().is_err());
-        assert_eq!(invalid_config_update.validate().unwrap_err(), "规则配置必须是有效的JSON对象");
+        assert_eq!(
+            invalid_config_update.validate().unwrap_err(),
+            "规则配置必须是有效的JSON对象"
+        );
     }
 
     #[test]

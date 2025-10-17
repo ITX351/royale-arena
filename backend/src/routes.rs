@@ -1,19 +1,25 @@
 use axum::{
+    Router,
     extract::ws::WebSocketUpgrade,
     middleware,
     routing::{delete, get, post, put},
-    Router,
 };
 
-use crate::admin::{admin_login, create_admin, delete_admin, list_admins, update_admin};
-use crate::auth::{jwt_auth_middleware, super_admin_middleware, AuthService};
 use crate::admin::service::AdminService;
-use crate::director::{batch_add_players, batch_delete_players, get_players, update_game_status, manual_save, list_save_files, edit_game, DirectorService};
-use crate::game::{create_game, delete_game, get_game_with_rules, get_games, get_player_messages, update_game, authenticate_game, GameService, GameLogService};
+use crate::admin::{admin_login, create_admin, delete_admin, list_admins, update_admin};
+use crate::auth::{AuthService, jwt_auth_middleware, super_admin_middleware};
+use crate::director::{
+    DirectorService, batch_add_players, batch_delete_players, edit_game, get_players,
+    list_save_files, manual_save, update_game_status,
+};
 use crate::game::global_game_state_manager::GlobalGameStateManager;
-use crate::rule_template::{create_template, get_templates, update_template, RuleTemplateService};
-use crate::websocket::service::WebSocketService;
+use crate::game::{
+    GameLogService, GameService, authenticate_game, create_game, delete_game, get_game_with_rules,
+    get_games, get_player_messages, update_game,
+};
+use crate::rule_template::{RuleTemplateService, create_template, get_templates, update_template};
 use crate::websocket::global_connection_manager::GlobalConnectionManager;
+use crate::websocket::service::WebSocketService;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -28,17 +34,17 @@ pub struct AppState {
 }
 
 pub fn create_routes(
-    auth_service: AuthService, 
-    admin_service: AdminService, 
+    auth_service: AuthService,
+    admin_service: AdminService,
     director_service: DirectorService,
     game_service: GameService,
     game_state_manager: GlobalGameStateManager,
     rule_template_service: RuleTemplateService,
-    api_prefix: &str
+    api_prefix: &str,
 ) -> Router {
     let game_log_service = GameLogService::new(director_service.pool.clone());
     let global_connection_manager = GlobalConnectionManager::new();
-    
+
     let app_state = AppState {
         auth_service: auth_service.clone(),
         admin_service,
@@ -51,20 +57,30 @@ pub fn create_routes(
     };
 
     // 公开路由（不需要认证）
-    let public_routes = Router::new()
-        .route("/health", get(health_check))
-        .route("/admin/login", post(admin_login))
-        // 规则模版公开查询接口
-        .route("/rule-templates", get(get_templates))
-        // 公开游戏查询接口
-        .route("/games", get(get_games))
-        .route("/games/{game_id}", get(get_game_with_rules))
-        // WebSocket连接端点
-        .route("/ws/{game_id}", get(
-            |ws: WebSocketUpgrade, state: axum::extract::State<AppState>, path: axum::extract::Path<String>, query: axum::extract::Query<crate::websocket::models::WebSocketAuthRequest>| 
-             WebSocketService::handle_websocket_upgrade(ws, state, path, query)
-        ))
-        .with_state(app_state.clone());
+    let public_routes =
+        Router::new()
+            .route("/health", get(health_check))
+            .route("/admin/login", post(admin_login))
+            // 规则模版公开查询接口
+            .route("/rule-templates", get(get_templates))
+            // 公开游戏查询接口
+            .route("/games", get(get_games))
+            .route("/games/{game_id}", get(get_game_with_rules))
+            // WebSocket连接端点
+            .route(
+                "/ws/{game_id}",
+                get(
+                    |ws: WebSocketUpgrade,
+                     state: axum::extract::State<AppState>,
+                     path: axum::extract::Path<String>,
+                     query: axum::extract::Query<
+                        crate::websocket::models::WebSocketAuthRequest,
+                    >| {
+                        WebSocketService::handle_websocket_upgrade(ws, state, path, query)
+                    },
+                ),
+            )
+            .with_state(app_state.clone());
 
     // 需要超级管理员权限的路由
     let admin_routes = Router::new()
@@ -73,12 +89,10 @@ pub fn create_routes(
         .route("/users/{user_id}", put(update_admin))
         .route("/users/{user_id}", delete(delete_admin))
         .layer(middleware::from_fn(super_admin_middleware))
-        .layer(
-            middleware::from_fn_with_state(
-                auth_service.clone(),
-                jwt_auth_middleware,
-            )
-        )
+        .layer(middleware::from_fn_with_state(
+            auth_service.clone(),
+            jwt_auth_middleware,
+        ))
         .with_state(app_state.clone());
 
     // 需要管理员权限的游戏管理路由
@@ -88,12 +102,10 @@ pub fn create_routes(
         .route("/{game_id}", get(get_game_with_rules))
         .route("/{game_id}", put(update_game))
         .route("/{game_id}", delete(delete_game))
-        .layer(
-            middleware::from_fn_with_state(
-                auth_service.clone(),
-                jwt_auth_middleware,
-            )
-        )
+        .layer(middleware::from_fn_with_state(
+            auth_service.clone(),
+            jwt_auth_middleware,
+        ))
         .with_state(app_state.clone());
 
     // 需要管理员权限的规则模版路由
@@ -101,20 +113,20 @@ pub fn create_routes(
         .route("/", get(get_templates))
         .route("/", post(create_template))
         .route("/{id}", put(update_template))
-        .layer(
-            middleware::from_fn_with_state(
-                auth_service,
-                jwt_auth_middleware,
-            )
-        )
+        .layer(middleware::from_fn_with_state(
+            auth_service,
+            jwt_auth_middleware,
+        ))
         .with_state(app_state.clone());
 
     // 导演接口路由（无需JWT认证，使用导演密码验证）
     let director_routes = Router::new()
-        .route("/game/{game_id}/players", 
-               post(batch_add_players)
-               .get(get_players)
-               .delete(batch_delete_players))
+        .route(
+            "/game/{game_id}/players",
+            post(batch_add_players)
+                .get(get_players)
+                .delete(batch_delete_players),
+        )
         // 导演更新游戏状态接口
         .route("/game/{game_id}/status", put(update_game_status))
         // 手动存盘接口
@@ -128,9 +140,12 @@ pub fn create_routes(
     // 玩家接口路由（无需JWT认证，使用玩家密码验证）
     let player_routes = Router::new()
         // 获取玩家消息记录接口
-        .route("/game/{game_id}/player/{player_id}/messages", post(get_player_messages))
+        .route(
+            "/game/{game_id}/player/{player_id}/messages",
+            post(get_player_messages),
+        )
         .with_state(app_state.clone());
-        
+
     // 游戏认证路由
     let auth_routes = Router::new()
         .route("/game/{game_id}/auth", get(authenticate_game))

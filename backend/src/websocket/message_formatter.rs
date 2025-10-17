@@ -4,8 +4,8 @@
 //! 使用方法：
 //! 1. 调用相应的消息生成函数（如system_message, game_state_message等）直接生成可发送的WebSocket消息
 
-use serde_json::{json, Value as JsonValue};
 use axum::extract::ws::{Message, Utf8Bytes};
+use serde_json::{Value as JsonValue, json};
 
 /// 内部消息生成函数，直接返回可发送的WebSocket消息
 fn generate_message(message_type: &str, data: JsonValue) -> Message {

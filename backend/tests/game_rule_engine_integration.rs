@@ -219,8 +219,8 @@ const TEST_RULES_JSON: &str = r#"{
 /// 测试JSON解析基础功能
 #[test]
 fn test_game_rule_engine_json_parsing() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 验证地图配置
     assert_eq!(rule_engine.map_config.places.len(), 9);
@@ -257,26 +257,47 @@ fn test_game_rule_engine_json_parsing() {
     assert_eq!(rule_engine.teammate_behavior.mode, 15);
 
     // 验证死亡物品处置配置
-    assert_eq!(rule_engine.death_item_disposition.description, "killer_takes_loot");
+    assert_eq!(
+        rule_engine.death_item_disposition.description,
+        "killer_takes_loot"
+    );
 }
 
 /// 测试物品系统解析
 #[test]
 fn test_items_config_parsing() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 验证稀有度等级
     assert_eq!(rule_engine.items_config.rarity_levels.len(), 4);
-    assert_eq!(rule_engine.items_config.rarity_levels[0].internal_name, "common");
-    assert_eq!(rule_engine.items_config.rarity_levels[0].display_name, "普通1");
+    assert_eq!(
+        rule_engine.items_config.rarity_levels[0].internal_name,
+        "common"
+    );
+    assert_eq!(
+        rule_engine.items_config.rarity_levels[0].display_name,
+        "普通1"
+    );
     assert_eq!(rule_engine.items_config.rarity_levels[0].prefix, "[绿1]");
-    assert_eq!(rule_engine.items_config.rarity_levels[0].is_airdropped, true);
+    assert_eq!(
+        rule_engine.items_config.rarity_levels[0].is_airdropped,
+        true
+    );
 
-    assert_eq!(rule_engine.items_config.rarity_levels[3].internal_name, "legendary");
-    assert_eq!(rule_engine.items_config.rarity_levels[3].display_name, "传说4");
+    assert_eq!(
+        rule_engine.items_config.rarity_levels[3].internal_name,
+        "legendary"
+    );
+    assert_eq!(
+        rule_engine.items_config.rarity_levels[3].display_name,
+        "传说4"
+    );
     assert_eq!(rule_engine.items_config.rarity_levels[3].prefix, "[橙4]");
-    assert_eq!(rule_engine.items_config.rarity_levels[3].is_airdropped, false);
+    assert_eq!(
+        rule_engine.items_config.rarity_levels[3].is_airdropped,
+        false
+    );
 
     // 验证武器配置
     assert_eq!(rule_engine.items_config.weapons.len(), 4);
@@ -329,7 +350,11 @@ fn test_items_config_parsing() {
 
     // 验证升级配方
     assert_eq!(rule_engine.items_config.upgrade_recipes.len(), 2);
-    let natural_recipes = rule_engine.items_config.upgrade_recipes.get("natural_upgrader").unwrap();
+    let natural_recipes = rule_engine
+        .items_config
+        .upgrade_recipes
+        .get("natural_upgrader")
+        .unwrap();
     assert_eq!(natural_recipes.len(), 2);
     assert_eq!(natural_recipes[0].ingredients[0], "rare_weapon");
     assert_eq!(natural_recipes[0].result, "epic_weapon");
@@ -340,8 +365,8 @@ fn test_items_config_parsing() {
 /// 测试规则验证功能
 #[test]
 fn test_action_validation() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试体力足够的情况
     assert!(rule_engine.validate_action_cost("move", 10).is_ok());
@@ -369,17 +394,22 @@ fn test_action_validation() {
     assert!(rule_engine.validate_action_cost("deliver", 8).is_ok());
 
     // 测试未知操作
-    assert!(rule_engine.validate_action_cost("unknown_action", 100).is_err());
+    assert!(
+        rule_engine
+            .validate_action_cost("unknown_action", 100)
+            .is_err()
+    );
 }
 
 /// 测试武器伤害计算
 #[test]
 fn test_weapon_damage_calculation() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试普通武器伤害
-    let damage_result = rule_engine.calculate_weapon_damage("common_weapon", 0)
+    let damage_result = rule_engine
+        .calculate_weapon_damage("common_weapon", 0)
         .expect("Failed to calculate common weapon damage");
     assert_eq!(damage_result.damage, 11);
     assert_eq!(damage_result.aoe_damage, None);
@@ -387,7 +417,8 @@ fn test_weapon_damage_calculation() {
     assert_eq!(damage_result.is_fatal, true);
 
     // 测试传说武器的特殊效果
-    let damage_result = rule_engine.calculate_weapon_damage("legendary_weapon", 0)
+    let damage_result = rule_engine
+        .calculate_weapon_damage("legendary_weapon", 0)
         .expect("Failed to calculate legendary weapon damage");
     assert_eq!(damage_result.damage, 44);
     assert_eq!(damage_result.aoe_damage, Some(12));
@@ -395,61 +426,75 @@ fn test_weapon_damage_calculation() {
     assert_eq!(damage_result.is_fatal, true);
 
     // 测试防御力减免
-    let damage_result = rule_engine.calculate_weapon_damage("common_weapon", 5)
+    let damage_result = rule_engine
+        .calculate_weapon_damage("common_weapon", 5)
         .expect("Failed to calculate weapon damage with defense");
     assert_eq!(damage_result.damage, 6); // 11 - 5 = 6
 
     // 测试防御力完全抵挡
-    let damage_result = rule_engine.calculate_weapon_damage("common_weapon", 15)
+    let damage_result = rule_engine
+        .calculate_weapon_damage("common_weapon", 15)
         .expect("Failed to calculate weapon damage with high defense");
     assert_eq!(damage_result.damage, 0); // max(11 - 15, 0) = 0
     assert_eq!(damage_result.is_fatal, false);
 
     // 测试未知武器
-    assert!(rule_engine.calculate_weapon_damage("unknown_weapon", 0).is_err());
+    assert!(
+        rule_engine
+            .calculate_weapon_damage("unknown_weapon", 0)
+            .is_err()
+    );
 }
 
 /// 测试消耗品效果
 #[test]
 fn test_consumable_effects() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试治疗消耗品
-    let heal_effect = rule_engine.get_consumable_effect("[HP30]绷带a")
+    let heal_effect = rule_engine
+        .get_consumable_effect("[HP30]绷带a")
         .expect("Failed to get heal bandage effect");
     assert_eq!(heal_effect.effect_type, "heal");
     assert_eq!(heal_effect.effect_value, 30);
     assert_eq!(heal_effect.cure_bleed, Some(true));
 
-    let strong_heal_effect = rule_engine.get_consumable_effect("[HP100]红花丹c")
+    let strong_heal_effect = rule_engine
+        .get_consumable_effect("[HP100]红花丹c")
         .expect("Failed to get strong heal effect");
     assert_eq!(strong_heal_effect.effect_type, "heal");
     assert_eq!(strong_heal_effect.effect_value, 100);
     assert_eq!(strong_heal_effect.cure_bleed, Some(true));
 
     // 测试体力恢复消耗品
-    let strength_effect = rule_engine.get_consumable_effect("[MP20]矿泉水d")
+    let strength_effect = rule_engine
+        .get_consumable_effect("[MP20]矿泉水d")
         .expect("Failed to get strength water effect");
     assert_eq!(strength_effect.effect_type, "strength");
     assert_eq!(strength_effect.effect_value, 20);
     assert_eq!(strength_effect.cure_bleed, None);
 
-    let strong_strength_effect = rule_engine.get_consumable_effect("[MP100]威士忌f")
+    let strong_strength_effect = rule_engine
+        .get_consumable_effect("[MP100]威士忌f")
         .expect("Failed to get strong strength effect");
     assert_eq!(strong_strength_effect.effect_type, "strength");
     assert_eq!(strong_strength_effect.effect_value, 100);
     assert_eq!(strong_strength_effect.cure_bleed, None);
 
     // 测试未知消耗品
-    assert!(rule_engine.get_consumable_effect("unknown_consumable").is_err());
+    assert!(
+        rule_engine
+            .get_consumable_effect("unknown_consumable")
+            .is_err()
+    );
 }
 
 /// 测试装备限制检查
 #[test]
 fn test_equipment_limits() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试正常装备数量
     assert!(rule_engine.check_equipment_limit(1, 2).is_ok());
@@ -469,8 +514,8 @@ fn test_equipment_limits() {
 /// 测试背包容量限制
 #[test]
 fn test_backpack_limits() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试正常背包容量
     assert!(rule_engine.check_backpack_limit(0).is_ok());
@@ -487,8 +532,8 @@ fn test_backpack_limits() {
 /// 测试地图相关功能
 #[test]
 fn test_map_functions() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试有效地点
     assert!(rule_engine.is_valid_place("位置1"));
@@ -510,8 +555,8 @@ fn test_map_functions() {
 /// 测试配置获取函数
 #[test]
 fn test_config_getters() {
-    let rule_engine = GameRuleEngine::from_json(TEST_RULES_JSON)
-        .expect("Failed to parse test rules JSON");
+    let rule_engine =
+        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
 
     // 测试搜索冷却时间
     assert_eq!(rule_engine.get_search_cooldown(), 4);
@@ -548,19 +593,19 @@ fn test_external_json_file() {
     // 尝试读取实际的rule_test.json文件
     let json_path = std::path::Path::new("../json_sample/rule_test.json");
     if json_path.exists() {
-        let json_content = std::fs::read_to_string(json_path)
-            .expect("Failed to read rule_test.json");
-        
+        let json_content =
+            std::fs::read_to_string(json_path).expect("Failed to read rule_test.json");
+
         // 简单验证JSON能够被解析（虽然可能由于结构差异而失败）
         let parse_result = serde_json::from_str::<serde_json::Value>(&json_content);
         assert!(parse_result.is_ok(), "rule_test.json should be valid JSON");
-        
+
         let json_value = parse_result.unwrap();
         // 验证一些基本结构存在
         assert!(json_value.get("map").is_some());
         assert!(json_value.get("player").is_some());
         assert!(json_value.get("action_costs").is_some());
-        
+
         println!("External rule_test.json structure validation passed");
     } else {
         println!("External rule_test.json not found, skipping file test");

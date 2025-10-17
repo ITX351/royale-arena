@@ -16,7 +16,9 @@ impl AuthService {
 
     pub async fn login(&self, credentials: LoginRequest) -> Result<LoginResponse, ServiceError> {
         // 查找用户
-        let user = self.find_by_username(&credentials.username).await?
+        let user = self
+            .find_by_username(&credentials.username)
+            .await?
             .ok_or(AuthError::InvalidCredentials)?;
 
         // 验证密码
@@ -25,11 +27,9 @@ impl AuthService {
         }
 
         // 生成 JWT token
-        let token = self.jwt_manager.generate_token(
-            &user.id,
-            &user.username,
-            user.is_super_admin,
-        )?;
+        let token =
+            self.jwt_manager
+                .generate_token(&user.id, &user.username, user.is_super_admin)?;
 
         Ok(LoginResponse {
             success: true,
@@ -41,9 +41,11 @@ impl AuthService {
 
     pub async fn validate_token(&self, token: &str) -> Result<JwtClaims, ServiceError> {
         let claims = self.jwt_manager.validate_token(token)?;
-        
+
         // 验证用户是否仍然存在
-        let user = self.find_by_id(&claims.sub).await?
+        let user = self
+            .find_by_id(&claims.sub)
+            .await?
             .ok_or(AuthError::UserNotFound)?;
 
         // 确保claims中的信息是最新的
@@ -60,7 +62,7 @@ impl AuthService {
             SELECT id, username, password, is_super_admin, created_at, updated_at 
             FROM admin_users 
             WHERE username = ?
-            "#
+            "#,
         )
         .bind(username)
         .fetch_optional(&self.pool)
@@ -73,7 +75,7 @@ impl AuthService {
             SELECT id, username, password, is_super_admin, created_at, updated_at 
             FROM admin_users 
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)

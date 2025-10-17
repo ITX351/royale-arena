@@ -1,8 +1,8 @@
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde_json::json;
 
@@ -18,7 +18,10 @@ pub async fn create_template(
     State(app_state): State<AppState>,
     Json(request): Json<CreateRuleTemplateRequest>,
 ) -> Result<impl IntoResponse, RuleTemplateError> {
-    let template = app_state.rule_template_service.create_template(request).await?;
+    let template = app_state
+        .rule_template_service
+        .create_template(request)
+        .await?;
 
     let response = Json(json!({
         "success": true,
@@ -35,7 +38,10 @@ pub async fn update_template(
     Path(template_id): Path<String>,
     Json(request): Json<UpdateRuleTemplateRequest>,
 ) -> Result<impl IntoResponse, RuleTemplateError> {
-    let template = app_state.rule_template_service.update_template(template_id, request).await?;
+    let template = app_state
+        .rule_template_service
+        .update_template(template_id, request)
+        .await?;
 
     let response = Json(json!({
         "success": true,
@@ -52,7 +58,8 @@ pub async fn get_templates(
     State(app_state): State<AppState>,
     Query(params): Query<GetTemplatesQuery>,
 ) -> Result<impl IntoResponse, RuleTemplateError> {
-    let templates = app_state.rule_template_service
+    let templates = app_state
+        .rule_template_service
         .get_templates(params.id, params.is_active, params.search)
         .await?;
 

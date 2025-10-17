@@ -3,7 +3,9 @@ use uuid::Uuid;
 
 use super::{
     errors::RuleTemplateError,
-    models::{CreateRuleTemplateRequest, RuleTemplate, RuleTemplateResponse, UpdateRuleTemplateRequest},
+    models::{
+        CreateRuleTemplateRequest, RuleTemplate, RuleTemplateResponse, UpdateRuleTemplateRequest,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -22,11 +24,15 @@ impl RuleTemplateService {
         request: CreateRuleTemplateRequest,
     ) -> Result<RuleTemplateResponse, RuleTemplateError> {
         // 验证请求数据
-        request.validate()
+        request
+            .validate()
             .map_err(RuleTemplateError::ValidationError)?;
 
         // 检查模版名称唯一性
-        if !self.check_name_uniqueness(&request.template_name, None).await? {
+        if !self
+            .check_name_uniqueness(&request.template_name, None)
+            .await?
+        {
             return Err(RuleTemplateError::NameAlreadyExists);
         }
 
@@ -50,7 +56,9 @@ impl RuleTemplateService {
         .await?;
 
         // 查询创建的模版并返回
-        let template = self.get_template_by_id(&template_id).await?
+        let template = self
+            .get_template_by_id(&template_id)
+            .await?
             .ok_or(RuleTemplateError::TemplateNotFound)?;
 
         Ok(template.into())
@@ -63,7 +71,8 @@ impl RuleTemplateService {
         request: UpdateRuleTemplateRequest,
     ) -> Result<RuleTemplateResponse, RuleTemplateError> {
         // 验证请求数据
-        request.validate()
+        request
+            .validate()
             .map_err(RuleTemplateError::ValidationError)?;
 
         // 检查模版是否存在
@@ -95,7 +104,9 @@ impl RuleTemplateService {
         }
 
         if update_fields.is_empty() {
-            return Err(RuleTemplateError::ValidationError("没有要更新的字段".to_string()));
+            return Err(RuleTemplateError::ValidationError(
+                "没有要更新的字段".to_string(),
+            ));
         }
 
         update_fields.push("updated_at = CURRENT_TIMESTAMP");
@@ -125,7 +136,9 @@ impl RuleTemplateService {
         query.execute(&self.pool).await?;
 
         // 查询更新后的模版并返回
-        let template = self.get_template_by_id(&template_id).await?
+        let template = self
+            .get_template_by_id(&template_id)
+            .await?
             .ok_or(RuleTemplateError::TemplateNotFound)?;
 
         Ok(template.into())
@@ -143,7 +156,7 @@ impl RuleTemplateService {
             let query = sqlx::query_as::<_, RuleTemplate>(
                 "SELECT id, template_name, description, is_active, rules_config, created_at, updated_at FROM rule_templates WHERE id = ?"
             ).bind(template_id);
-            
+
             let templates = query.fetch_all(&self.pool).await?;
             return Ok(templates.into_iter().map(|t| t.into()).collect());
         }
@@ -158,7 +171,7 @@ impl RuleTemplateService {
         }
 
         let base_sql = "SELECT id, template_name, description, is_active, rules_config, created_at, updated_at FROM rule_templates";
-        
+
         let templates = if conditions.is_empty() {
             let sql = format!("{} ORDER BY created_at DESC", base_sql);
             sqlx::query_as::<_, RuleTemplate>(&sql)
@@ -167,24 +180,27 @@ impl RuleTemplateService {
         } else {
             let where_clause = format!(" WHERE {}", conditions.join(" AND "));
             let sql = format!("{}{} ORDER BY created_at DESC", base_sql, where_clause);
-            
+
             let mut query = sqlx::query_as::<_, RuleTemplate>(&sql);
-            
+
             if let Some(active) = is_active {
                 query = query.bind(active);
             }
             if let Some(ref search_term) = search {
                 query = query.bind(format!("%{}%", search_term));
             }
-            
+
             query.fetch_all(&self.pool).await?
         };
-        
+
         Ok(templates.into_iter().map(|t| t.into()).collect())
     }
 
     /// 根据ID获取单个模版
-    async fn get_template_by_id(&self, template_id: &str) -> Result<Option<RuleTemplate>, RuleTemplateError> {
+    async fn get_template_by_id(
+        &self,
+        template_id: &str,
+    ) -> Result<Option<RuleTemplate>, RuleTemplateError> {
         let template = sqlx::query_as::<_, RuleTemplate>(
             "SELECT id, template_name, description, is_active, rules_config, created_at, updated_at FROM rule_templates WHERE id = ?"
         )
@@ -212,11 +228,13 @@ impl RuleTemplateService {
         exclude_id: Option<&str>,
     ) -> Result<bool, sqlx::Error> {
         let count: (i64,) = if let Some(id) = exclude_id {
-            sqlx::query_as("SELECT COUNT(*) FROM rule_templates WHERE template_name = ? AND id != ?")
-                .bind(name)
-                .bind(id)
-                .fetch_one(&self.pool)
-                .await?
+            sqlx::query_as(
+                "SELECT COUNT(*) FROM rule_templates WHERE template_name = ? AND id != ?",
+            )
+            .bind(name)
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await?
         } else {
             sqlx::query_as("SELECT COUNT(*) FROM rule_templates WHERE template_name = ?")
                 .bind(name)

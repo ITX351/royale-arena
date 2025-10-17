@@ -19,7 +19,7 @@ use auth::{AuthService, JwtManager};
 use config::AppConfig;
 use database::create_pool;
 use director::DirectorService;
-use game::{GameService, global_game_state_manager::GlobalGameStateManager, SystemInitializer};
+use game::{GameService, SystemInitializer, global_game_state_manager::GlobalGameStateManager};
 use routes::create_routes;
 use rule_template::RuleTemplateService;
 
@@ -35,8 +35,7 @@ async fn main() {
         .init();
 
     // 加载配置
-    let config = AppConfig::from_env()
-        .expect("Failed to load configuration");
+    let config = AppConfig::from_env().expect("Failed to load configuration");
 
     // 创建数据库连接池
     let pool = create_pool(&config)
@@ -62,19 +61,22 @@ async fn main() {
 
     // 构建路由
     let app = create_routes(
-        auth_service, 
-        admin_service, 
+        auth_service,
+        admin_service,
         director_service,
-        game_service, 
+        game_service,
         game_state_manager,
         rule_template_service,
-        &config.api_prefix
+        &config.api_prefix,
     )
-        .layer(TraceLayer::new_for_http());
+    .layer(TraceLayer::new_for_http());
 
     // 定义服务器地址
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));
-    info!("server running on {} with API prefix: {}", addr, config.api_prefix);
+    info!(
+        "server running on {} with API prefix: {}",
+        addr, config.api_prefix
+    );
 
     // 运行服务器
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

@@ -1,9 +1,9 @@
 //! 游戏规则引擎
 //! 负责解析和管理游戏规则配置，确保前后端规则一致性
 
+use crate::websocket::models::{Item, ItemType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::websocket::models::{Item, ItemType};
 use uuid::Uuid;
 
 /// 游戏规则引擎
@@ -35,7 +35,7 @@ pub struct PlayerConfig {
     pub max_equipped_weapons: usize,
     pub max_equipped_armors: usize,
     pub max_backpack_items: usize,
-    pub unarmed_damage: i32,  // 挥拳伤害
+    pub unarmed_damage: i32, // 挥拳伤害
 }
 
 /// 行动消耗配置结构体
@@ -182,12 +182,31 @@ pub struct DamageResult {
 /// 游戏效果
 #[derive(Debug, Clone)]
 pub enum GameEffect {
-    HealthChange { player_id: String, change: i32 },
-    StrengthChange { player_id: String, change: i32 },
-    ItemTransferred { from_player: String, to_player: String, item_id: String },
-    BleedEffectApplied { player_id: String, damage: i32, rounds: i32 },
-    BleedEffectRemoved { player_id: String },
-    ConsumableUsed { effect_type: String, effect_value: i32 },
+    HealthChange {
+        player_id: String,
+        change: i32,
+    },
+    StrengthChange {
+        player_id: String,
+        change: i32,
+    },
+    ItemTransferred {
+        from_player: String,
+        to_player: String,
+        item_id: String,
+    },
+    BleedEffectApplied {
+        player_id: String,
+        damage: i32,
+        rounds: i32,
+    },
+    BleedEffectRemoved {
+        player_id: String,
+    },
+    ConsumableUsed {
+        effect_type: String,
+        effect_value: i32,
+    },
 }
 
 impl GameRuleEngine {
@@ -198,39 +217,61 @@ impl GameRuleEngine {
 
         // 解析地图配置
         let map_config = serde_json::from_value(
-            rules_value.get("map").unwrap_or(&serde_json::json!({})).clone()
-        ).map_err(|e| format!("Failed to parse map config: {}", e))?;
+            rules_value
+                .get("map")
+                .unwrap_or(&serde_json::json!({}))
+                .clone(),
+        )
+        .map_err(|e| format!("Failed to parse map config: {}", e))?;
 
         // 解析玩家配置
         let player_config = serde_json::from_value(
-            rules_value.get("player").unwrap_or(&serde_json::json!({})).clone()
-        ).map_err(|e| format!("Failed to parse player config: {}", e))?;
+            rules_value
+                .get("player")
+                .unwrap_or(&serde_json::json!({}))
+                .clone(),
+        )
+        .map_err(|e| format!("Failed to parse player config: {}", e))?;
 
         // 解析行动消耗配置
         let action_costs = serde_json::from_value(
-            rules_value.get("action_costs").unwrap_or(&serde_json::json!({})).clone()
-        ).map_err(|e| format!("Failed to parse action costs: {}", e))?;
+            rules_value
+                .get("action_costs")
+                .unwrap_or(&serde_json::json!({}))
+                .clone(),
+        )
+        .map_err(|e| format!("Failed to parse action costs: {}", e))?;
 
         // 解析静养模式配置
         let rest_mode = serde_json::from_value(
-            rules_value.get("rest_mode").unwrap_or(&serde_json::json!({})).clone()
-        ).map_err(|e| format!("Failed to parse rest mode config: {}", e))?;
+            rules_value
+                .get("rest_mode")
+                .unwrap_or(&serde_json::json!({}))
+                .clone(),
+        )
+        .map_err(|e| format!("Failed to parse rest mode config: {}", e))?;
 
         // 解析物品系统配置
         let items_config = serde_json::from_value(
-            rules_value.get("items").unwrap_or(&serde_json::json!({})).clone()
-        ).map_err(|e| format!("Failed to parse items config: {}", e))?;
+            rules_value
+                .get("items")
+                .unwrap_or(&serde_json::json!({}))
+                .clone(),
+        )
+        .map_err(|e| format!("Failed to parse items config: {}", e))?;
 
         // 解析队友行为配置
         let teammate_behavior = TeammateBehaior {
-            mode: rules_value.get("teammate_behavior")
+            mode: rules_value
+                .get("teammate_behavior")
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0) as i32,
         };
 
         // 解析死亡物品处置配置
         let death_item_disposition = DeathItemDisposition {
-            description: rules_value.get("death_item_disposition")
+            description: rules_value
+                .get("death_item_disposition")
                 .and_then(|v| v.as_str())
                 .unwrap_or("由击杀者收缴（无击杀者则掉落在原地）")
                 .to_string(),
@@ -262,16 +303,25 @@ impl GameRuleEngine {
         };
 
         if player_strength < required_strength {
-            return Err(format!("Insufficient strength: required {}, have {}", required_strength, player_strength));
+            return Err(format!(
+                "Insufficient strength: required {}, have {}",
+                required_strength, player_strength
+            ));
         }
 
         Ok(())
     }
 
     /// 计算武器伤害
-    pub fn calculate_weapon_damage(&self, weapon_internal_name: &str, target_defense: i32) -> Result<DamageResult, String> {
+    pub fn calculate_weapon_damage(
+        &self,
+        weapon_internal_name: &str,
+        target_defense: i32,
+    ) -> Result<DamageResult, String> {
         // 查找武器配置
-        let weapon = self.items_config.weapons
+        let weapon = self
+            .items_config
+            .weapons
             .iter()
             .find(|w| w.internal_name == weapon_internal_name)
             .ok_or_else(|| format!("Weapon not found: {}", weapon_internal_name))?;
@@ -289,8 +339,13 @@ impl GameRuleEngine {
     }
 
     /// 获取消耗品效果
-    pub fn get_consumable_effect(&self, consumable_name: &str) -> Result<&ConsumableConfig, String> {
-        let consumable = self.items_config.consumables
+    pub fn get_consumable_effect(
+        &self,
+        consumable_name: &str,
+    ) -> Result<&ConsumableConfig, String> {
+        let consumable = self
+            .items_config
+            .consumables
             .iter()
             .find(|c| c.name == consumable_name)
             .ok_or_else(|| format!("Consumable not found: {}", consumable_name))?;
@@ -299,15 +354,23 @@ impl GameRuleEngine {
     }
 
     /// 检查装备数量限制
-    pub fn check_equipment_limit(&self, equipped_weapons: usize, equipped_armors: usize) -> Result<(), String> {
+    pub fn check_equipment_limit(
+        &self,
+        equipped_weapons: usize,
+        equipped_armors: usize,
+    ) -> Result<(), String> {
         if equipped_weapons > self.player_config.max_equipped_weapons {
-            return Err(format!("Too many weapons equipped: max {}, have {}", 
-                self.player_config.max_equipped_weapons, equipped_weapons));
+            return Err(format!(
+                "Too many weapons equipped: max {}, have {}",
+                self.player_config.max_equipped_weapons, equipped_weapons
+            ));
         }
 
         if equipped_armors > self.player_config.max_equipped_armors {
-            return Err(format!("Too many armors equipped: max {}, have {}", 
-                self.player_config.max_equipped_armors, equipped_armors));
+            return Err(format!(
+                "Too many armors equipped: max {}, have {}",
+                self.player_config.max_equipped_armors, equipped_armors
+            ));
         }
 
         Ok(())
@@ -316,8 +379,10 @@ impl GameRuleEngine {
     /// 检查背包容量限制
     pub fn check_backpack_limit(&self, current_items: usize) -> Result<(), String> {
         if current_items >= self.player_config.max_backpack_items {
-            return Err(format!("Backpack is full: max {}, have {}", 
-                self.player_config.max_backpack_items, current_items));
+            return Err(format!(
+                "Backpack is full: max {}, have {}",
+                self.player_config.max_backpack_items, current_items
+            ));
         }
 
         Ok(())
@@ -340,7 +405,9 @@ impl GameRuleEngine {
 
     /// 检查地点是否为安全区
     pub fn is_safe_place(&self, place_name: &str) -> bool {
-        self.map_config.safe_places.contains(&place_name.to_string())
+        self.map_config
+            .safe_places
+            .contains(&place_name.to_string())
     }
 
     /// 根据物品名称从规则JSON中查找并创建物品对象
@@ -358,7 +425,7 @@ impl GameRuleEngine {
                 }
             }
         }
-        
+
         // 2. 搜索防具
         for armor in &self.items_config.armors {
             for display_name in &armor.display_names {
@@ -372,7 +439,7 @@ impl GameRuleEngine {
                 }
             }
         }
-        
+
         // 3. 搜索消耗品
         for consumable in &self.items_config.consumables {
             if consumable.name == item_name {
@@ -380,12 +447,12 @@ impl GameRuleEngine {
                     "effect_type": consumable.effect_type,
                     "effect_value": consumable.effect_value
                 });
-                
+
                 // 如果有治疗流血效果，添加该属性
                 if let Some(cure_bleed) = consumable.cure_bleed {
                     properties["cure_bleed"] = serde_json::Value::Bool(cure_bleed);
                 }
-                
+
                 return Ok(Item {
                     id: Uuid::new_v4().to_string(),
                     name: item_name.to_string(),
@@ -394,7 +461,7 @@ impl GameRuleEngine {
                 });
             }
         }
-        
+
         // 4. 搜索其他道具
         for other_item in &self.items_config.other_items {
             if other_item.name == item_name {
@@ -406,7 +473,7 @@ impl GameRuleEngine {
                 });
             }
         }
-        
+
         // 5. 搜索升级器
         for upgrader in &self.items_config.upgraders {
             for display_name in &upgrader.display_names {
@@ -423,7 +490,7 @@ impl GameRuleEngine {
                 }
             }
         }
-        
+
         // 如果没有找到匹配的物品，返回错误
         Err(format!("未在规则JSON中找到物品: {}", item_name))
     }

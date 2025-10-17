@@ -1,11 +1,11 @@
 //! WebSocket相关模型定义
 
-use serde::{Deserialize, Serialize, Deserializer};
-use serde_json::Value as JsonValue;
-use chrono::{DateTime, Utc};
-use std::collections::HashMap;
 use crate::game::game_rule_engine::GameRuleEngine;
 use crate::game::models::MessageType;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 
 /// WebSocket连接类型
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -160,7 +160,7 @@ impl Player {
     pub fn new(id: String, name: String, team_id: u32, rule_engine: &GameRuleEngine) -> Self {
         let max_life = rule_engine.player_config.max_life;
         let max_strength = rule_engine.player_config.max_strength;
-        
+
         Self {
             id,
             name,
@@ -203,7 +203,7 @@ impl Player {
         if self.bleed_rounds_remaining > 0 {
             self.life -= self.bleed_damage;
             self.bleed_rounds_remaining -= 1;
-            
+
             if self.life <= 0 {
                 self.life = 0;
                 //self.is_alive = false; // TODO: 流血致死
@@ -371,7 +371,13 @@ pub struct ActionResult {
 
 impl ActionResult {
     /// 创建新的动作处理结果
-    fn new(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, log_type: MessageType, broadcast_to_director: bool) -> Self {
+    fn new(
+        data: serde_json::Value,
+        broadcast_players: Vec<String>,
+        log_message: String,
+        log_type: MessageType,
+        broadcast_to_director: bool,
+    ) -> Self {
         Self {
             data,
             broadcast_players,
@@ -381,29 +387,62 @@ impl ActionResult {
             broadcast_to_director,
         }
     }
-    
+
     /// 创建新的动作处理结果（带系统日志消息）
-    pub fn new_system_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::SystemNotice, broadcast_to_director)
+    pub fn new_system_message(
+        data: serde_json::Value,
+        broadcast_players: Vec<String>,
+        log_message: String,
+        broadcast_to_director: bool,
+    ) -> Self {
+        ActionResult::new(
+            data,
+            broadcast_players,
+            log_message,
+            MessageType::SystemNotice,
+            broadcast_to_director,
+        )
     }
-    
+
     /// 创建新的动作处理结果（带用户定向日志消息）
-    pub fn new_user_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::UserDirected, broadcast_to_director)
+    pub fn new_user_message(
+        data: serde_json::Value,
+        broadcast_players: Vec<String>,
+        log_message: String,
+        broadcast_to_director: bool,
+    ) -> Self {
+        ActionResult::new(
+            data,
+            broadcast_players,
+            log_message,
+            MessageType::UserDirected,
+            broadcast_to_director,
+        )
     }
-    
+
     /// 创建新的动作处理结果（带Info类型提示消息）
-    pub fn new_info_message(data: serde_json::Value, broadcast_players: Vec<String>, log_message: String, broadcast_to_director: bool) -> Self {
-        ActionResult::new(data, broadcast_players, log_message, MessageType::Info, broadcast_to_director)
+    pub fn new_info_message(
+        data: serde_json::Value,
+        broadcast_players: Vec<String>,
+        log_message: String,
+        broadcast_to_director: bool,
+    ) -> Self {
+        ActionResult::new(
+            data,
+            broadcast_players,
+            log_message,
+            MessageType::Info,
+            broadcast_to_director,
+        )
     }
-    
+
     /// 将单个ActionResult转换为ActionResults
     pub fn as_results(self) -> ActionResults {
         ActionResults {
             results: vec![self],
         }
     }
-    
+
     /// 创建用于返回给前端的数据结构，排除`broadcast_players`字段
     pub fn to_client_response(&self) -> serde_json::Value {
         serde_json::json!({
@@ -419,11 +458,11 @@ impl GameState {
     /// 创建新的游戏状态
     pub fn new(game_id: String, rules_config: serde_json::Value) -> Self {
         // 解析JSON规则为结构化的规则引擎
-        let rules_json = serde_json::to_string(&rules_config)
-            .expect("Failed to serialize rules config");
-        let rule_engine = GameRuleEngine::from_json(&rules_json)
-            .expect("Failed to parse game rules");
-        
+        let rules_json =
+            serde_json::to_string(&rules_config).expect("Failed to serialize rules config");
+        let rule_engine =
+            GameRuleEngine::from_json(&rules_json).expect("Failed to parse game rules");
+
         Self {
             game_id,
             players: HashMap::new(),
@@ -438,15 +477,15 @@ impl GameState {
             next_night_destroyed_places: Vec::new(),
         }
     }
-    
+
     /// 从已有游戏状态反序列化时重新创建规则引擎
     pub fn rebuild_rule_engine(&mut self) {
-        let rules_json = serde_json::to_string(&self.rules_config)
-            .expect("Failed to serialize rules config");
-        self.rule_engine = GameRuleEngine::from_json(&rules_json)
-            .expect("Failed to parse game rules");
+        let rules_json =
+            serde_json::to_string(&self.rules_config).expect("Failed to serialize rules config");
+        self.rule_engine =
+            GameRuleEngine::from_json(&rules_json).expect("Failed to parse game rules");
     }
-    
+
     /// 生成全局状态信息
     pub fn generate_global_state_info(&self) -> serde_json::Value {
         serde_json::json!({
@@ -480,15 +519,15 @@ impl<'de> Deserialize<'de> for GameState {
             night_end_time: Option<DateTime<Utc>>,
             next_night_destroyed_places: Vec<String>,
         }
-        
+
         let helper = GameStateHelper::deserialize(deserializer)?;
-        
+
         // 从 rules_config 重新创建 rule_engine
-        let rules_json = serde_json::to_string(&helper.rules_config)
-            .map_err(serde::de::Error::custom)?;
-        let rule_engine = GameRuleEngine::from_json(&rules_json)
-            .map_err(serde::de::Error::custom)?;
-        
+        let rules_json =
+            serde_json::to_string(&helper.rules_config).map_err(serde::de::Error::custom)?;
+        let rule_engine =
+            GameRuleEngine::from_json(&rules_json).map_err(serde::de::Error::custom)?;
+
         Ok(GameState {
             game_id: helper.game_id,
             players: helper.players,

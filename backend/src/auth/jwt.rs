@@ -1,7 +1,7 @@
-use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use crate::admin::models::JwtClaims;
 use crate::errors::AuthError;
+use chrono::{Duration, Utc};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
 #[derive(Clone)]
 pub struct JwtManager {
@@ -36,13 +36,12 @@ impl JwtManager {
             iat: now.timestamp() as usize,
         };
 
-        encode(&Header::default(), &claims, &self.encoding_key)
-            .map_err(AuthError::from)
+        encode(&Header::default(), &claims, &self.encoding_key).map_err(AuthError::from)
     }
 
     pub fn validate_token(&self, token: &str) -> Result<JwtClaims, AuthError> {
         let validation = Validation::new(Algorithm::HS256);
-        
+
         match decode::<JwtClaims>(token, &self.decoding_key, &validation) {
             Ok(token_data) => {
                 let now = Utc::now().timestamp() as usize;

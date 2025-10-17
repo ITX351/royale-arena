@@ -96,9 +96,9 @@ pub struct DeleteAdminResponse {
 /// JWT Claims 结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JwtClaims {
-    pub sub: String,        // user_id
-    pub username: String,   // 用户名
+    pub sub: String,          // user_id
+    pub username: String,     // 用户名
     pub is_super_admin: bool, // 是否为超级管理员
-    pub exp: usize,        // 过期时间戳
-    pub iat: usize,        // 签发时间戳
+    pub exp: usize,           // 过期时间戳
+    pub iat: usize,           // 签发时间戳
 }

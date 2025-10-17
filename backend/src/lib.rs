@@ -11,9 +11,9 @@ pub mod websocket;
 
 // 选择性导出，避免命名冲突
 pub use config::AppConfig;
-pub use database::{create_pool, DatabasePool};
-pub use director::{DirectorService, DirectorError};
+pub use database::{DatabasePool, create_pool};
+pub use director::{DirectorError, DirectorService};
 pub use errors::{AppError, AuthError, ServiceError};
-pub use game::{GameService};
-pub use rule_template::{RuleTemplateService, RuleTemplateError};
+pub use game::GameService;
+pub use rule_template::{RuleTemplateError, RuleTemplateService};
 pub use websocket::service::WebSocketService;

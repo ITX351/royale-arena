@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::json;
 use thiserror::Error;
@@ -11,22 +11,22 @@ use thiserror::Error;
 pub enum AuthError {
     #[error("Invalid credentials")]
     InvalidCredentials,
-    
+
     #[error("User not found")]
     UserNotFound,
-    
+
     #[error("Token expired")]
     TokenExpired,
-    
+
     #[error("Invalid token")]
     InvalidToken,
-    
+
     #[error("Insufficient permissions")]
     InsufficientPermissions,
-    
+
     #[error("JWT error: {0}")]
     JwtError(#[from] jsonwebtoken::errors::Error),
-    
+
     #[error("Bcrypt error: {0}")]
     BcryptError(#[from] bcrypt::BcryptError),
 }
@@ -37,22 +37,22 @@ pub enum AuthError {
 pub enum ServiceError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
-    
+
     #[error("Auth error: {0}")]
     Auth(#[from] AuthError),
-    
+
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     #[error("User already exists")]
     UserAlreadyExists,
-    
+
     #[error("Cannot delete super admin")]
     CannotDeleteSuperAdmin,
-    
+
     #[error("User not found")]
     UserNotFound,
-    
+
     #[error("Bcrypt error: {0}")]
     Bcrypt(#[from] bcrypt::BcryptError),
 }
@@ -63,10 +63,10 @@ pub enum ServiceError {
 pub enum AppError {
     #[error("Service error: {0}")]
     Service(#[from] ServiceError),
-    
+
     #[error("Configuration error: {0}")]
     Config(String),
-    
+
     #[error("Internal server error")]
     InternalServerError,
 }
@@ -82,12 +82,12 @@ impl IntoResponse for AuthError {
             AuthError::JwtError(_) => (StatusCode::UNAUTHORIZED, "认证令牌处理失败"),
             AuthError::BcryptError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "密码处理失败"),
         };
-        
+
         let body = Json(json!({
             "success": false,
             "error": message
         }));
-        
+
         (status, body).into_response()
     }
 }
@@ -103,12 +103,12 @@ impl IntoResponse for ServiceError {
             ServiceError::UserNotFound => (StatusCode::NOT_FOUND, "用户不存在"),
             ServiceError::Bcrypt(_) => (StatusCode::INTERNAL_SERVER_ERROR, "密码处理失败"),
         };
-        
+
         let body = Json(json!({
             "success": false,
             "error": message
         }));
-        
+
         (status, body).into_response()
     }
 }
@@ -123,14 +123,14 @@ impl IntoResponse for AppError {
                     "error": "系统配置错误"
                 }));
                 (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
-            },
+            }
             AppError::InternalServerError => {
                 let body = Json(json!({
                     "success": false,
                     "error": "内部服务器错误"
                 }));
                 (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
-            },
+            }
         }
     }
 }

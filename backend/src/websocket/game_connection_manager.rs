@@ -1,11 +1,11 @@
 //! WebSocket游戏连接管理器
 //! 负责管理单个游戏的所有WebSocket连接，包括玩家和导演连接
 
+use crate::websocket::models::ConnectionType;
+use serde_json::{Value as JsonValue, json};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::{json, Value as JsonValue};
-use crate::websocket::models::ConnectionType;
 
 /// 连接句柄，用于标识每个WebSocket连接
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -27,7 +27,8 @@ pub struct GameConnectionManager {
     /// 导演连接列表
     director_connections: Arc<RwLock<Vec<ConnectionHandle>>>,
     /// 实际的WebSocket连接：连接句柄 -> WebSocket发送端
-    connections: Arc<RwLock<HashMap<ConnectionHandle, tokio::sync::mpsc::UnboundedSender<JsonValue>>>>,
+    connections:
+        Arc<RwLock<HashMap<ConnectionHandle, tokio::sync::mpsc::UnboundedSender<JsonValue>>>>,
 }
 
 impl GameConnectionManager {
@@ -55,13 +56,19 @@ impl GameConnectionManager {
         };
 
         // 存储连接
-        self.connections.write().await.insert(handle.clone(), sender);
+        self.connections
+            .write()
+            .await
+            .insert(handle.clone(), sender);
 
         // 根据连接类型添加到对应的映射中
         match connection_type {
             ConnectionType::Actor => {
                 let mut player_connections = self.player_connections.write().await;
-                player_connections.entry(user_id).or_insert_with(Vec::new).push(handle.clone());
+                player_connections
+                    .entry(user_id)
+                    .or_insert_with(Vec::new)
+                    .push(handle.clone());
             }
             ConnectionType::Director => {
                 self.director_connections.write().await.push(handle.clone());
@@ -89,7 +96,10 @@ impl GameConnectionManager {
                 }
             }
             ConnectionType::Director => {
-                self.director_connections.write().await.retain(|conn| conn.id != handle.id);
+                self.director_connections
+                    .write()
+                    .await
+                    .retain(|conn| conn.id != handle.id);
             }
         }
     }
@@ -97,7 +107,10 @@ impl GameConnectionManager {
     /// 获取指定玩家的所有连接句柄
     pub async fn get_player_connections(&self, player_id: &str) -> Vec<ConnectionHandle> {
         let player_connections = self.player_connections.read().await;
-        player_connections.get(player_id).cloned().unwrap_or_else(Vec::new)
+        player_connections
+            .get(player_id)
+            .cloned()
+            .unwrap_or_else(Vec::new)
     }
 
     /// 获取所有导演连接句柄
@@ -112,20 +125,32 @@ impl GameConnectionManager {
     }
 
     /// 向指定连接发送消息
-    pub async fn send_message_to_connection(&self, handle: &ConnectionHandle, message: JsonValue) -> Result<(), String> {
+    pub async fn send_message_to_connection(
+        &self,
+        handle: &ConnectionHandle,
+        message: JsonValue,
+    ) -> Result<(), String> {
         let connections = self.connections.read().await;
         if let Some(sender) = connections.get(handle) {
-            sender.send(message).map_err(|e| format!("Failed to send message: {}", e))
+            sender
+                .send(message)
+                .map_err(|e| format!("Failed to send message: {}", e))
         } else {
             Err("Connection not found".to_string())
         }
     }
 
     /// 向指定玩家的所有连接广播消息
-    pub async fn broadcast_to_player(&self, player_id: &str, message: JsonValue) -> Result<(), String> {
+    pub async fn broadcast_to_player(
+        &self,
+        player_id: &str,
+        message: JsonValue,
+    ) -> Result<(), String> {
         let handles = self.get_player_connections(player_id).await;
         for handle in handles {
-            let _ = self.send_message_to_connection(&handle, message.clone()).await;
+            let _ = self
+                .send_message_to_connection(&handle, message.clone())
+                .await;
         }
         Ok(())
     }
@@ -134,7 +159,9 @@ impl GameConnectionManager {
     pub async fn broadcast_to_directors(&self, message: JsonValue) -> Result<(), String> {
         let handles = self.get_director_connections().await;
         for handle in handles {
-            let _ = self.send_message_to_connection(&handle, message.clone()).await;
+            let _ = self
+                .send_message_to_connection(&handle, message.clone())
+                .await;
         }
         Ok(())
     }
@@ -143,7 +170,9 @@ impl GameConnectionManager {
     pub async fn broadcast_to_all(&self, message: JsonValue) -> Result<(), String> {
         let handles = self.get_all_connections().await;
         for handle in handles {
-            let _ = self.send_message_to_connection(&handle, message.clone()).await;
+            let _ = self
+                .send_message_to_connection(&handle, message.clone())
+                .await;
         }
         Ok(())
     }

@@ -1,30 +1,31 @@
 #[cfg(test)]
 mod director_integration_tests {
-    use sqlx::MySqlPool;
-    use uuid::Uuid;
+    use royale_arena_backend::admin::service::AdminService;
+    use royale_arena_backend::auth::AuthService;
+    use royale_arena_backend::auth::JwtManager;
     use royale_arena_backend::director::{
-        DirectorService, 
-        BatchAddPlayersRequest, 
-        BatchDeletePlayersRequest,
-        CreatePlayerRequest,
-        DirectorEditGameRequest,
+        BatchAddPlayersRequest, BatchDeletePlayersRequest, CreatePlayerRequest,
+        DirectorEditGameRequest, DirectorService,
     };
+    use royale_arena_backend::game::GameLogService;
     use royale_arena_backend::game::GameService;
     use royale_arena_backend::game::global_game_state_manager::GlobalGameStateManager;
-    use royale_arena_backend::websocket::global_connection_manager::GlobalConnectionManager;
     use royale_arena_backend::routes::AppState;
-    use royale_arena_backend::auth::AuthService;
-    use royale_arena_backend::admin::service::AdminService;
-    use royale_arena_backend::game::GameLogService;
     use royale_arena_backend::rule_template::service::RuleTemplateService;
-    use royale_arena_backend::auth::JwtManager;
+    use royale_arena_backend::websocket::global_connection_manager::GlobalConnectionManager;
+    use sqlx::MySqlPool;
+    use uuid::Uuid;
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn test_director_comprehensive_integration(pool: MySqlPool) -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_director_comprehensive_integration(
+        pool: MySqlPool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // 清理相关表数据，确保测试环境干净
         sqlx::query("DELETE FROM actors").execute(&pool).await?;
         sqlx::query("DELETE FROM games").execute(&pool).await?;
-        sqlx::query("DELETE FROM rule_templates").execute(&pool).await?;
+        sqlx::query("DELETE FROM rule_templates")
+            .execute(&pool)
+            .await?;
 
         let director_service = DirectorService::new(pool.clone());
 
@@ -59,16 +60,22 @@ mod director_integration_tests {
         .await?;
 
         // 测试1.1: 验证导演密码 - 正确密码
-        let result = director_service.verify_director_password(&game_id, director_password).await;
+        let result = director_service
+            .verify_director_password(&game_id, director_password)
+            .await;
         assert!(result.is_ok(), "正确的导演密码验证应该成功");
 
         // 测试1.2: 验证导演密码 - 错误密码
-        let result = director_service.verify_director_password(&game_id, "wrong_password").await;
+        let result = director_service
+            .verify_director_password(&game_id, "wrong_password")
+            .await;
         assert!(result.is_err(), "错误的导演密码验证应该失败");
 
         // 测试1.3: 验证导演密码 - 不存在的游戏
         let fake_game_id = Uuid::new_v4().to_string();
-        let result = director_service.verify_director_password(&fake_game_id, director_password).await;
+        let result = director_service
+            .verify_director_password(&fake_game_id, director_password)
+            .await;
         assert!(result.is_err(), "不存在的游戏验证应该失败");
 
         // 测试2.1: 批量添加演员时的密码验证 - 错误的导演密码
@@ -138,11 +145,15 @@ mod director_integration_tests {
         assert!(result.failed[0].reason.contains("已存在"));
 
         // 测试3.1: 获取演员列表时的密码验证 - 错误的导演密码
-        let result = director_service.get_players(&game_id, "wrong_password").await;
+        let result = director_service
+            .get_players(&game_id, "wrong_password")
+            .await;
         assert!(result.is_err(), "错误的导演密码应该导致获取列表失败");
 
         // 测试3.2: 获取演员列表 - 正确密码
-        let players = director_service.get_players(&game_id, director_password).await?;
+        let players = director_service
+            .get_players(&game_id, director_password)
+            .await?;
         assert_eq!(players.len(), 3, "应该有3个演员");
 
         // 测试3.3: 验证演员信息正确
@@ -152,23 +163,36 @@ mod director_integration_tests {
         assert_eq!(player1.game_id, game_id);
 
         // 测试4.1: 游戏身份验证 - 导演密码正确（此时还没有演员，应该返回director）
-        let auth_result = director_service.authenticate_game(&game_id, director_password).await?;
-        assert_eq!(auth_result, "director", "使用正确的导演密码应该返回director");
+        let auth_result = director_service
+            .authenticate_game(&game_id, director_password)
+            .await?;
+        assert_eq!(
+            auth_result, "director",
+            "使用正确的导演密码应该返回director"
+        );
 
         // 测试4.2: 游戏身份验证 - 导演密码错误
-        let auth_result = director_service.authenticate_game(&game_id, "wrong_password").await?;
+        let auth_result = director_service
+            .authenticate_game(&game_id, "wrong_password")
+            .await?;
         assert_eq!(auth_result, "invalid", "使用错误的导演密码应该返回invalid");
 
         // 测试4.3: 游戏身份验证 - 不存在的游戏
-        let auth_result = director_service.authenticate_game(&fake_game_id, director_password).await?;
+        let auth_result = director_service
+            .authenticate_game(&fake_game_id, director_password)
+            .await?;
         assert_eq!(auth_result, "invalid", "不存在的游戏应该返回invalid");
 
         // 测试4.4: 游戏身份验证 - 演员密码正确（使用刚刚添加的演员密码）
-        let auth_result = director_service.authenticate_game(&game_id, "abc123").await?;
+        let auth_result = director_service
+            .authenticate_game(&game_id, "abc123")
+            .await?;
         assert_eq!(auth_result, "actor", "使用正确的演员密码应该返回actor");
 
         // 测试4.5: 游戏身份验证 - 演员密码错误
-        let auth_result = director_service.authenticate_game(&game_id, "wrong_player_password").await?;
+        let auth_result = director_service
+            .authenticate_game(&game_id, "wrong_player_password")
+            .await?;
         assert_eq!(auth_result, "invalid", "使用错误的演员密码应该返回invalid");
 
         // 测试5.1: 批量删除演员时的密码验证 - 错误的导演密码
@@ -195,7 +219,9 @@ mod director_integration_tests {
         assert_eq!(result.failed.len(), 0, "不应该有失败的操作");
 
         // 测试5.3: 验证删除后的演员列表
-        let remaining_players = director_service.get_players(&game_id, director_password).await?;
+        let remaining_players = director_service
+            .get_players(&game_id, director_password)
+            .await?;
         assert_eq!(remaining_players.len(), 1, "应该剩余1个演员");
 
         // 测试5.4: 批量删除演员 - 不存在的演员ID
@@ -252,7 +278,7 @@ mod director_integration_tests {
                 CreatePlayerRequest {
                     player_name: "测试玩家5".to_string(),
                     password: "abc".to_string(), // 密码过短
-                    team_id: Some(-1), // 负数队伍ID
+                    team_id: Some(-1),           // 负数队伍ID
                 },
             ],
         };
@@ -265,12 +291,22 @@ mod director_integration_tests {
         assert_eq!(result.failed.len(), 3, "应该有3个失败的操作");
 
         // 测试7.2: 验证错误原因
-        assert!(result.failed.iter().any(|f| f.reason.contains("字母和数字")));
+        assert!(
+            result
+                .failed
+                .iter()
+                .any(|f| f.reason.contains("字母和数字"))
+        );
         assert!(result.failed.iter().any(|f| f.reason.contains("不能为空")));
-        assert!(result.failed.iter().any(|f| f.reason.contains("长度必须为6-8位") || f.reason.contains("不能为负数")));
+        assert!(
+            result
+                .failed
+                .iter()
+                .any(|f| f.reason.contains("长度必须为6-8位") || f.reason.contains("不能为负数"))
+        );
 
         // ========== 测试8: 导演编辑游戏功能 ==========
-        
+
         // 测试8.1: 使用错误的导演密码编辑游戏
         let edit_request = DirectorEditGameRequest {
             name: Some("新游戏名称".to_string()),
@@ -278,7 +314,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, "wrong_password", edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &game_id, "wrong_password", edit_request)
+            .await;
         assert!(result.is_err(), "错误的导演密码应该导致编辑失败");
 
         // 测试8.2: 编辑游戏名称（有效输入）
@@ -288,7 +326,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await?;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await?;
         assert_eq!(result.name, "新游戏名称");
         assert_eq!(result.description, Some("用于导演接口集成测试".to_string()));
         assert_eq!(result.max_players, 100);
@@ -300,7 +340,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await?;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await?;
         assert_eq!(result.description, Some("更新后的游戏描述".to_string()));
 
         // 测试8.4: 编辑最大玩家数（有效输入）
@@ -310,7 +352,9 @@ mod director_integration_tests {
             max_players: Some(50),
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await?;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await?;
         assert_eq!(result.max_players, 50);
 
         // 测试8.5: 同时编辑名称、描述和最大玩家数
@@ -320,7 +364,9 @@ mod director_integration_tests {
             max_players: Some(200),
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await?;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await?;
         assert_eq!(result.name, "最终游戏名称");
         assert_eq!(result.description, Some("最终描述".to_string()));
         assert_eq!(result.max_players, 200);
@@ -342,7 +388,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: Some(new_rules.clone()),
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await?;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await?;
         assert_eq!(result.rules_config, new_rules);
 
         // 测试8.7: 提供空名称
@@ -352,7 +400,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await;
         assert!(result.is_err(), "空名称应该导致验证错误");
 
         // 测试8.8: 提供超长名称（101字符）
@@ -362,7 +412,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await;
         assert!(result.is_err(), "超长名称应该导致验证错误");
 
         // 测试8.9: 提供无效的最大玩家数（0和1001）
@@ -372,7 +424,9 @@ mod director_integration_tests {
             max_players: Some(0),
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await;
         assert!(result.is_err(), "最大玩家数0应该导致验证错误");
 
         let edit_request = DirectorEditGameRequest {
@@ -381,7 +435,9 @@ mod director_integration_tests {
             max_players: Some(1001),
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await;
         assert!(result.is_err(), "最大玩家数1001应该导致验证错误");
 
         // 测试8.10: 编辑不存在的游戏
@@ -392,7 +448,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &fake_game_id, director_password, edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &fake_game_id, director_password, edit_request)
+            .await;
         assert!(result.is_err(), "编辑不存在的游戏应该失败");
 
         // 测试8.11: 请求体为空（无任何字段）
@@ -402,7 +460,9 @@ mod director_integration_tests {
             max_players: None,
             rules_config: None,
         };
-        let result = director_service.edit_game(&app_state, &game_id, director_password, edit_request).await;
+        let result = director_service
+            .edit_game(&app_state, &game_id, director_password, edit_request)
+            .await;
         assert!(result.is_err(), "空请求应该导致验证错误");
 
         Ok(())

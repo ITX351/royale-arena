@@ -9,12 +9,14 @@ use sqlx::mysql::MySqlPool;
 use uuid::Uuid;
 
 #[sqlx::test(migrations = "./migrations")]
-async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_rule_template_complete_flow(
+    pool: MySqlPool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // 清理测试环境
     sqlx::query("DELETE FROM rule_templates WHERE template_name LIKE '%集成测试%'")
         .execute(&pool)
         .await?;
-    
+
     sqlx::query("DELETE FROM admin_users")
         .execute(&pool)
         .await?;
@@ -39,12 +41,12 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
     let super_admin_id = Uuid::new_v4().to_string();
     let super_admin_password = "superadmin123";
     let hashed_password = bcrypt::hash(super_admin_password, config.bcrypt_cost)?;
-    
+
     sqlx::query(
         r#"
         INSERT INTO admin_users (id, username, password, is_super_admin)
         VALUES (?, ?, ?, ?)
-        "#
+        "#,
     )
     .bind(&super_admin_id)
     .bind("superadmin")
@@ -58,7 +60,7 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         username: "superadmin".to_string(),
         password: super_admin_password.to_string(),
     };
-    
+
     let login_response = auth_service.login(login_request).await?;
     let _admin_token = login_response.token;
 
@@ -100,9 +102,14 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: test_rules_config.clone(),
     };
 
-    let created_template = rule_template_service.create_template(create_request).await?;
+    let created_template = rule_template_service
+        .create_template(create_request)
+        .await?;
     assert_eq!(created_template.template_name, "集成测试经典模版");
-    assert_eq!(created_template.description, Some("用于集成测试的经典大逃杀规则模版".to_string()));
+    assert_eq!(
+        created_template.description,
+        Some("用于集成测试的经典大逃杀规则模版".to_string())
+    );
     assert!(created_template.is_active);
     assert_eq!(created_template.rules_config, test_rules_config);
 
@@ -125,40 +132,56 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         }),
     };
 
-    let created_template2 = rule_template_service.create_template(create_request2).await?;
+    let created_template2 = rule_template_service
+        .create_template(create_request2)
+        .await?;
     let template_id2 = created_template2.id.clone();
 
     // 测试 3: 获取所有模版列表
-    let all_templates = rule_template_service.get_templates(None, None, None).await?;
-    let test_templates: Vec<_> = all_templates.iter()
+    let all_templates = rule_template_service
+        .get_templates(None, None, None)
+        .await?;
+    let test_templates: Vec<_> = all_templates
+        .iter()
         .filter(|t| t.template_name.contains("集成测试"))
         .collect();
     assert_eq!(test_templates.len(), 2);
 
     // 测试 4: 根据ID获取特定模版
-    let specific_template = rule_template_service.get_templates(Some(template_id.clone()), None, None).await?;
+    let specific_template = rule_template_service
+        .get_templates(Some(template_id.clone()), None, None)
+        .await?;
     assert_eq!(specific_template.len(), 1);
     assert_eq!(specific_template[0].template_name, "集成测试经典模版");
     assert_eq!(specific_template[0].rules_config, test_rules_config);
 
     // 测试 5: 根据激活状态筛选
-    let active_templates = rule_template_service.get_templates(None, Some(true), None).await?;
-    let active_test_templates: Vec<_> = active_templates.iter()
+    let active_templates = rule_template_service
+        .get_templates(None, Some(true), None)
+        .await?;
+    let active_test_templates: Vec<_> = active_templates
+        .iter()
         .filter(|t| t.template_name.contains("集成测试") && t.is_active)
         .collect();
     assert_eq!(active_test_templates.len(), 1);
     assert_eq!(active_test_templates[0].template_name, "集成测试经典模版");
 
-    let inactive_templates = rule_template_service.get_templates(None, Some(false), None).await?;
-    let inactive_test_templates: Vec<_> = inactive_templates.iter()
+    let inactive_templates = rule_template_service
+        .get_templates(None, Some(false), None)
+        .await?;
+    let inactive_test_templates: Vec<_> = inactive_templates
+        .iter()
         .filter(|t| t.template_name.contains("集成测试") && !t.is_active)
         .collect();
     assert_eq!(inactive_test_templates.len(), 1);
     assert_eq!(inactive_test_templates[0].template_name, "集成测试快速模版");
 
     // 测试 6: 根据名称搜索
-    let search_templates = rule_template_service.get_templates(None, None, Some("经典".to_string())).await?;
-    let search_test_templates: Vec<_> = search_templates.iter()
+    let search_templates = rule_template_service
+        .get_templates(None, None, Some("经典".to_string()))
+        .await?;
+    let search_test_templates: Vec<_> = search_templates
+        .iter()
         .filter(|t| t.template_name.contains("集成测试"))
         .collect();
     assert_eq!(search_test_templates.len(), 1);
@@ -187,9 +210,14 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: Some(updated_rules_config.clone()),
     };
 
-    let updated_template = rule_template_service.update_template(template_id.clone(), update_request).await?;
+    let updated_template = rule_template_service
+        .update_template(template_id.clone(), update_request)
+        .await?;
     assert_eq!(updated_template.template_name, "集成测试经典模版v2");
-    assert_eq!(updated_template.description, Some("更新后的经典模版描述".to_string()));
+    assert_eq!(
+        updated_template.description,
+        Some("更新后的经典模版描述".to_string())
+    );
     assert!(!updated_template.is_active);
     assert_eq!(updated_template.rules_config, updated_rules_config);
 
@@ -201,9 +229,14 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: None,
     };
 
-    let partial_updated_template = rule_template_service.update_template(template_id.clone(), partial_update_request).await?;
+    let partial_updated_template = rule_template_service
+        .update_template(template_id.clone(), partial_update_request)
+        .await?;
     assert_eq!(partial_updated_template.template_name, "集成测试经典模版v3");
-    assert_eq!(partial_updated_template.description, Some("更新后的经典模版描述".to_string())); // 保持不变
+    assert_eq!(
+        partial_updated_template.description,
+        Some("更新后的经典模版描述".to_string())
+    ); // 保持不变
     assert!(!partial_updated_template.is_active); // 保持不变
     assert_eq!(partial_updated_template.rules_config, updated_rules_config); // 保持不变
 
@@ -217,7 +250,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: json!({"test": true}),
     };
 
-    let duplicate_result = rule_template_service.create_template(duplicate_request).await;
+    let duplicate_result = rule_template_service
+        .create_template(duplicate_request)
+        .await;
     assert!(duplicate_result.is_err());
 
     // 9.2: 更新不存在的模版（应该失败）
@@ -228,7 +263,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: None,
     };
 
-    let nonexistent_result = rule_template_service.update_template("nonexistent-id".to_string(), nonexistent_update).await;
+    let nonexistent_result = rule_template_service
+        .update_template("nonexistent-id".to_string(), nonexistent_update)
+        .await;
     assert!(nonexistent_result.is_err());
 
     // 9.3: 创建空名称模版（应该失败）
@@ -239,7 +276,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: json!({"test": true}),
     };
 
-    let empty_name_result = rule_template_service.create_template(empty_name_request).await;
+    let empty_name_result = rule_template_service
+        .create_template(empty_name_request)
+        .await;
     assert!(empty_name_result.is_err());
 
     // 9.4: 创建过长名称模版（应该失败）
@@ -250,7 +289,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: json!({"test": true}),
     };
 
-    let long_name_result = rule_template_service.create_template(long_name_request).await;
+    let long_name_result = rule_template_service
+        .create_template(long_name_request)
+        .await;
     assert!(long_name_result.is_err());
 
     // 9.5: 创建无效JSON配置模版（应该失败）
@@ -261,7 +302,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: json!("not an object"), // 不是对象
     };
 
-    let invalid_config_result = rule_template_service.create_template(invalid_config_request).await;
+    let invalid_config_result = rule_template_service
+        .create_template(invalid_config_request)
+        .await;
     assert!(invalid_config_result.is_err());
 
     // 9.6: 更新时使用重复名称（应该失败）
@@ -272,7 +315,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: None,
     };
 
-    let duplicate_name_result = rule_template_service.update_template(template_id.clone(), duplicate_name_update).await;
+    let duplicate_name_result = rule_template_service
+        .update_template(template_id.clone(), duplicate_name_update)
+        .await;
     assert!(duplicate_name_result.is_err());
 
     // 9.7: 空更新请求（应该失败）
@@ -283,22 +328,34 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         rules_config: None,
     };
 
-    let empty_update_result = rule_template_service.update_template(template_id.clone(), empty_update_request).await;
+    let empty_update_result = rule_template_service
+        .update_template(template_id.clone(), empty_update_request)
+        .await;
     assert!(empty_update_result.is_err());
 
     // 测试 10: 验证最终状态
-    let final_templates = rule_template_service.get_templates(None, None, None).await?;
-    let final_test_templates: Vec<_> = final_templates.iter()
+    let final_templates = rule_template_service
+        .get_templates(None, None, None)
+        .await?;
+    let final_test_templates: Vec<_> = final_templates
+        .iter()
         .filter(|t| t.template_name.contains("集成测试"))
         .collect();
     assert_eq!(final_test_templates.len(), 2);
 
     // 验证模版内容
-    let updated_template_final = rule_template_service.get_templates(Some(template_id), None, None).await?;
+    let updated_template_final = rule_template_service
+        .get_templates(Some(template_id), None, None)
+        .await?;
     assert_eq!(updated_template_final.len(), 1);
-    assert_eq!(updated_template_final[0].template_name, "集成测试经典模版v3");
+    assert_eq!(
+        updated_template_final[0].template_name,
+        "集成测试经典模版v3"
+    );
 
-    let second_template_final = rule_template_service.get_templates(Some(template_id2), None, None).await?;
+    let second_template_final = rule_template_service
+        .get_templates(Some(template_id2), None, None)
+        .await?;
     assert_eq!(second_template_final.len(), 1);
     assert_eq!(second_template_final[0].template_name, "集成测试快速模版");
 
@@ -327,9 +384,14 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         }),
     };
 
-    let service_created = rule_template_service.create_template(service_test_request).await?;
+    let service_created = rule_template_service
+        .create_template(service_test_request)
+        .await?;
     assert_eq!(service_created.template_name, "服务层测试模版");
-    assert_eq!(service_created.description, Some("这是一个服务层测试模版".to_string()));
+    assert_eq!(
+        service_created.description,
+        Some("这是一个服务层测试模版".to_string())
+    );
     assert!(service_created.is_active);
 
     // 测试更新服务
@@ -345,9 +407,14 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         })),
     };
 
-    let service_updated = rule_template_service.update_template(service_created.id.clone(), service_update_request).await?;
+    let service_updated = rule_template_service
+        .update_template(service_created.id.clone(), service_update_request)
+        .await?;
     assert_eq!(service_updated.template_name, "更新的服务层测试模版");
-    assert_eq!(service_updated.description, Some("更新后的描述".to_string()));
+    assert_eq!(
+        service_updated.description,
+        Some("更新后的描述".to_string())
+    );
     assert!(!service_updated.is_active);
 
     // 测试名称唯一性
@@ -357,7 +424,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         is_active: Some(true),
         rules_config: json!({"test": true}),
     };
-    let duplicate_result = rule_template_service.create_template(duplicate_request).await;
+    let duplicate_result = rule_template_service
+        .create_template(duplicate_request)
+        .await;
     assert!(duplicate_result.is_err());
 
     // 测试更新不存在的模版
@@ -367,7 +436,9 @@ async fn test_rule_template_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn
         is_active: None,
         rules_config: None,
     };
-    let nonexistent_result = rule_template_service.update_template("non-existent-id".to_string(), nonexistent_update).await;
+    let nonexistent_result = rule_template_service
+        .update_template("non-existent-id".to_string(), nonexistent_update)
+        .await;
     assert!(nonexistent_result.is_err());
 
     println!("✅ 服务层测试全部通过！");

@@ -1,18 +1,18 @@
 //! 全局游戏状态管理器
 //! 负责管理所有游戏的内存状态，与REST API服务分离
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use chrono::{DateTime, Utc};
+use dashmap::DashMap;
 use serde_json::Value as JsonValue;
 use sqlx::MySqlPool;
 use std::fs;
 use std::path::Path;
-use dashmap::DashMap;
-use chrono::{DateTime, Utc};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 // 从websocket模块导入游戏模型
-use crate::websocket::models::{GameState, Player, Place};
 use crate::game::models::{GameStatus, SaveFileInfo};
+use crate::websocket::models::{GameState, Place, Player};
 
 /// 全局游戏状态管理器
 #[derive(Clone)]
@@ -44,7 +44,11 @@ impl GlobalGameStateManager {
     }
 
     /// 创建新的游戏状态（仅由首次开始游戏时调用）
-    pub async fn create_game_state(&self, game_id: &str, rules_config: JsonValue) -> Result<Arc<RwLock<GameState>>, String> {
+    pub async fn create_game_state(
+        &self,
+        game_id: &str,
+        rules_config: JsonValue,
+    ) -> Result<Arc<RwLock<GameState>>, String> {
         // 检查内存中是否已存在游戏状态
         if self.game_states.contains_key(game_id) {
             return Err("Game state already exists".to_string());
@@ -87,8 +91,9 @@ impl GlobalGameStateManager {
 
         // 将新创建的游戏状态存储到内存中
         let game_state_arc = Arc::new(RwLock::new(game_state));
-        self.game_states.insert(game_id.to_string(), game_state_arc.clone());
-        
+        self.game_states
+            .insert(game_id.to_string(), game_state_arc.clone());
+
         Ok(game_state_arc)
     }
 
@@ -97,13 +102,18 @@ impl GlobalGameStateManager {
         // 生成带时间戳的文件名（使用Windows兼容格式）
         let timestamp = Utc::now().format("%Y-%m-%dT%H-%M-%S%.3fZ").to_string();
         let file_name = format!("{}.json", timestamp);
-        
-        self.save_game_state_to_disk_with_name(game_id, &file_name).await?;
+
+        self.save_game_state_to_disk_with_name(game_id, &file_name)
+            .await?;
         Ok(file_name)
     }
 
     /// 保存游戏状态到磁盘（指定文件名）
-    pub async fn save_game_state_to_disk_with_name(&self, game_id: &str, file_name: &str) -> Result<(), String> {
+    pub async fn save_game_state_to_disk_with_name(
+        &self,
+        game_id: &str,
+        file_name: &str,
+    ) -> Result<(), String> {
         if let Some(game_state) = self.game_states.get(game_id) {
             let game_state_guard = game_state.read().await;
             let serialized = serde_json::to_string(&*game_state_guard)
@@ -126,7 +136,11 @@ impl GlobalGameStateManager {
     }
 
     /// 从磁盘恢复游戏状态（指定文件名）
-    pub async fn load_game_state_from_disk_with_name(&self, game_id: &str, file_name: &str) -> Result<(), String> {
+    pub async fn load_game_state_from_disk_with_name(
+        &self,
+        game_id: &str,
+        file_name: &str,
+    ) -> Result<(), String> {
         let file_path = format!("game_states/{}/{}", game_id, file_name);
         if !Path::new(&file_path).exists() {
             return Err("Game state file not found".to_string());
@@ -152,15 +166,15 @@ impl GlobalGameStateManager {
         }
 
         let mut save_files = Vec::new();
-        
+
         // 读取目录中的所有文件
-        let entries = fs::read_dir(&dir_path)
-            .map_err(|e| format!("Failed to read directory: {}", e))?;
-        
+        let entries =
+            fs::read_dir(&dir_path).map_err(|e| format!("Failed to read directory: {}", e))?;
+
         for entry in entries {
             let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
             let path = entry.path();
-            
+
             // 只处理.json文件
             if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
                 if let Some(file_name) = path.file_name().and_then(|name| name.to_str()) {
@@ -182,7 +196,7 @@ impl GlobalGameStateManager {
                     } else {
                         None
                     };
-                    
+
                     save_files.push(SaveFileInfo {
                         file_name: file_name.to_string(),
                         created_at,
@@ -190,7 +204,7 @@ impl GlobalGameStateManager {
                 }
             }
         }
-        
+
         // 按创建时间排序，最新的在前
         save_files.sort_by(|a, b| {
             // 处理None值的情况
@@ -201,7 +215,7 @@ impl GlobalGameStateManager {
                 (None, None) => std::cmp::Ordering::Equal,
             }
         });
-        
+
         Ok(save_files)
     }
 

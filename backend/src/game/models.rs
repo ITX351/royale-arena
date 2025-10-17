@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use std::str::FromStr;
 use std::fmt;
+use std::str::FromStr;
 
 /// 游戏状态枚举
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
@@ -94,7 +94,7 @@ pub struct GameQueryResult {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
-    pub status: String,  // MySQL ENUM在SQLx中作为字符串处理更可靠
+    pub status: String, // MySQL ENUM在SQLx中作为字符串处理更可靠
     pub max_players: i32,
     pub created_at: DateTime<Utc>,
     pub player_count: i64,
@@ -104,7 +104,7 @@ pub struct GameQueryResult {
 impl From<GameQueryResult> for GameListItem {
     fn from(result: GameQueryResult) -> Self {
         let status = result.status.parse().unwrap_or(GameStatus::Waiting);
-        
+
         Self {
             id: result.id,
             name: result.name,
@@ -154,8 +154,6 @@ pub struct UpdateGameRequest {
     // 修改：移除 rule_template_id，添加 rules_config（内部使用）
     pub rules_config: Option<serde_json::Value>,
 }
-
-
 
 /// 获取玩家消息记录请求
 #[derive(Debug, Deserialize)]
@@ -235,11 +233,9 @@ impl GameFilterType {
                 GameStatus::Paused,
                 GameStatus::Ended,
             ],
-            GameFilterType::Active => vec![
-                GameStatus::Waiting,
-                GameStatus::Running,
-                GameStatus::Paused,
-            ],
+            GameFilterType::Active => {
+                vec![GameStatus::Waiting, GameStatus::Running, GameStatus::Paused]
+            }
             GameFilterType::Waiting => vec![GameStatus::Waiting],
             GameFilterType::Running => vec![GameStatus::Running],
             GameFilterType::Ended => vec![GameStatus::Ended],
@@ -261,23 +257,23 @@ impl CreateGameRequest {
         if self.name.trim().is_empty() {
             return Err("游戏名称不能为空".to_string());
         }
-        
+
         if self.name.len() > 100 {
             return Err("游戏名称不能超过100个字符".to_string());
         }
-        
+
         if self.director_password.len() < 6 || self.director_password.len() > 50 {
             return Err("导演密码长度必须在6-50字符之间".to_string());
         }
-        
+
         if self.max_players < 1 || self.max_players > 1000 {
             return Err("最大玩家数必须在1-1000之间".to_string());
         }
-        
+
         if self.rule_template_id.trim().is_empty() {
             return Err("规则模板ID不能为空".to_string());
         }
-        
+
         Ok(())
     }
 }
@@ -293,24 +289,22 @@ impl UpdateGameRequest {
                 return Err("游戏名称不能超过100个字符".to_string());
             }
         }
-        
+
         if let Some(ref password) = self.director_password {
             if password.len() < 6 || password.len() > 50 {
                 return Err("导演密码长度必须在6-50字符之间".to_string());
             }
         }
-        
+
         if let Some(max_players) = self.max_players {
             if max_players < 1 || max_players > 1000 {
                 return Err("最大玩家数必须在1-1000之间".to_string());
             }
         }
-        
+
         Ok(())
     }
 }
-
-
 
 impl GetPlayerMessagesRequest {
     /// 验证获取玩家消息记录请求的参数
@@ -318,11 +312,11 @@ impl GetPlayerMessagesRequest {
         if self.password.trim().is_empty() {
             return Err("玩家密码不能为空".to_string());
         }
-        
+
         if self.password.len() < 6 || self.password.len() > 50 {
             return Err("玩家密码长度必须在6-50字符之间".to_string());
         }
-        
+
         Ok(())
     }
 }

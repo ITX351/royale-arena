@@ -1,11 +1,11 @@
 use axum::{
-    extract::{Path, State},
     Extension, Json,
+    extract::{Path, State},
 };
 
 use crate::admin::models::{
-    AdminListResponse, CreateAdminRequest, CreateAdminResponse, DeleteAdminResponse,
-    JwtClaims, LoginRequest, LoginResponse, UpdateAdminRequest, UpdateAdminResponse,
+    AdminListResponse, CreateAdminRequest, CreateAdminResponse, DeleteAdminResponse, JwtClaims,
+    LoginRequest, LoginResponse, UpdateAdminRequest, UpdateAdminResponse,
 };
 use crate::errors::ServiceError;
 use crate::routes::AppState;
@@ -49,7 +49,10 @@ pub async fn update_admin(
     Path(user_id): Path<String>,
     Json(request): Json<UpdateAdminRequest>,
 ) -> Result<Json<UpdateAdminResponse>, ServiceError> {
-    let user = app_state.admin_service.update_admin(&user_id, request).await?;
+    let user = app_state
+        .admin_service
+        .update_admin(&user_id, request)
+        .await?;
     Ok(Json(UpdateAdminResponse {
         success: true,
         message: "Admin user updated successfully".to_string(),

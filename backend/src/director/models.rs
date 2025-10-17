@@ -1,6 +1,6 @@
+use crate::game::models::{GameStatus, SaveFileInfo};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use crate::game::models::{GameStatus, SaveFileInfo};
 
 /// 导演编辑游戏请求
 #[derive(Debug, Deserialize)]
@@ -125,7 +125,11 @@ impl DirectorEditGameRequest {
     /// 验证导演编辑游戏请求的数据
     pub fn validate(&self) -> Result<(), String> {
         // 验证至少提供一个字段
-        if self.name.is_none() && self.description.is_none() && self.max_players.is_none() && self.rules_config.is_none() {
+        if self.name.is_none()
+            && self.description.is_none()
+            && self.max_players.is_none()
+            && self.rules_config.is_none()
+        {
             return Err("至少需要提供一个字段进行更新".to_string());
         }
 
@@ -157,7 +161,7 @@ impl CreatePlayerRequest {
         if self.player_name.trim().is_empty() {
             return Err("演员名称不能为空".to_string());
         }
-        
+
         if self.player_name.len() > 50 {
             return Err("演员名称不能超过50个字符".to_string());
         }

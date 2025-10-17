@@ -1,5 +1,5 @@
-use sqlx::{mysql::MySqlPool, MySql, Pool};
 use crate::config::AppConfig;
+use sqlx::{MySql, Pool, mysql::MySqlPool};
 
 pub type DatabasePool = Pool<MySql>;
 
