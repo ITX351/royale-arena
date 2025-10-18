@@ -12,7 +12,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 use super::models::*;
-use crate::game::models::GameStatus;
+use crate::game::models::{GameStatus, NewKillRecord};
 use crate::routes::AppState;
 use tracing::debug;
 
@@ -461,12 +461,18 @@ impl WebSocketService {
                     if message_type != crate::game::MessageType::Info {
                         // 为每个相关玩家创建日志记录
                         for broadcast_player_id in &action_result.broadcast_players {
+                            let player_id_option = if action_result.broadcast_to_all {
+                                None
+                            } else {
+                                Some(broadcast_player_id.clone())
+                            };
+
                             let log_result = self
                                 .app_state
                                 .game_log_service
                                 .create_log(
                                     &updated_game_state.game_id,
-                                    broadcast_player_id,
+                                    player_id_option,
                                     &action_result.log_message,
                                     message_type.clone(),
                                     action_result.timestamp, // 传递ActionResult中的时间戳
@@ -479,6 +485,23 @@ impl WebSocketService {
                             if let Err(e) = log_result {
                                 eprintln!("Failed to create log record: {}", e);
                             }
+
+                            if action_result.broadcast_to_all {
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some(kill_record_params) =
+                        NewKillRecord::build_kill_record_params(&updated_game_state.game_id, action_result)
+                    {
+                        if let Err(e) = self
+                            .app_state
+                            .game_log_service
+                            .add_kill_record(&kill_record_params)
+                            .await
+                        {
+                            eprintln!("Failed to create kill record: {}", e);
                         }
                     }
                 }

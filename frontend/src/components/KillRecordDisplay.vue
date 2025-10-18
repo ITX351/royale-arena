@@ -2,6 +2,7 @@
   <el-card class="kill-record-display">
     <template #header>
       <div class="card-header">
+        <span class="header-spacer" aria-hidden="true"></span>
         <h3>击杀记录</h3>
         <div class="header-controls">
           <el-select 
@@ -160,14 +161,24 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
 }
 
 .card-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
+  width: 100%;
+}
+
+.header-spacer {
+  height: 1px;
+}
+
+.card-header h3 {
+  margin: 0;
+  justify-self: center;
 }
 
 .header-controls {
+  justify-self: end;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -186,5 +197,26 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
   text-align: center;
   padding: 20px;
   color: #909399;
+}
+
+.kill-record-display :deep(.el-table__header-wrapper table),
+.kill-record-display :deep(.el-table__body-wrapper table) {
+  margin: 0 auto;
+  display: inline-table;
+}
+
+@media (max-width: 600px) {
+  .card-header {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .header-spacer {
+    display: none;
+  }
+
+  .header-controls {
+    justify-self: center;
+  }
 }
 </style>

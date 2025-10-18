@@ -2,7 +2,14 @@
 //! 负责处理游戏日志的数据库操作
 
 use crate::game::errors::GameError;
-use crate::game::models::{GetPlayerMessagesRequest, MessageRecord, MessageType, KillRecord, GetPlayerKillRecordsRequest};
+use crate::game::models::{
+    GetPlayerMessagesRequest,
+    MessageRecord,
+    MessageType,
+    KillRecord,
+    GetPlayerKillRecordsRequest,
+    NewKillRecord,
+};
 use chrono::{DateTime, Utc};
 use sqlx::MySqlPool;
 use uuid::Uuid;
@@ -19,11 +26,52 @@ impl GameLogService {
         Self { pool }
     }
 
+    /// 新增击杀记录
+    pub async fn add_kill_record(
+        &self,
+        params: &NewKillRecord,
+    ) -> Result<KillRecord, String> {
+        let id = Uuid::new_v4().to_string();
+
+        let killer_id_for_query = params.killer_id.as_deref();
+        let weapon_for_query = params.weapon.as_deref();
+        let location_for_query = params.location.as_deref();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO kill_records (id, game_id, killer_id, victim_id, kill_time, cause, weapon, location)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            id,
+            &params.game_id,
+            killer_id_for_query,
+            &params.victim_id,
+            params.kill_time,
+            &params.cause,
+            weapon_for_query,
+            location_for_query
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to create kill record: {}", e))?;
+
+        Ok(KillRecord {
+            id,
+            game_id: params.game_id.clone(),
+            killer_id: params.killer_id.clone(),
+            victim_id: params.victim_id.clone(),
+            kill_time: params.kill_time,
+            cause: params.cause.clone(),
+            weapon: params.weapon.clone(),
+            location: params.location.clone(),
+        })
+    }
+
     /// 创建游戏日志
     pub async fn create_log(
         &self,
         game_id: &str,
-        player_id: &str,
+        player_id: Option<String>,
         message: &str,
         message_type: MessageType,
         timestamp: DateTime<Utc>,
@@ -35,6 +83,8 @@ impl GameLogService {
         // 根据消息类型确定数据库中的类型字符串
         let type_string = message_type.as_str();
 
+        let player_id_for_query = player_id.as_deref();
+
         let result = sqlx::query!(
             r#"
             INSERT INTO game_logs (id, game_id, type, message, player_id, timestamp, visible_to_all_players, visible_to_director)
@@ -44,7 +94,7 @@ impl GameLogService {
             game_id,
             type_string,
             message,
-            player_id,
+            player_id_for_query,
             timestamp,
             visible_to_all_players,
             visible_to_director
@@ -62,7 +112,7 @@ impl GameLogService {
             game_id: game_id.to_string(),
             message_type,
             message: message.to_string(),
-            player_id: player_id.to_string(),
+            player_id,
             timestamp,
             visible_to_all_players,
             visible_to_director,

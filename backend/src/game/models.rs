@@ -17,6 +17,18 @@ pub struct KillRecord {
     pub location: Option<String>,
 }
 
+/// 新增击杀记录的数据载体
+#[derive(Debug, Clone)]
+pub struct NewKillRecord {
+    pub game_id: String,
+    pub killer_id: Option<String>,
+    pub victim_id: String,
+    pub kill_time: DateTime<Utc>,
+    pub cause: String,
+    pub weapon: Option<String>,
+    pub location: Option<String>,
+}
+
 /// 获取玩家击杀记录请求
 #[derive(Debug, Deserialize)]
 pub struct GetPlayerKillRecordsRequest {
@@ -219,7 +231,7 @@ pub struct MessageRecord {
     #[serde(rename = "type")]
     pub message_type: MessageType,
     pub message: String,
-    pub player_id: String,
+    pub player_id: Option<String>,
     pub timestamp: DateTime<Utc>,
     pub visible_to_all_players: bool,
     pub visible_to_director: bool,
@@ -340,6 +352,43 @@ impl GetPlayerMessagesRequest {
         }
 
         Ok(())
+    }
+}
+
+impl NewKillRecord {
+    pub fn build_kill_record_params(
+        game_id: &str,
+        action_result: &crate::websocket::models::ActionResult,
+    ) -> Option<NewKillRecord> {
+        if action_result.message_type != crate::game::MessageType::SystemNotice {
+            return None;
+        }
+
+        let data = &action_result.data;
+
+        if data
+            .get("is_alive")
+            .and_then(|value| value.as_bool())
+            != Some(false)
+        {
+            return None;
+        }
+
+        let victim_id = data.get("player_id").and_then(|value| value.as_str())?;
+        let cause = data.get("reason").and_then(|value| value.as_str())?;
+        let killer_id = data.get("killer_id").and_then(|value| value.as_str()).map(|value| value.to_string());
+        let weapon = data.get("weapon").and_then(|value| value.as_str()).map(|value| value.to_string());
+        let location = data.get("location_before_death").and_then(|value| value.as_str()).filter(|value| !value.is_empty()).map(|value| value.to_string());
+
+        Some(NewKillRecord {
+            game_id: game_id.to_string(),
+            killer_id,
+            victim_id: victim_id.to_string(),
+            kill_time: action_result.timestamp,
+            cause: cause.to_string(),
+            weapon,
+            location,
+        })
     }
 }
 

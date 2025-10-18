@@ -604,12 +604,13 @@ impl GameState {
 
         // 创建动作结果，广播给所有玩家和导演
         let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
-        let action_result = ActionResult::new_user_message(
+        let mut action_result = ActionResult::new_user_message(
             data,
             broadcast_players,
             format!("导演向全部玩家广播消息: {}", message),
             true,
         );
+        action_result.broadcast_to_all = true;
 
         Ok(action_result.as_results())
     }
