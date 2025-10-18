@@ -4,6 +4,23 @@
       <div class="card-header">
         <h3>地点状态管理</h3>
         <div class="header-actions">
+          <div class="button-group">
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="handleClearAllItems"
+              :disabled="!hasAnyItems"
+            >
+              清空全场物品
+            </el-button>
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="showPlainTextDialog('place')"
+            >
+              复制状态
+            </el-button>
+          </div>
           <el-button 
             type="primary" 
             size="small" 
@@ -22,9 +39,7 @@
             <template #default="scope">
               <el-switch
                 v-model="scope.row.is_destroyed"
-                active-text="已摧毁"
-                inactive-text="未摧毁"
-                @change="val => handlePlaceStatusChange(scope.row.name, val)"
+                @change="handlePlaceStatusChange(scope.row.name, $event)"
                 size="small"
               />
             </template>
@@ -47,30 +62,28 @@
           <el-table-column label="物品列表" min-width="250">
             <template #default="scope">
               <div class="items-list">
-                <div 
-                  v-for="(item, index) in scope.row.items" 
-                  :key="index" 
-                  class="item-row"
-                >
-                  <span class="item-name">{{ item.name }}</span>
-                  <el-button 
-                    type="danger" 
-                    size="small" 
-                    @click="handleDeleteItem(scope.row.name, item.name)"
-                    :icon="Delete"
-                    circle
-                  />
+                <div class="items-flow">
+                  <el-tag
+                    v-for="(item, index) in scope.row.items"
+                    :key="index"
+                    size="small"
+                    class="item-tag"
+                    closable
+                    @close="handleDeleteItem(scope.row.name, item.name)"
+                  >
+                    {{ item.name }}
+                  </el-tag>
+                  <span v-if="scope.row.items.length === 0" class="empty-text">无</span>
                 </div>
-                <div v-if="scope.row.items.length === 0" class="empty-text">无</div>
-                <el-button 
+                <el-button
                   v-if="scope.row.items.length > 0"
-                  type="warning" 
-                  size="small" 
-                  @click="handleClearPlaceItems(scope.row.name)"
+                  type="warning"
+                  size="small"
+                  circle
+                  :icon="Delete"
                   class="clear-place-btn"
-                >
-                  清空地点
-                </el-button>
+                  @click="handleClearPlaceItems(scope.row.name)"
+                />
               </div>
             </template>
           </el-table-column>
@@ -133,7 +146,6 @@ const placeList = computed<Place[]>(() => {
   return props.places
 })
 
-// 检查是否有任何物品
 const hasAnyItems = computed(() => {
   return placeList.value.some(place => place.items.length > 0)
 })
@@ -222,18 +234,24 @@ const handleClearAllItems = async () => {
 const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'place') {
     // 创建地点状态的表格文本表示
-    let statusText = '地点名称\t状态\n'
-    statusText += '--------\t--------\n'
-    
-    // 只显示未摧毁的地点
+    let statusText = '地点\t玩家\t物品\n'
+    statusText += '----\t----\t----\n'
+
     placeList.value
       .filter(place => !place.is_destroyed)
       .forEach(place => {
-        statusText += `${place.name}\t未摧毁\n`
+        const playerNames = place.players
+          .map(playerId => getPlayerName(playerId))
+          .join(', ') || '无'
+        const itemNames = place.items
+          .map(item => item.name)
+          .join(', ') || '无'
+
+        statusText += `${place.name}\t${playerNames}\t${itemNames}\n`
       })
-    
+
     plainTextContent.value = statusText
-    dialogTitle.value = '地点状态 (未摧毁)'
+    dialogTitle.value = '地点状态'
   }
   
   plainTextDialogVisible.value = true
@@ -295,23 +313,21 @@ const copyPlainTextContent = () => {
 
 .items-list {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.item-row {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
+  gap: 8px;
 }
 
-.item-name {
+.items-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
   flex: 1;
-  font-size: 13px;
-  color: #606266;
+}
+
+.item-tag {
+  margin: 2px 0;
 }
 
 .empty-text {
@@ -321,8 +337,7 @@ const copyPlainTextContent = () => {
 }
 
 .clear-place-btn {
-  margin-top: 5px;
-  width: 100%;
+  margin-left: auto;
 }
 
 .dialog-footer {

@@ -1,103 +1,96 @@
 <template>
-  <div class="compact-action-panel">
-    <!-- 玩家状态栏 -->
-    <div class="player-status-bar">
-      <div class="status-item">
-        <span class="status-label">生命:</span>
-        <span class="status-value life">{{ player.life }}</span>
-      </div>
-      <div class="status-item">
-        <span class="status-label">体力:</span>
-        <span class="status-value strength">{{ player.strength }}</span>
-      </div>
-      <div class="status-item">
-        <span class="status-label">位置:</span>
-        <span class="status-value location">{{ player.location || '未出生' }}</span>
-      </div>
+  <!-- 玩家状态栏 -->
+  <div class="player-status-bar">
+    <div class="status-item">
+      <span class="status-label">生命:</span>
+      <span class="status-value life">{{ player.life }}</span>
     </div>
+    <div class="status-item">
+      <span class="status-label">体力:</span>
+      <span class="status-value strength">{{ player.strength }}</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">位置:</span>
+      <span class="status-value location">{{ player.location || '未出生' }}</span>
+    </div>
+  </div>
 
-    <!-- 核心操作区 -->
-    <div class="core-actions">
-      <h4 class="section-title">核心操作</h4>
-      <div class="action-row">
-        <!-- 出生/移动操作 -->
-        <div class="action-group">
-          <template v-if="!player.location">
-            <!-- 出生操作 -->
-            <el-select 
-              v-model="selectedPlace" 
-              placeholder="选择出生地点" 
-              size="small"
-              style="width: 160px;"
-            >
-              <el-option
-                v-for="place in places"
-                :key="place.name"
-                :label="place.name"
-                :value="place.name"
-                :disabled="place.is_destroyed"
-              />
-            </el-select>
-            <el-button 
-              type="primary" 
-              size="small"
-              :disabled="!selectedPlace"
-              @click="handleBorn"
-            >
-              出生
-            </el-button>
-          </template>
-          <template v-else>
-            <!-- 移动操作 -->
-            <el-select 
-              v-model="targetPlace" 
-              placeholder="选择目标地点" 
-              size="small"
-              style="width: 160px;"
-            >
-              <el-option
-                v-for="place in places"
-                :key="place.name"
-                :label="place.name"
-                :value="place.name"
-                :disabled="place.is_destroyed || place.name === player.location"
-              />
-            </el-select>
-            <el-button 
-              type="primary" 
-              size="small"
-              :disabled="!targetPlace"
-              @click="handleMove"
-            >
-              移动
-            </el-button>
-          </template>
-        </div>
+  <!-- 核心操作区 -->
+  <div class="core-actions">
+    <div class="action-row">
+      <!-- 出生/移动操作 -->
+      <div class="action-group">
+        <template v-if="!hasSpawned">
+          <el-select 
+            v-model="selectedPlace" 
+            placeholder="选择出生地点" 
+            size="small"
+            style="width: 160px;"
+          >
+            <el-option
+              v-for="place in places"
+              :key="place.name"
+              :label="place.name"
+              :value="place.name"
+              :disabled="place.is_destroyed"
+            />
+          </el-select>
+          <el-button 
+            type="primary" 
+            size="small"
+            :disabled="!selectedPlace || actionsDisabled"
+            @click="handleBorn"
+          >
+            出生
+          </el-button>
+        </template>
+        <template v-else>
+          <el-select 
+            v-model="targetPlace" 
+            placeholder="选择目标地点" 
+            size="small"
+            style="width: 160px;"
+          >
+            <el-option
+              v-for="place in places"
+              :key="place.name"
+              :label="place.name"
+              :value="place.name"
+              :disabled="place.is_destroyed || place.name === player.location"
+            />
+          </el-select>
+          <el-button 
+            type="primary" 
+            size="small"
+            :disabled="!targetPlace || actionsDisabled"
+            @click="handleMove"
+          >
+            移动
+          </el-button>
+        </template>
+      </div>
 
-        <!-- 搜索操作 -->
+      <div class="action-buttons" v-if="hasSpawned">
         <el-button 
           type="success" 
           size="small"
+          :disabled="actionsDisabled"
           @click="handleSearch"
         >
           搜索
         </el-button>
-
-        <!-- 攻击操作 -->
         <el-button 
           type="danger" 
           size="small"
-          :disabled="!hasValidTarget"
+          :disabled="actionsDisabled || !hasValidTarget"
           @click="handleAttack"
         >
           攻击
         </el-button>
-
-        <!-- 捡拾操作 -->
         <el-button 
           type="warning" 
           size="small"
-          :disabled="!hasItemTarget"
+          :disabled="actionsDisabled || !hasItemTarget"
           @click="handlePick"
         >
           捡拾
@@ -105,141 +98,86 @@
       </div>
     </div>
 
-    <!-- 道具快操区 -->
-    <!--<div class="item-quick-actions" v-if="player.inventory.length > 0 || equippedWeapon || equippedArmor">
-      <h4 class="section-title">道具快操</h4>
-      <div class="quick-item-row">
-        <div class="equipped-weapons" v-if="equippedWeapon">
-          <span class="item-label">武器:</span>
-          <div class="item-display">
-            <span class="item-name">{{ equippedWeapon.name }}</span>
-            <el-button 
-              size="small" 
-              type="text"
-              @click="handleUnequipWeapon"
-            >
-              卸下
-            </el-button>
-          </div>
-        </div>
+    <div class="timing-hints">
+      <span class="timing-text timing-search">
+        <template v-if="canSearchNow">
+          <span class="search-ready">当前可以搜索</span>
+        </template>
+        <template v-else>
+          <span class="search-pending">距离下一次搜索还有 {{ searchCooldownRemaining }} 秒</span>
+        </template>
+      </span>
+      <span class="timing-text timing-night">{{ nightCountdownMessage }}</span>
+    </div>
 
-        <div class="equipped-armors" v-if="equippedArmor">
-          <span class="item-label">防具:</span>
-          <div class="item-display">
-            <span class="item-name">{{ equippedArmor.name }}</span>
-            <el-button 
-              size="small" 
-              type="text"
-              @click="handleUnequipArmor"
-            >
-              卸下
-            </el-button>
-          </div>
-        </div>
+    <div class="search-result-brief">
+      <span class="search-result-text">{{ searchResultText }}</span>
+    </div>
+  </div>
 
-        <div class="inventory-selector">
-          <el-select 
-            v-model="selectedItem" 
-            placeholder="选择道具" 
-            size="small"
-            style="width: 140px;"
-          >
-            <el-option
-              v-for="item in player.inventory"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-          <el-button 
-            size="small"
-            :disabled="!selectedItem"
-            @click="handleEquipSelected"
-          >
-            装备
-          </el-button>
-          <el-button 
-            size="small"
-            :disabled="!selectedItem"
-            @click="handleUseItem"
-          >
-            使用
-          </el-button>
-          <el-button 
-            size="small"
-            :disabled="!selectedItem"
-            @click="handleDiscardSelected"
-          >
-            丢弃
-          </el-button>
-        </div>
+  <!-- 通信快捷区 -->
+  <div class="communication-actions">
+    <div class="comm-row">
+      <!-- 传音 -->
+      <div class="deliver-group">
+        <el-select 
+          v-model="targetPlayer" 
+          placeholder="选择玩家" 
+          size="small"
+          style="width: 120px;"
+        >
+          <el-option
+            v-for="otherPlayer in otherPlayers"
+            :key="otherPlayer.id"
+            :label="otherPlayer.name"
+            :value="otherPlayer.id"
+          />
+        </el-select>
+        <el-input 
+          v-model="deliverMessage" 
+          placeholder="传音内容"
+          size="small"
+          style="width: 150px;"
+          @keyup.enter="handleDeliver"
+        />
+        <el-button 
+          size="small"
+          :disabled="!targetPlayer || !deliverMessage"
+          @click="handleDeliver"
+        >
+          传音
+        </el-button>
       </div>
-    </div>-->
 
-    <!-- 通信快捷区 -->
-    <div class="communication-actions">
-      <h4 class="section-title">通信</h4>
-      <div class="comm-row">
-        <!-- 传音 -->
-        <div class="deliver-group">
-          <el-select 
-            v-model="targetPlayer" 
-            placeholder="选择玩家" 
-            size="small"
-            style="width: 120px;"
-          >
-            <el-option
-              v-for="otherPlayer in otherPlayers"
-              :key="otherPlayer.id"
-              :label="otherPlayer.name"
-              :value="otherPlayer.id"
-            />
-          </el-select>
-          <el-input 
-            v-model="deliverMessage" 
-            placeholder="传音内容"
-            size="small"
-            style="width: 150px;"
-            @keyup.enter="handleDeliver"
-          />
-          <el-button 
-            size="small"
-            :disabled="!targetPlayer || !deliverMessage"
-            @click="handleDeliver"
-          >
-            传音
-          </el-button>
-        </div>
-
-        <!-- 发送给导演 -->
-        <div class="director-message-group">
-          <el-input 
-            v-model="directorMessage" 
-            placeholder="发送给导演"
-            size="small"
-            style="width: 200px;"
-            @keyup.enter="handleSendToDirector"
-          />
-          <el-button 
-            size="small"
-            :disabled="!directorMessage"
-            @click="handleSendToDirector"
-          >
-            发送
-          </el-button>
-        </div>
+      <!-- 发送给导演 -->
+      <div class="director-message-group">
+        <el-input 
+          v-model="directorMessage" 
+          placeholder="发送给导演"
+          size="small"
+          style="width: 200px;"
+          @keyup.enter="handleSendToDirector"
+        />
+        <el-button 
+          size="small"
+          :disabled="!directorMessage"
+          @click="handleSendToDirector"
+        >
+          发送
+        </el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { Player, ActorPlace } from '@/types/gameStateTypes'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import type { Player, ActorPlace, GlobalState } from '@/types/gameStateTypes'
 
 const props = defineProps<{
   player: Player
   places: ActorPlace[]
+  globalState: GlobalState | null
 }>()
 
 const emit = defineEmits<{
@@ -249,20 +187,13 @@ const emit = defineEmits<{
 // 响应式数据
 const selectedPlace = ref('')
 const targetPlace = ref('')
-const selectedItem = ref('')
 const targetPlayer = ref('')
 const deliverMessage = ref('')
 const directorMessage = ref('')
+const now = ref(Date.now())
+let timer: number | null = null
 
 // 计算属性
-const equippedWeapon = computed(() => {
-  return props.player.equipped_weapon
-})
-
-const equippedArmor = computed(() => {
-  return props.player.equipped_armor
-})
-
 const hasValidTarget = computed(() => {
   return props.player.last_search_result?.target_type === 'player'
 })
@@ -271,57 +202,163 @@ const hasItemTarget = computed(() => {
   return props.player.last_search_result?.target_type === 'item'
 })
 
-const otherPlayers = computed(() => {
+const hasSpawned = computed(() => {
+  return Boolean(props.player.location)
+})
+
+const nightStartMs = computed(() => {
+  if (!props.globalState?.night_start_time) return null
+  const value = new Date(props.globalState.night_start_time).getTime()
+  return Number.isNaN(value) ? null : value
+})
+
+const nightEndMs = computed(() => {
+  if (!props.globalState?.night_end_time) return null
+  const value = new Date(props.globalState.night_end_time).getTime()
+  return Number.isNaN(value) ? null : value
+})
+
+const nightActionActive = computed(() => {
+  if (!nightStartMs.value || !nightEndMs.value) {
+    return true
+  }
+  if (nightEndMs.value <= nightStartMs.value) {
+    return now.value >= nightStartMs.value
+  }
+  return now.value >= nightStartMs.value && now.value <= nightEndMs.value
+})
+
+const actionsDisabled = computed(() => {
+  return !nightActionActive.value
+})
+
+const nightCountdownMessage = computed(() => {
+  if (!nightStartMs.value) {
+    return '夜晚行动时间未设置'
+  }
+  if (now.value < nightStartMs.value) {
+    return `距离夜晚行动开始还有 ${formatDuration(nightStartMs.value - now.value)}`
+  }
+  if (!nightEndMs.value) {
+    return '夜晚行动结束时间未设置'
+  }
+  if (now.value <= nightEndMs.value) {
+    return `距离夜晚行动结束还有 ${formatDuration(nightEndMs.value - now.value)}`
+  }
+  return '当前不在夜晚行动时间'
+})
+
+const searchCooldownSeconds = computed(() => {
+  const raw = props.globalState?.rules_config?.player?.search_cooldown
+  if (typeof raw === 'number' && raw > 0) {
+    return raw
+  }
+  return 0
+})
+
+const searchCooldownRemaining = computed(() => {
+  if (!searchCooldownSeconds.value) {
+    return '0.0'
+  }
+  if (!props.player.last_search_time) {
+    return '0.0'
+  }
+  const lastSearch = new Date(props.player.last_search_time).getTime()
+  if (Number.isNaN(lastSearch)) {
+    return '0.0'
+  }
+  const nextAvailable = lastSearch + searchCooldownSeconds.value * 1000
+  const remainingMs = nextAvailable - now.value
+  if (remainingMs <= 0) {
+    return '0.0'
+  }
+  return (remainingMs / 1000).toFixed(1)
+})
+
+const canSearchNow = computed(() => {
+  if (!searchCooldownSeconds.value) {
+    return true
+  }
+  if (!props.player.last_search_time) {
+    return true
+  }
+  const lastSearch = new Date(props.player.last_search_time).getTime()
+  if (Number.isNaN(lastSearch)) {
+    return true
+  }
+  const nextAvailable = lastSearch + searchCooldownSeconds.value * 1000
+  return now.value >= nextAvailable
+})
+
+const otherPlayers = computed((): Player[] => {
   // 这里需要从全局状态获取其他玩家列表
   // 暂时返回空数组，实际使用时需要从父组件传入或从store获取
   return []
 })
 
+const searchResultText = computed(() => {
+  const result = props.player.last_search_result
+  if (!result) {
+    return '暂无搜索结果'
+  }
+  const typeLabel = result.target_type === 'player' ? '玩家' : '道具'
+  return `最近发现${typeLabel}: ${result.target_name}`
+})
+
+onMounted(() => {
+  timer = window.setInterval(() => {
+    now.value = Date.now()
+  }, 100)
+})
+
+onUnmounted(() => {
+  if (timer !== null) {
+    window.clearInterval(timer)
+    timer = null
+  }
+})
+
 // 事件处理
 const handleBorn = () => {
+  if (actionsDisabled.value) {
+    return
+  }
   emit('action', 'born', { place_name: selectedPlace.value })
   selectedPlace.value = ''
 }
 
 const handleMove = () => {
+  if (actionsDisabled.value) {
+    return
+  }
   emit('action', 'move', { target_place: targetPlace.value })
   targetPlace.value = ''
 }
 
 const handleSearch = () => {
+  if (actionsDisabled.value) {
+    return
+  }
   emit('action', 'search', {})
 }
 
 const handleAttack = () => {
-  emit('action', 'attack', {})
-}
-
-const handlePick = () => {
-  emit('action', 'pick', {})
-}
-
-const handleEquipSelected = () => {
-  emit('action', 'equip', { item_id: selectedItem.value })
-  selectedItem.value = ''
-}
-
-const handleDiscardSelected = () => {
-  emit('action', 'throw', { item_id: selectedItem.value })
-  selectedItem.value = ''
-}
-
-const handleUseItem = () => {
-  if (selectedItem.value) {
-    emit('action', 'use', { item_id: selectedItem.value })
+  if (actionsDisabled.value) {
+    return
+  }
+  const target = props.player.last_search_result
+  if (target?.target_type === 'player') {
+    emit('action', 'attack', { target_player_id: target.target_id })
+  } else {
+    emit('action', 'attack', {})
   }
 }
 
-const handleUnequipWeapon = () => {
-  emit('action', 'unequip', { slot_type: 'weapon' })
-}
-
-const handleUnequipArmor = () => {
-  emit('action', 'unequip', { slot_type: 'armor' })
+const handlePick = () => {
+  if (actionsDisabled.value) {
+    return
+  }
+  emit('action', 'pick', {})
 }
 
 const handleDeliver = () => {
@@ -336,16 +373,22 @@ const handleSendToDirector = () => {
   emit('action', 'send', { message: directorMessage.value })
   directorMessage.value = ''
 }
+
+function formatDuration(durationMs: number) {
+  if (durationMs <= 0) {
+    return '0秒'
+  }
+  const totalSeconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes > 0) {
+    return `${minutes}分${seconds}秒`
+  }
+  return `${seconds}秒`
+}
 </script>
 
 <style scoped>
-.compact-action-panel {
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-
 .player-status-bar {
   display: flex;
   gap: 24px;
@@ -409,11 +452,65 @@ const handleSendToDirector = () => {
   align-items: center;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.timing-hints {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  color: #606266;
+  width: 100%;
+}
+
+.timing-text {
+  font-size: 12px;
+}
+
+.timing-search {
+  flex: 1;
+  min-width: 180px;
+}
+
+.timing-night {
+  flex: 1;
+  text-align: right;
+  min-width: 180px;
+}
+
+.search-ready {
+  color: #67c23a;
+  font-weight: 700;
+}
+
+.search-pending {
+  color: #f56c6c;
+}
+
+.search-result-brief {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.search-result-text {
+  font-size: 13px;
+  color: #303133;
+}
+
 .quick-item-row {
   display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
 }
 
 .equipped-weapons, .equipped-armors, .hand-item {
@@ -463,10 +560,6 @@ const handleSendToDirector = () => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .compact-action-panel {
-    padding: 12px;
-  }
-  
   .player-status-bar {
     flex-direction: column;
     gap: 8px;
@@ -479,6 +572,23 @@ const handleSendToDirector = () => {
   
   .action-group {
     justify-content: center;
+  }
+
+  .action-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .timing-hints {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .timing-search,
+  .timing-night {
+    text-align: left;
+    min-width: auto;
   }
   
   .quick-item-row, .comm-row {

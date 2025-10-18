@@ -1,14 +1,13 @@
 <template>
   <div class="in-game-state">
-    <!-- 主操作面板 -->
     <CompactActionPanel 
       v-if="player" 
       :player="player" 
       :places="placeList"
+      :global-state="globalState"
       @action="handlePlayerAction"
     />
 
-    <!-- 连接状态提示 -->
     <el-alert 
       v-if="!player && gameStateStore.connecting" 
       title="正在连接到游戏服务器..." 
@@ -17,7 +16,6 @@
       style="margin-bottom: 20px;"
     />
 
-    <!-- 无玩家数据提示 -->
     <el-alert 
       v-else-if="!player" 
       title="暂无玩家数据，请确保已连接到游戏并有有效的玩家信息" 
@@ -26,13 +24,11 @@
       style="margin-bottom: 20px;"
     />
 
-    <!-- 紧凑布局的主要内容区域 -->
-    <div class="main-content-grid" v-if="player">
-      <!-- 背包与搜索结果的紧凑显示 -->
+    <div class="main-content" v-if="player">
       <div class="inventory-section">
         <div class="section-header">
           <h3>背包管理</h3>
-          <span class="item-count">道具: {{ player.inventory?.length || 0 }}</span>
+          <el-tag v-if="player" type="info">总物品数: {{ totalItemCount }}</el-tag>
         </div>
         <InventoryPanel
           :player="player"
@@ -43,41 +39,20 @@
           @unequip-armor="handleUnequipArmor"
         />
       </div>
-
-      <div class="search-section">
-        <div class="section-header">
-          <h3>搜索结果</h3>
-          <span class="search-status" v-if="player.last_search_result">
-            发现: {{ player.last_search_result.target_name }}
-          </span>
-        </div>
-        <SearchResultDisplay
-          :player="player"
-          @search="handleSearch"
-          @pick="handlePick"
-          @attack="handleAttack"
-        />
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import type { Player, GlobalState, ActorPlace } from '@/types/gameStateTypes'
-import { GameStatus } from '@/types/game'
-import { formatTimestamp, formatGameStatus } from '@/utils/gameUtils'
-import { webSocketService } from '@/services/webSocketService'
 
-// 导入组件
-import PlayerStatusCard from '@/views/actor/components/PlayerStatusCard.vue'
 import CompactActionPanel from '@/views/actor/components/CompactActionPanel.vue'
 import InventoryPanel from '@/views/actor/components/InventoryPanel.vue'
-import SearchResultDisplay from '@/views/actor/components/SearchResultDisplay.vue'
 
-const props = defineProps<{
+defineProps<{
   game: GameWithRules | null
 }>()
 
@@ -100,14 +75,13 @@ const placeList = computed<ActorPlace[]>(() => {
   return gameStateStore.actorPlaceList
 })
 
-// 组件挂载时的操作
-onMounted(() => {
-  // 可以在这里添加组件挂载时需要执行的逻辑
-})
-
-// 组件卸载时的操作
-onUnmounted(() => {
-  // 可以在这里添加组件卸载时需要执行的逻辑
+const totalItemCount = computed(() => {
+  const current = player.value
+  if (!current) return 0
+  let count = current.inventory.length
+  if (current.equipped_weapon) count++
+  if (current.equipped_armor) count++
+  return count
 })
 
 // 方法
@@ -135,38 +109,6 @@ const handleUnequipWeapon = () => {
 const handleUnequipArmor = () => {
   handlePlayerAction('unequip', { slot_type: 'armor' })
 }
-
-const handleSearch = () => {
-  handlePlayerAction('search')
-}
-
-const handlePick = () => {
-  handlePlayerAction('pick')
-}
-
-const handleAttack = (targetPlayerId: string) => {
-  handlePlayerAction('attack', { target_player_id: targetPlayerId })
-}
-
-// 出生操作
-const handleBorn = (placeName: string) => {
-  handlePlayerAction('born', { place_name: placeName })
-}
-
-// 移动操作
-const handleMove = (targetPlace: string) => {
-  handlePlayerAction('move', { target_place: targetPlace })
-}
-
-// 传音操作
-const handleDeliver = (targetPlayerId: string, message: string) => {
-  handlePlayerAction('deliver', { target_player_id: targetPlayerId, message })
-}
-
-// 发送消息给导演操作
-const handleSend = (message: string) => {
-  handlePlayerAction('send', { message })
-}
 </script>
 
 <style scoped>
@@ -179,16 +121,16 @@ const handleSend = (message: string) => {
   overflow-y: auto;
   max-width: 100%;
   margin: 0 auto;
+  align-items: stretch;
 }
 
-.main-content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.main-content {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  flex: 1;
 }
 
-.inventory-section, .search-section {
+.inventory-section {
   background: #ffffff;
   border-radius: 8px;
   padding: 16px;
@@ -212,41 +154,27 @@ const handleSend = (message: string) => {
   color: #303133;
 }
 
-.item-count, .search-status {
-  font-size: 12px;
-  color: #909399;
-  background: #f0f2f5;
-  padding: 2px 8px;
-  border-radius: 12px;
-}
-
-/* 响应式设计 */
 @media (max-width: 768px) {
   .in-game-state {
     padding: 12px;
     gap: 12px;
   }
-  
-  .main-content-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .inventory-section, .search-section {
+
+  .inventory-section {
     padding: 12px;
     min-height: auto;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
 
 @media (max-width: 600px) {
   .in-game-state {
     padding: 8px;
-  }
-  
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
   }
 }
 

@@ -1,146 +1,131 @@
 <template>
-  <el-card class="inventory-panel">
-    <template #header>
-      <div class="card-header">
-        <h3>物品管理</h3>
-        <el-tag v-if="player" type="info">总物品数: {{ getTotalItemCount() }}</el-tag>
-      </div>
-    </template>
-
-    <div class="inventory-content">
-      <!-- 装备槽位区域 -->
-      <div class="equipment-slots">
-        <h4>装备槽位</h4>
-        
-        <div class="equipment-grid">
-          <!-- 武器槽 -->
-          <div class="equipment-slot weapon-slot">
-            <div class="slot-header">
-              <el-tag type="danger" size="small">武器</el-tag>
-            </div>
-            <div v-if="player?.equipped_weapon" class="slot-content">
-              <div class="item-info">
-                <div class="item-name">{{ player.equipped_weapon.name }}</div>
-                <div class="item-properties">
-                  <span v-if="player.equipped_weapon.properties.damage">
-                    伤害: {{ player.equipped_weapon.properties.damage }}
-                  </span>
-                </div>
-              </div>
-              <el-button 
-                type="warning" 
-                size="small" 
-                @click="unequipWeapon"
-                :loading="unequippingWeapon"
-              >
-                卸下
-              </el-button>
-            </div>
-            <div v-else class="slot-empty">
-              <el-empty description="未装备武器" :image-size="50" />
-            </div>
+  <!-- 装备槽位区域 -->
+  <div class="equipment-slots">
+    <div class="equipment-grid">
+      <!-- 武器槽 -->
+      <div class="equipment-slot weapon-slot">
+        <div v-if="player?.equipped_weapon" class="slot-content">
+          <el-tag type="danger" size="small">武器</el-tag>
+          <div class="slot-item-name">{{ player.equipped_weapon.name }}</div>
+          <div 
+            v-if="player.equipped_weapon.properties.damage"
+            class="item-properties"
+          >
+            <span>
+              伤害: {{ player.equipped_weapon.properties.damage }}
+            </span>
           </div>
-
-          <!-- 防具槽 -->
-          <div class="equipment-slot armor-slot">
-            <div class="slot-header">
-              <el-tag type="primary" size="small">防具</el-tag>
-            </div>
-            <div v-if="player?.equipped_armor" class="slot-content">
-              <div class="item-info">
-                <div class="item-name">{{ player.equipped_armor.name }}</div>
-                <div class="item-properties">
-                  <span v-if="player.equipped_armor.properties.defense">
-                    防御: {{ player.equipped_armor.properties.defense }}
-                  </span>
-                </div>
-              </div>
-              <el-button 
-                type="warning" 
-                size="small" 
-                @click="unequipArmor"
-                :loading="unequippingArmor"
-              >
-                卸下
-              </el-button>
-            </div>
-            <div v-else class="slot-empty">
-              <el-empty description="未装备防具" :image-size="50" />
-            </div>
-          </div>
+          <el-button 
+            type="warning" 
+            size="small" 
+            @click="unequipWeapon"
+            :loading="unequippingWeapon"
+          >
+            卸下
+          </el-button>
+        </div>
+        <div v-else class="slot-empty-text">
+          <el-tag type="danger" size="small">武器</el-tag>
+          <span>未装备武器</span>
         </div>
       </div>
 
-      <!-- 背包物品列表 -->
-      <div class="backpack-section">
-        <h4>背包</h4>
-        
-        <!-- 空背包提示 -->
-        <el-empty 
-          v-if="!player || player.inventory.length === 0" 
-          description="背包为空" 
-          :image-size="80"
-        />
-
-        <!-- 背包物品列表 -->
-        <div v-else class="inventory-items">
+      <!-- 防具槽 -->
+      <div class="equipment-slot armor-slot">
+        <div v-if="player?.equipped_armor" class="slot-content">
+          <el-tag type="primary" size="small">防具</el-tag>
+          <div class="slot-item-name">{{ player.equipped_armor.name }}</div>
           <div 
-            v-for="item in player.inventory" 
-            :key="item.id"
-            class="inventory-item"
+            v-if="player.equipped_armor.properties.defense"
+            class="item-properties"
           >
-            <div class="item-info">
-              <div class="item-name">{{ item.name }}</div>
-              <div class="item-type">
-                <el-tag :type="getItemTypeTagType(item.item_type)" size="small">
-                  {{ getItemTypeLabel(item.item_type) }}
-                </el-tag>
-              </div>
-              <div v-if="hasItemProperties(item)" class="item-properties">
-                <span v-if="item.properties.damage">伤害: {{ item.properties.damage }}</span>
-                <span v-if="item.properties.defense">防御: {{ item.properties.defense }}</span>
-                <span v-if="item.properties.effect_value">效果: {{ item.properties.effect_value }}</span>
-              </div>
-            </div>
-            
-            <div class="item-actions">
-              <!-- 装备按钮（仅武器和防具） -->
-              <el-button 
-                v-if="item.item_type === 'weapon' || item.item_type === 'equipment'" 
-                type="primary" 
-                size="small" 
-                @click="equipItem(item.id)"
-                :loading="loadingItems.includes(item.id)"
-              >
-                装备
-              </el-button>
-              
-              <!-- 使用按钮（仅消耗品） -->
-              <el-button 
-                v-if="item.item_type === 'consumable'" 
-                type="success" 
-                size="small" 
-                @click="useItem(item.id)"
-                :loading="loadingItems.includes(item.id)"
-              >
-                使用
-              </el-button>
-              
-              <!-- 丢弃按钮 -->
-              <el-button 
-                type="danger" 
-                size="small" 
-                @click="discardItem(item.id)"
-                :loading="loadingItems.includes(item.id)"
-              >
-                丢弃
-              </el-button>
-            </div>
+            <span>
+              防御: {{ player.equipped_armor.properties.defense }}
+            </span>
           </div>
+          <el-button 
+            type="warning" 
+            size="small" 
+            @click="unequipArmor"
+            :loading="unequippingArmor"
+          >
+            卸下
+          </el-button>
+        </div>
+        <div v-else class="slot-empty-text">
+          <el-tag type="primary" size="small">防具</el-tag>
+          <span>未装备防具</span>
         </div>
       </div>
     </div>
-  </el-card>
+  </div>
+
+  <!-- 背包物品列表 -->
+  <div class="backpack-section">
+    <!-- 空背包提示 -->
+    <el-empty 
+      v-if="!player || player.inventory.length === 0" 
+      description="背包为空" 
+      :image-size="80"
+    />
+
+    <!-- 背包物品列表 -->
+    <div v-else class="inventory-items">
+      <div 
+        v-for="item in player.inventory" 
+        :key="item.id"
+        class="inventory-item"
+      >
+        <div class="item-info">
+          <div class="item-name">{{ item.name }}</div>
+          <div class="item-type">
+            <el-tag :type="getItemTypeTagType(item.item_type)" size="small">
+              {{ getItemTypeLabel(item.item_type) }}
+            </el-tag>
+          </div>
+          <div v-if="hasItemProperties(item)" class="item-properties">
+            <span v-if="item.properties.damage">伤害: {{ item.properties.damage }}</span>
+            <span v-if="item.properties.defense">防御: {{ item.properties.defense }}</span>
+            <span v-if="item.properties.effect_value">效果: {{ item.properties.effect_value }}</span>
+          </div>
+        </div>
+        
+        <div class="item-actions">
+          <!-- 装备按钮（仅武器和防具） -->
+          <el-button 
+            v-if="item.item_type === 'weapon' || item.item_type === 'equipment'" 
+            type="primary" 
+            size="small" 
+            @click="equipItem(item.id)"
+            :loading="loadingItems.includes(item.id)"
+          >
+            装备
+          </el-button>
+          
+          <!-- 使用按钮（仅消耗品） -->
+          <el-button 
+            v-if="item.item_type === 'consumable'" 
+            type="success" 
+            size="small" 
+            @click="useItem(item.id)"
+            :loading="loadingItems.includes(item.id)"
+          >
+            使用
+          </el-button>
+          
+          <!-- 丢弃按钮 -->
+          <el-button 
+            type="danger" 
+            size="small" 
+            @click="discardItem(item.id)"
+            :loading="loadingItems.includes(item.id)"
+          >
+            丢弃
+          </el-button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -166,14 +151,6 @@ const unequippingWeapon = ref(false)
 const unequippingArmor = ref(false)
 
 // 方法
-const getTotalItemCount = () => {
-  if (!props.player) return 0
-  let count = props.player.inventory.length
-  if (props.player.equipped_weapon) count++
-  if (props.player.equipped_armor) count++
-  return count
-}
-
 const getItemTypeLabel = (itemType: string) => {
   switch (itemType) {
     case 'weapon': return '武器'
@@ -292,45 +269,36 @@ const unequipArmor = async () => {
 </script>
 
 <style scoped>
-.inventory-panel {
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-}
-
-.inventory-panel :deep(.el-card__header) {
-  background-color: #e9ecef;
-  padding: 10px 15px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-header h3 {
-  margin: 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.inventory-content {
+.equipment-slots {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-/* 装备槽位区域 */
 .equipment-slots h4 {
-  margin: 0 0 10px 0;
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.backpack-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.backpack-section h4 {
+  margin: 0;
   color: #333;
   font-size: 14px;
   font-weight: 600;
 }
 
 .equipment-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 15px;
 }
 
@@ -349,41 +317,38 @@ const unequipArmor = async () => {
   border-color: #409eff;
 }
 
-.slot-header {
-  margin-bottom: 10px;
-}
-
 .slot-content {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
 
-.slot-empty {
-  min-height: 100px;
+.slot-empty-text {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.slot-item-name {
+  font-weight: 500;
+  color: #333;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-properties {
+  display: flex;
+  gap: 8px;
   font-size: 12px;
   color: #666;
-  margin-top: 4px;
-}
-
-.item-properties span {
-  margin-right: 8px;
 }
 
 /* 背包区域 */
-.backpack-section h4 {
-  margin: 0 0 10px 0;
-  color: #333;
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .inventory-items {
   display: flex;
   flex-direction: column;
@@ -407,18 +372,24 @@ const unequipArmor = async () => {
 
 .item-info {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .item-name {
   font-weight: 500;
   font-size: 14px;
   color: #333;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-type {
-  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .item-actions {
@@ -427,14 +398,40 @@ const unequipArmor = async () => {
 }
 
 @media (max-width: 768px) {
-  .equipment-grid {
-    grid-template-columns: 1fr;
+  .slot-content {
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .equipment-slots {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .slot-empty-text {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
   
   .inventory-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .item-info {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .item-name {
+    max-width: 100%;
+  }
+
+  .item-properties {
+    flex-wrap: wrap;
   }
   
   .item-actions {
