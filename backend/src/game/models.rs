@@ -4,6 +4,26 @@ use sqlx::FromRow;
 use std::fmt;
 use std::str::FromStr;
 
+/// 击杀记录模型
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct KillRecord {
+    pub id: String,
+    pub game_id: String,
+    pub killer_id: Option<String>,
+    pub victim_id: String,
+    pub kill_time: DateTime<Utc>,
+    pub cause: String,
+    pub weapon: Option<String>,
+    pub location: Option<String>,
+}
+
+/// 获取玩家击杀记录请求
+#[derive(Debug, Deserialize)]
+pub struct GetPlayerKillRecordsRequest {
+    /// 玩家密码
+    pub password: String,
+}
+
 /// 游戏状态枚举
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "status", rename_all = "lowercase")]

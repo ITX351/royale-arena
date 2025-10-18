@@ -106,6 +106,8 @@ pub struct GameState {
     pub night_end_time: Option<DateTime<Utc>>,
     /// 下一夜晚缩圈地点集合
     pub next_night_destroyed_places: Vec<String>,
+    /// 存档时间
+    pub save_time: Option<DateTime<Utc>>,
 }
 
 /// 玩家类
@@ -478,6 +480,7 @@ impl GameState {
             night_start_time: None,
             night_end_time: None,
             next_night_destroyed_places: Vec::new(),
+            save_time: None,
         }
     }
 
@@ -521,6 +524,7 @@ impl<'de> Deserialize<'de> for GameState {
             night_start_time: Option<DateTime<Utc>>,
             night_end_time: Option<DateTime<Utc>>,
             next_night_destroyed_places: Vec<String>,
+            save_time: Option<DateTime<Utc>>,
         }
 
         let helper = GameStateHelper::deserialize(deserializer)?;
@@ -543,6 +547,7 @@ impl<'de> Deserialize<'de> for GameState {
             night_start_time: helper.night_start_time,
             night_end_time: helper.night_end_time,
             next_night_destroyed_places: helper.next_night_destroyed_places,
+            save_time: helper.save_time,
         })
     }
 }

@@ -7,7 +7,9 @@ import type {
   GameListQuery, 
   CreateGameRequest, 
   UpdateGameRequest,
-  ApiResponse 
+  ApiResponse,
+  KillRecord,
+  MessageRecord
 } from '@/types/game'
 
 export const gameService = {
@@ -43,5 +45,33 @@ export const gameService = {
   async deleteGame(id: string): Promise<ApiResponse<void>> {
     const response = await adminClient.delete(`${API_ENDPOINTS.ADMIN_GAMES}/${id}`)
     return response.data
-  }
+  },
+
+  // 获取导演消息记录
+  async getDirectorMessages(gameId: string, password: string): Promise<ApiResponse<MessageRecord[]>> {
+    const response = await apiClient.get(API_ENDPOINTS.DIRECTOR_MESSAGES(gameId), { 
+      params: { password } 
+    })
+    return response.data
+  },
+
+  // 获取导演击杀记录
+  async getDirectorKillRecords(gameId: string, password: string): Promise<ApiResponse<KillRecord[]>> {
+    const response = await apiClient.get(API_ENDPOINTS.DIRECTOR_KILL_RECORDS(gameId), { 
+      params: { password } 
+    })
+    return response.data
+  },
+
+  // 获取玩家消息记录
+  async getPlayerMessages(gameId: string, playerId: string, password: string): Promise<ApiResponse<MessageRecord[]>> {
+    const response = await apiClient.post(API_ENDPOINTS.PLAYER_MESSAGES(gameId, playerId), { password })
+    return response.data
+  },
+
+  // 获取玩家击杀记录
+  async getPlayerKillRecords(gameId: string, playerId: string, password: string): Promise<ApiResponse<KillRecord[]>> {
+    const response = await apiClient.post(API_ENDPOINTS.PLAYER_KILL_RECORDS(gameId, playerId), { password })
+    return response.data
+  },
 }

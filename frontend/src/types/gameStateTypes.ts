@@ -29,7 +29,6 @@ export interface Player {
   last_search_result: SearchResult | null;
   is_alive: boolean;
   is_bound: boolean;
-  is_born: boolean;
   rest_mode: boolean;
   rest_life_recovery: number;
   rest_moves_used: number;
@@ -92,11 +91,10 @@ export type MessageType = 'SystemNotice' | 'UserDirected' | 'Info';
 
 // 动作结果接口
 export interface ActionResult {
-  data: Record<string, any>;
+  data?: Record<string, any>;
   log_message: string;
   message_type: MessageType;
   timestamp: string;
-  broadcast_to_director?: boolean; // 可选字段，后端传输时可能不包含
 }
 
 // 导演视角的游戏状态接口
@@ -133,7 +131,6 @@ export interface PlayerStatusDetail {
     name: string;
     location: string;
     team_id: number | null;
-    is_born: boolean;
   };
   health: {
     life: number;

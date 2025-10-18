@@ -108,8 +108,18 @@ impl GlobalGameStateManager {
         file_name: &str,
     ) -> Result<(), String> {
         if let Some(game_state) = self.game_states.get(game_id) {
-            let game_state_guard = game_state.read().await;
-            let serialized = serde_json::to_string(&*game_state_guard)
+            // 在代码块中获取锁、克隆数据并更新save_time
+            let cloned_game_state = {
+                let game_state_guard = game_state.read().await;
+                // 克隆游戏状态
+                let mut cloned = (*game_state_guard).clone();
+                // 更新克隆的游戏状态的保存时间
+                cloned.save_time = Some(Utc::now());
+                // 代码块结束时自动释放锁
+                cloned
+            };
+            
+            let serialized = serde_json::to_string(&cloned_game_state)
                 .map_err(|e| format!("Failed to serialize game state: {}", e))?;
 
             let file_path = format!("game_states/{}/{}", game_id, file_name);

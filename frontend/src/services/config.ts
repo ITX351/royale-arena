@@ -26,5 +26,9 @@ export const API_ENDPOINTS = {
   DIRECTOR_SAVE_GAME: (gameId: string) => `/game/${gameId}/save`,
   DIRECTOR_LIST_SAVES: (gameId: string) => `/game/${gameId}/saves`,
   DIRECTOR_UPDATE_STATUS: (gameId: string) => `/game/${gameId}/status`,
-  DIRECTOR_EDIT_GAME: (gameId: string) => `/game/${gameId}/edit`
+  DIRECTOR_EDIT_GAME: (gameId: string) => `/game/${gameId}/edit`,
+  DIRECTOR_KILL_RECORDS: (gameId: string) => `/game/${gameId}/director/kill-records`,
+  DIRECTOR_MESSAGES: (gameId: string) => `/game/${gameId}/director/logs`,
+  PLAYER_KILL_RECORDS: (gameId: string, playerId: string) => `/game/${gameId}/player/${playerId}/kill-records`,
+  PLAYER_MESSAGES: (gameId: string, playerId: string) => `/game/${gameId}/player/${playerId}/messages`
 }

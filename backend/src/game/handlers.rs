@@ -23,6 +23,12 @@ pub struct DeleteLogsQuery {
     pub after_timestamp: Option<String>,
 }
 
+/// 删除击杀记录的时间戳参数
+#[derive(Debug, Deserialize)]
+pub struct DeleteKillRecordsQuery {
+    pub after_timestamp: Option<String>,
+}
+
 /// 创建游戏 (管理员接口)
 pub async fn create_game(
     State(state): State<AppState>,
@@ -188,4 +194,69 @@ pub async fn authenticate_game(
         .map_err(|e| GameError::OtherError(format!("Authentication failed: {}", e)))?;
 
     Ok(Json(result))
+}
+
+/// 获取玩家击杀记录 (玩家接口)
+pub async fn get_player_kill_records(
+    State(state): State<AppState>,
+    Path((game_id, player_id)): Path<(String, String)>,
+    Json(request): Json<GetPlayerKillRecordsRequest>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    // 获取玩家击杀记录
+    let kill_records = state
+        .game_log_service
+        .get_player_kill_records(&game_id, &player_id, &request.password)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": kill_records
+    })))
+}
+
+/// 获取导演击杀记录 (导演接口)
+pub async fn get_director_kill_records(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(query): Query<DirectorPasswordQuery>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    // 获取导演击杀记录
+    let kill_records = state
+        .game_log_service
+        .get_director_kill_records(&game_id, &query.password)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": kill_records
+    })))
+}
+
+/// 删除游戏击杀记录 (管理员接口)
+pub async fn delete_game_kill_records(
+    State(state): State<AppState>,
+    Path(game_id): Path<String>,
+    Query(query): Query<DeleteKillRecordsQuery>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    // 解析时间戳参数
+    let timestamp = if let Some(ts_str) = query.after_timestamp {
+        Some(
+            chrono::DateTime::parse_from_rfc3339(&ts_str)
+                .map_err(|_| GameError::ValidationError("Invalid timestamp format".to_string()))?
+                .with_timezone(&chrono::Utc),
+        )
+    } else {
+        None
+        };
+
+    // 删除击杀记录
+    let deleted_count = state
+        .game_log_service
+        .delete_kill_records_after_timestamp(&game_id, timestamp)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": format!("Deleted {} kill records", deleted_count)
+    })))
 }

@@ -3,6 +3,14 @@
     <template #header>
       <div class="card-header">
         <h3>实时日志消息</h3>
+        <el-button 
+          type="primary" 
+          size="small" 
+          @click="emit('show-kill-records')"
+          class="kill-records-btn"
+        >
+          查看击杀记录
+        </el-button>
       </div>
     </template>
 
@@ -129,7 +137,8 @@ const props = defineProps<{
 
 // 定义事件发射
 const emit = defineEmits<{
-  (e: 'reply-to-player', playerId: string): void
+  (e: 'reply-to-player', playerId: string): void,
+  (e: 'show-kill-records'): void
 }>()
 
 // 响应式状态
@@ -308,6 +317,16 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kill-records-btn {
+  margin-left: auto;
+}
+
 .log-message {
   margin-bottom: 20px;
   height: 100%;

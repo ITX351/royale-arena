@@ -21,7 +21,7 @@ export const useGameStateStore = defineStore('gameState', () => {
   const connecting = ref(false)
   const error = ref<string | null>(null)
   const logMessages = ref<ActionResult[]>([])
-  const maxLogMessages = ref(100) // 最多保存100条日志消息
+  const maxLogMessages = ref(10000) // 最多保存日志消息条数
 
   // 计算属性
   const globalState = computed<GlobalState | null>(() => {
@@ -108,12 +108,16 @@ export const useGameStateStore = defineStore('gameState', () => {
   }
 
   const addLogMessage = (message: ActionResult) => {
-    // 添加到日志消息列表开头
-    logMessages.value.unshift(message)
-    
-    // 如果超过最大数量，移除最旧的消息
-    if (logMessages.value.length > maxLogMessages.value) {
-      logMessages.value = logMessages.value.slice(0, maxLogMessages.value)
+    // 检查是否已存在相同时间戳的消息，避免重复
+    const exists = logMessages.value.some(log => log.timestamp === message.timestamp);
+    if (!exists) {
+      // 添加到日志消息列表开头
+      logMessages.value.unshift(message);
+      
+      // 如果超过最大数量，移除最旧的消息
+      if (logMessages.value.length > maxLogMessages.value) {
+        logMessages.value = logMessages.value.slice(0, maxLogMessages.value)
+      }
     }
   }
 

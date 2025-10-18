@@ -2,7 +2,7 @@
 //! 负责处理游戏日志的数据库操作
 
 use crate::game::errors::GameError;
-use crate::game::models::{GetPlayerMessagesRequest, MessageRecord, MessageType};
+use crate::game::models::{GetPlayerMessagesRequest, MessageRecord, MessageType, KillRecord, GetPlayerKillRecordsRequest};
 use chrono::{DateTime, Utc};
 use sqlx::MySqlPool;
 use uuid::Uuid;
@@ -178,6 +178,119 @@ impl GameLogService {
             .await
         } else {
             sqlx::query!("DELETE FROM game_logs WHERE game_id = ?", game_id)
+                .execute(&self.pool)
+                .await
+        }
+        .map_err(GameError::DatabaseError)?
+        .rows_affected();
+
+        Ok(rows_affected)
+    }
+
+    /// 获取玩家击杀记录
+    pub async fn get_player_kill_records(
+        &self,
+        game_id: &str,
+        player_id: &str,
+        password: &str,
+    ) -> Result<Vec<KillRecord>, GameError> {
+        // 验证请求参数
+        let request = GetPlayerKillRecordsRequest {
+            password: password.to_string(),
+        };
+
+        // 验证玩家是否存在且密码正确
+        let actor = sqlx::query!(
+            "SELECT id FROM actors WHERE id = ? AND game_id = ? AND password = ?",
+            player_id,
+            game_id,
+            password
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+
+        if actor.is_none() {
+            return Err(GameError::ValidationError(
+                "Invalid player credentials".to_string(),
+            ));
+        }
+
+        // 查询玩家相关的击杀记录（作为击杀者）
+        let kill_records = sqlx::query_as!(
+            KillRecord,
+            r#"
+            SELECT id, game_id, killer_id, victim_id, kill_time, cause, weapon, location
+            FROM kill_records 
+            WHERE game_id = ? AND killer_id = ?
+            ORDER BY kill_time ASC
+            "#,
+            game_id,
+            player_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+
+        Ok(kill_records)
+    }
+
+    /// 获取导演击杀记录
+    pub async fn get_director_kill_records(
+        &self,
+        game_id: &str,
+        password: &str,
+    ) -> Result<Vec<KillRecord>, GameError> {
+        // 验证导演密码
+        let game = sqlx::query!(
+            "SELECT id FROM games WHERE id = ? AND director_password = ?",
+            game_id,
+            password
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+
+        if game.is_none() {
+            return Err(GameError::ValidationError(
+                "Invalid director credentials".to_string(),
+            ));
+        }
+
+        // 查询所有击杀记录
+        let kill_records = sqlx::query_as!(
+            KillRecord,
+            r#"
+            SELECT id, game_id, killer_id, victim_id, kill_time, cause, weapon, location
+            FROM kill_records 
+            WHERE game_id = ?
+            ORDER BY kill_time ASC
+            "#,
+            game_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(GameError::DatabaseError)?;
+
+        Ok(kill_records)
+    }
+
+    /// 删除指定时间戳之后的击杀记录
+    pub async fn delete_kill_records_after_timestamp(
+        &self,
+        game_id: &str,
+        timestamp: Option<DateTime<Utc>>,
+    ) -> Result<u64, GameError> {
+        let rows_affected = if let Some(ts) = timestamp {
+            sqlx::query!(
+                "DELETE FROM kill_records WHERE game_id = ? AND kill_time > ?",
+                game_id,
+                ts
+            )
+            .execute(&self.pool)
+            .await
+        } else {
+            sqlx::query!("DELETE FROM kill_records WHERE game_id = ?", game_id)
                 .execute(&self.pool)
                 .await
         }

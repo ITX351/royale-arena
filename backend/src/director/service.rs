@@ -478,6 +478,24 @@ impl DirectorService {
                 message: format!("Failed to load game state from disk: {}", e),
             })?;
 
+        // 获取恢复的游戏状态的保存时间
+        if let Ok(game_state) = app_state.game_state_manager.get_game_state(game_id).await {
+            let game_state_guard = game_state.read().await;
+            if let Some(save_time) = game_state_guard.save_time {
+                // 删除晚于保存时间的日志记录
+                let _ = app_state
+                    .game_log_service
+                    .delete_logs_after_timestamp(game_id, Some(save_time))
+                    .await;
+
+                // 删除晚于保存时间的击杀记录
+                let _ = app_state
+                    .game_log_service
+                    .delete_kill_records_after_timestamp(game_id, Some(save_time))
+                    .await;
+            }
+        }
+
         Ok(())
     }
 

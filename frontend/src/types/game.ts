@@ -98,3 +98,27 @@ export interface ApiResponse<T> {
   message?: string
   error?: string
 }
+
+// 击杀记录
+export interface KillRecord {
+  id: string
+  game_id: string
+  killer_id: string | null
+  victim_id: string
+  kill_time: string
+  cause: string
+  weapon: string | null
+  location: string | null
+}
+
+// 消息记录
+export interface MessageRecord {
+  id: string
+  game_id: string
+  type: 'SystemNotice' | 'UserDirected' | 'Info'
+  message: string
+  player_id: string
+  timestamp: string
+  visible_to_all_players: boolean
+  visible_to_director: boolean
+}
