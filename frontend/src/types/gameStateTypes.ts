@@ -18,6 +18,7 @@ export interface Item {
 export interface Player {
   id: string;
   name: string;
+  password: string;
   location: string;
   life: number;
   strength: number;

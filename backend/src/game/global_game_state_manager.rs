@@ -58,7 +58,7 @@ impl GlobalGameStateManager {
 
         // 从数据库加载玩家信息
         let players_result = sqlx::query!(
-            "SELECT id, name, team_id FROM actors WHERE game_id = ?",
+            "SELECT id, name, password, team_id FROM actors WHERE game_id = ?",
             game_id
         )
         .fetch_all(&self.pool)
@@ -69,6 +69,7 @@ impl GlobalGameStateManager {
                 let player = Player::new(
                     player_record.id,
                     player_record.name,
+                    player_record.password,
                     player_record.team_id as u32,
                     &game_state.rule_engine, // 传递规则引擎引用
                 );

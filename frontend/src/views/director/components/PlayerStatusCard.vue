@@ -24,7 +24,27 @@
     <el-collapse-transition>
       <div v-show="!isCollapsed" class="player-status-content">
         <el-table :data="playerList" style="width: 100%" size="small" max-height="400">
-          <el-table-column prop="name" label="玩家" width="120" />
+          <el-table-column label="玩家" min-width="160">
+            <template #default="scope">
+              <div class="player-name-cell">
+                <el-tooltip
+                  effect="dark"
+                  :content="scope.row.password ? `密码：${scope.row.password}` : '暂无密码'"
+                  placement="right"
+                >
+                  <span
+                    class="player-name"
+                    role="link"
+                    tabindex="0"
+                    @click="goToActorPage(scope.row.password)"
+                    @keydown.enter.prevent="goToActorPage(scope.row.password)"
+                  >
+                    {{ scope.row.name }}
+                  </span>
+                </el-tooltip>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="生命值" width="150">
             <template #default="scope">
               <div class="status-value">
@@ -137,6 +157,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
@@ -154,6 +175,8 @@ const emit = defineEmits<{
 }>()
 
 const store = useGameStateStore()
+const router = useRouter()
+const route = useRoute()
 
 // 折叠状态，默认展开
 const isCollapsed = ref(false)
@@ -277,6 +300,31 @@ const copyPlainTextContent = () => {
     ElMessage.error('复制失败')
   })
 }
+
+// 跳转到演员界面
+const goToActorPage = (playerPassword: string) => {
+  const currentGameId = route.params.id as string | undefined
+
+  if (!currentGameId) {
+    ElMessage.error('无法确定当前游戏信息')
+    return
+  }
+
+  if (!playerPassword) {
+    ElMessage.warning('该玩家尚未设置密码')
+    return
+  }
+
+  const actorRoute = router.resolve({
+    name: 'ActorMainWithPassword',
+    params: {
+      id: currentGameId,
+      password: playerPassword
+    }
+  })
+
+  window.open(actorRoute.href, '_blank', 'noopener')
+}
 </script>
 
 <style scoped>
@@ -327,5 +375,21 @@ const copyPlainTextContent = () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.player-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-name {
+  cursor: pointer;
+  color: #409eff;
+}
+
+.player-name:focus {
+  outline: none;
+  text-decoration: underline;
 }
 </style>
