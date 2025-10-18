@@ -459,6 +459,7 @@ impl WebSocketService {
 
                     // 仅在非Info类型消息时创建日志记录
                     if message_type != crate::game::MessageType::Info {
+                        let mut first_message = true;
                         // 为每个相关玩家创建日志记录
                         for broadcast_player_id in &action_result.broadcast_players {
                             let player_id_option = if action_result.broadcast_to_all {
@@ -477,7 +478,7 @@ impl WebSocketService {
                                     message_type.clone(),
                                     action_result.timestamp, // 传递ActionResult中的时间戳
                                     action_result.broadcast_to_all, // 传递broadcast_to_all作为visible_to_all_players
-                                    action_result.broadcast_to_director, // 传递broadcast_to_director作为visible_to_director
+                                    action_result.broadcast_to_director && first_message, // 传递broadcast_to_director作为visible_to_director
                                 )
                                 .await;
 
@@ -489,6 +490,7 @@ impl WebSocketService {
                             if action_result.broadcast_to_all {
                                 break;
                             }
+                            first_message = false;
                         }
                     }
 

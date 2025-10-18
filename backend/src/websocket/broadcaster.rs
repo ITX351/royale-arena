@@ -41,7 +41,7 @@ impl MessageBroadcaster {
         action_result: Option<&ActionResult>,
     ) -> JsonValue {
         // 构建玩家视角的地点信息（不包含其他玩家信息和物品信息）
-        let places: Vec<JsonValue> = game_state
+        let actor_places: Vec<JsonValue> = game_state
             .places
             .values()
             .map(|place| {
@@ -52,12 +52,26 @@ impl MessageBroadcaster {
                 })
             })
             .collect();
+        
+        // 构建玩家视角的玩家列表信息（不包括玩家id和名字以外的任何信息）
+        let actor_players: Vec<JsonValue> = game_state
+            .players
+            .values()
+            .map(|p| {
+                json!({
+                    "id": p.id,
+                    "name": p.name
+                    // 注意：不包含生命值、体力值、位置等敏感信息
+                })
+            })
+            .collect();
 
         json!({
             "global_state": game_state.generate_global_state_info(),
             "game_data": {
                 "player": player,
-                "places": places
+                "actor_players": actor_players,
+                "actor_places": actor_places,
             },
             "action_result": action_result.map(|res| res.to_client_response())
         })

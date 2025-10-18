@@ -74,7 +74,7 @@
         
         <div class="full-width-section">
           <PlayerStatusCard 
-            :players="playerList" 
+            :players="directorPlayerList" 
             @player-binding-change="handlePlayerBindingChange"
           />
         </div>
@@ -89,7 +89,7 @@
         <BroadcastMessage 
           ref="broadcastMessageRef"
           :game-id="game.id"
-          :players="playerList"
+          :players="directorPlayerList"
           @message-sent="handleMessageSent"
         />
       </div>
@@ -143,8 +143,8 @@ const nightTimeForm = reactive({
 const selectedDestroyPlaces = ref<string[]>([])
 
 // 计算属性
-const playerList = computed<Player[]>(() => {
-  return store.playerList
+const directorPlayerList = computed<Player[]>(() => {
+  return store.directorPlayerList
 })
 
 const placeList = computed<Place[]>(() => {

@@ -4,6 +4,7 @@
       v-if="player" 
       :player="player" 
       :places="placeList"
+      :players="actorPlayerList"
       :global-state="globalState"
       @action="handlePlayerAction"
     />
@@ -47,7 +48,7 @@
 import { computed } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
-import type { Player, GlobalState, ActorPlace } from '@/types/gameStateTypes'
+import type { Player, GlobalState, ActorPlayer, ActorPlace } from '@/types/gameStateTypes'
 
 import CompactActionPanel from '@/views/actor/components/CompactActionPanel.vue'
 import InventoryPanel from '@/views/actor/components/InventoryPanel.vue'
@@ -73,6 +74,11 @@ const globalState = computed<GlobalState | null>(() => {
 const placeList = computed<ActorPlace[]>(() => {
   // 从游戏状态存储中获取地点列表（玩家视角）
   return gameStateStore.actorPlaceList
+})
+
+const actorPlayerList = computed<ActorPlayer[]>(() => {
+  // 从游戏状态存储中获取所有玩家列表（玩家视角）
+  return gameStateStore.actorPlayerList
 })
 
 const totalItemCount = computed(() => {

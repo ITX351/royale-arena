@@ -69,7 +69,7 @@
           <LogMessage 
             v-if="shouldShowLogMessage"
             :messages="logMessages"
-            :players="playerList"
+            :players="directorPlayerList"
             :is-director="true"
             class="shared-log-message"
             @reply-to-player="handleReplyToPlayer"
@@ -89,8 +89,9 @@
   >
     <KillRecordDisplay
       :records="killRecords"
-      :players="playerList"
+      :players="directorPlayerList"
       :is-director="true"
+      :show-title="false"
     />
   </el-dialog>
 </template>
@@ -98,12 +99,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox, ElDialog } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { gameService } from '@/services/gameService'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
-import type { KillRecord, MessageRecord } from '@/types/game'
+import type { KillRecord } from '@/types/game'
 
 // 组件导入 - 使用正确的相对路径
 import Header from './components/Header.vue'
@@ -139,9 +140,9 @@ const webSocketConnecting = computed(() => gameStateStore.connecting)
 const webSocketError = computed(() => gameStateStore.error)
 const gameStateData = computed(() => gameStateStore.gameState)
 const logMessages = computed(() => gameStateStore.logMessages)
-const playerList = computed(() => {
+const directorPlayerList = computed(() => {
   // 从gameStateStore获取玩家列表
-  return gameStateStore.playerList
+  return gameStateStore.directorPlayerList
 })
 
 // 合并游戏数据和实时状态数据
@@ -332,14 +333,6 @@ const showKillRecordsDialog = async () => {
   await fetchDirectorKillRecords()
   // 显示对话框
   killRecordsDialogVisible.value = true
-}
-
-// 新增方法：处理恢复游戏后的日志和击杀记录刷新
-const handleResumeGame = async () => {
-  // 清空并重新获取初始消息列表
-  initialMessagesLoaded.value = false
-  await fetchDirectorMessages()
-  await fetchDirectorKillRecords()
 }
 
 // 新增方法：在游戏状态更新时检查是否需要重新加载消息

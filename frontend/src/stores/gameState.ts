@@ -9,6 +9,7 @@ import type {
   ActorGameData,
   Player, 
   DirectorPlace, 
+  ActorPlayer,
   ActorPlace, 
   ActionResult 
 } from '@/types/gameStateTypes'
@@ -49,21 +50,30 @@ export const useGameStateStore = defineStore('gameState', () => {
     return gameState.value.game_data.player || null
   })
 
+  const actorPlayers = computed<Record<string, ActorPlayer>>(() => {
+    if (!gameState.value || !('player' in gameState.value.game_data)) return {}
+    return gameState.value.game_data.actor_players || {}
+  })
+
   const actorPlaces = computed<Record<string, ActorPlace>>(() => {
     if (!gameState.value || !('player' in gameState.value.game_data)) return {}
-    return gameState.value.game_data.places || {}
+    return gameState.value.game_data.actor_places || {}
   })
 
   const actionResult = computed<ActionResult | null>(() => {
     return gameState.value?.action_result || null
   })
 
-  const playerList = computed<Player[]>(() => {
+  const directorPlayerList = computed<Player[]>(() => {
     return Object.values(directorPlayers.value)
   })
 
   const directorPlaceList = computed<DirectorPlace[]>(() => {
     return Object.values(directorPlaces.value)
+  })
+
+  const actorPlayerList = computed<ActorPlayer[]>(() => {
+    return Object.values(actorPlayers.value)
   })
 
   const actorPlaceList = computed<ActorPlace[]>(() => {
@@ -108,16 +118,12 @@ export const useGameStateStore = defineStore('gameState', () => {
   }
 
   const addLogMessage = (message: ActionResult) => {
-    // 检查是否已存在相同时间戳的消息，避免重复
-    const exists = logMessages.value.some(log => log.timestamp === message.timestamp);
-    if (!exists) {
-      // 添加到日志消息列表开头
-      logMessages.value.unshift(message);
-      
-      // 如果超过最大数量，移除最旧的消息
-      if (logMessages.value.length > maxLogMessages.value) {
-        logMessages.value = logMessages.value.slice(0, maxLogMessages.value)
-      }
+    // 添加到日志消息列表开头
+    logMessages.value.unshift(message);
+    
+    // 如果超过最大数量，移除最旧的消息
+    if (logMessages.value.length > maxLogMessages.value) {
+      logMessages.value = logMessages.value.slice(0, maxLogMessages.value)
     }
   }
 
@@ -297,8 +303,9 @@ export const useGameStateStore = defineStore('gameState', () => {
     actorPlayer,
     actorPlaces,
     actionResult,
-    playerList,
+    directorPlayerList,
     directorPlaceList,
+    actorPlayerList,
     actorPlaceList,
     
     // 操作

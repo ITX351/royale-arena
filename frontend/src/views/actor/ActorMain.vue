@@ -66,7 +66,7 @@
           <LogMessage 
             v-if="shouldShowLogMessage"
             :messages="logMessages"
-            :players="playerList"
+            :players="actorPlayerList"
             class="shared-log-message"
             @show-kill-records="showKillRecordsDialog"
           />
@@ -84,8 +84,9 @@
   >
     <KillRecordDisplay
       :records="killRecords"
-      :players="playerList"
+      :players="actorPlayerList"
       :is-director="false"
+      :show-title="false"
     />
   </el-dialog>
 </template>
@@ -93,12 +94,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElDialog } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { gameService } from '@/services/gameService'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
-import type { KillRecord, MessageRecord } from '@/types/game'
+import type { KillRecord } from '@/types/game'
 
 // 组件导入
 import Header from '@/views/actor/components/Header.vue'
@@ -132,9 +133,9 @@ const webSocketConnecting = computed(() => gameStateStore.connecting)
 const webSocketError = computed(() => gameStateStore.error)
 const gameStateData = computed(() => gameStateStore.gameState)
 const logMessages = computed(() => gameStateStore.logMessages)
-const playerList = computed(() => {
+const actorPlayerList = computed(() => {
   // 从gameStateStore获取玩家列表
-  return gameStateStore.playerList
+  return gameStateStore.actorPlayerList
 })
 
 // 合并游戏数据和实时状态数据

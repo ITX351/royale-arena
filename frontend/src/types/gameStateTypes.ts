@@ -14,7 +14,7 @@ export interface Item {
   properties: Record<string, any>;
 }
 
-// 玩家接口
+// 导演视角的玩家接口
 export interface Player {
   id: string;
   name: string;
@@ -37,6 +37,12 @@ export interface Player {
   team_id: number | null;
   bleed_damage: number;
   bleed_rounds_remaining: number;
+}
+
+// 玩家视角的玩家列表
+export interface ActorPlayer {
+  id: string;
+  name: string;
 }
 
 // 导演视角的地点接口
@@ -83,7 +89,8 @@ export interface DirectorGameData {
 // 玩家视角的游戏数据接口
 export interface ActorGameData {
   player: Player;
-  places: Record<string, ActorPlace>;
+  actor_players: Record<string, ActorPlayer>;
+  actor_places: Record<string, ActorPlace>;
 }
 
 // 消息类型枚举

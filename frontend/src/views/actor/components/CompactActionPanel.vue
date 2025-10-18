@@ -172,11 +172,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import type { Player, ActorPlace, GlobalState } from '@/types/gameStateTypes'
+import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
 
 const props = defineProps<{
   player: Player
   places: ActorPlace[]
+  players: ActorPlayer[]
   globalState: GlobalState | null
 }>()
 
@@ -290,10 +291,8 @@ const canSearchNow = computed(() => {
   return now.value >= nextAvailable
 })
 
-const otherPlayers = computed((): Player[] => {
-  // 这里需要从全局状态获取其他玩家列表
-  // 暂时返回空数组，实际使用时需要从父组件传入或从store获取
-  return []
+const otherPlayers = computed((): ActorPlayer[] => {
+  return props.players.filter(p => p.id !== props.player.id)
 })
 
 const searchResultText = computed(() => {

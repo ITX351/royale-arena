@@ -1,12 +1,12 @@
 <template>
   <el-card class="kill-record-display">
     <template #header>
-      <div class="card-header">
-        <span class="header-spacer" aria-hidden="true"></span>
-        <h3>击杀记录</h3>
+      <div class="card-header" :class="{ 'card-header--no-title': !props.showTitle }">
+        <span v-if="props.showTitle" class="header-spacer" aria-hidden="true"></span>
+        <h3 v-if="props.showTitle">击杀记录</h3>
         <div class="header-controls">
           <el-select 
-            v-if="isDirector" 
+            v-if="props.isDirector" 
             v-model="filterForm.selectedKiller" 
             placeholder="筛选击杀者"
             clearable
@@ -15,7 +15,7 @@
           >
             <el-option label="无击杀者" value="__none__" />
             <el-option
-              v-for="player in players"
+              v-for="player in props.players"
               :key="player.id"
               :label="player.name"
               :value="player.id"
@@ -42,6 +42,7 @@
     </template>
     
     <el-table 
+      v-if="hasRecords"
       :data="filteredAndSortedRecords" 
       style="width: 100%" 
       size="small"
@@ -74,7 +75,7 @@
       </el-table-column>
     </el-table>
     
-    <div v-if="filteredAndSortedRecords.length === 0" class="no-records">
+    <div v-else class="no-records">
       暂无击杀记录
     </div>
   </el-card>
@@ -88,10 +89,12 @@ interface Props {
   records: KillRecord[]
   players: Array<{ id: string; name: string }>
   isDirector?: boolean
+  showTitle?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isDirector: false
+  isDirector: false,
+  showTitle: true
 })
 
 // 响应式数据
@@ -145,6 +148,8 @@ const filteredAndSortedRecords = computed(() => {
   return sorted
 })
 
+const hasRecords = computed(() => filteredAndSortedRecords.value.length > 0)
+
 // 方法
 const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
@@ -168,6 +173,11 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
   width: 100%;
 }
 
+.card-header--no-title {
+  grid-template-columns: 1fr;
+  justify-items: end;
+}
+
 .header-spacer {
   height: 1px;
 }
@@ -182,6 +192,10 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.card-header--no-title .header-controls {
+  justify-self: end;
 }
 
 .killer-filter {

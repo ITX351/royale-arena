@@ -846,7 +846,7 @@ impl GameState {
         // 创建动作结果，向发送者和导演发送完整消息
         let sender_action_result = ActionResult::new_user_message(
             sender_data,
-            vec![player_id.to_string(), target_player_id.to_string()],
+            vec![player_id.to_string()],
             sender_formatted_message,
             true, // 向导演广播
         );
