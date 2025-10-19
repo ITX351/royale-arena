@@ -143,7 +143,6 @@ import {
 import type { GameWithRules } from '@/types/game'
 import { getGameStatusConfig, formatDateTime } from '@/utils/gameFilter'
 import { gameService } from '@/services/gameService'
-import { directorService } from '@/services/directorService'
 import { authenticateGame, handleAuthResult } from '@/services/authService'
 
 const route = useRoute()

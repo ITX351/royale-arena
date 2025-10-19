@@ -38,10 +38,8 @@ export interface Player {
   is_alive: boolean;
   is_bound: boolean;
   rest_mode: boolean;
-  rest_life_recovery: number;
   rest_moves_used: number;
   last_search_time: string | null;
-  votes: number;
   team_id: number | null;
   bleed_damage: number;
 }

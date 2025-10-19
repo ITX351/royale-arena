@@ -143,14 +143,10 @@ pub struct Player {
     pub is_bound: bool,
     /// 是否处于静养模式
     pub rest_mode: bool,
-    /// 当前静养恢复生命值
-    pub rest_life_recovery: i32,
     /// 静养模式下的移动次数限制
     pub rest_moves_used: i32,
     /// 上次搜索时间
     pub last_search_time: Option<DateTime<Utc>>,
-    /// 当前持有票数
-    pub votes: i32,
     /// 队伍ID（用于队友行为判断）
     pub team_id: Option<u32>,
     /// 持续伤害效果（流血状态）
@@ -184,11 +180,9 @@ impl Player {
             last_search_result: None,
             is_alive: true,
             is_bound: false,
-            rest_mode: false,
-            rest_life_recovery: 0,
+            rest_mode: true,
             rest_moves_used: 0,
             last_search_time: None,
-            votes: 0,
             team_id: Some(team_id),
             bleed_damage: 0,
         }
@@ -205,21 +199,6 @@ impl Player {
         }
         count
     }
-
-    /// 应用持续伤害效果
-    pub fn apply_bleed_damage(&mut self) -> bool {
-        if self.bleed_damage > 0 {
-            self.life -= self.bleed_damage;
-
-            if self.life <= 0 {
-                self.life = 0;
-                //self.is_alive = false; // TODO: 流血致死
-                return true; // 表示玩家死亡
-            }
-        }
-        false
-    }
-
     /// 设置持续伤害效果
     pub fn set_bleed_effect(&mut self, damage: i32) {
         self.bleed_damage = damage;
@@ -253,6 +232,14 @@ impl Player {
     /// 卸下防具并返回
     pub fn unequip_armor(&mut self) -> Option<Item> {
         self.equipped_armor.take()
+    }
+
+    /// 每日清除玩家状态
+    pub fn daily_reset(&mut self) {
+        self.rest_mode = true;
+        self.rest_moves_used = 0;
+        self.last_search_result = None;
+        self.is_bound = false;
     }
 }
 

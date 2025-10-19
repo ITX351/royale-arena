@@ -4,7 +4,9 @@ use std::mem;
 
 use rand::{rng, seq::SliceRandom};
 
-use super::models::*;
+use crate::websocket::models::{
+    ActionResult, ActionResults, GameState, SearchResult, SearchResultType, SearchTarget,
+};
 use crate::game::game_rule_engine::Item;
 
 enum DeathDisposition {
@@ -78,12 +80,8 @@ impl GameState {
             player.life = 0;
             player.strength = 0;
             player.is_alive = false;
-            player.last_search_result = None;
-            player.is_bound = false;
-            player.rest_mode = false;
-            player.rest_life_recovery = 0;
-            player.rest_moves_used = 0;
             player.bleed_damage = 0;
+            player.daily_reset();
 
             (items, mem::take(&mut player.location))
         };
@@ -223,12 +221,8 @@ impl GameState {
         player.life = life;
         player.strength = player.max_strength;
         player.is_alive = true;
-        player.last_search_result = None;
-        player.is_bound = false;
-        player.rest_mode = false;
-        player.rest_life_recovery = 0;
-        player.rest_moves_used = 0;
         player.bleed_damage = 0;
+        player.daily_reset();
 
         let data = serde_json::json!({
             "player_id": player_id,

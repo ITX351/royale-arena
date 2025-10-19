@@ -29,7 +29,7 @@
         <!-- 左侧内容区域 -->
         <div class="shared-left-content">
           <!-- 题头组件 -->
-          <Header 
+          <ActorHeader 
             :game="game" 
             :actor-password="actorPassword"
           />
@@ -103,7 +103,7 @@ import type { KillRecord } from '@/types/game'
 import { authenticateGame } from '@/services/authService'
 
 // 组件导入
-import Header from '@/views/actor/components/Header.vue'
+import ActorHeader from '@/views/actor/components/ActorHeader.vue'
 import LogMessage from '@/components/LogMessage.vue'
 import KillRecordDisplay from '@/components/KillRecordDisplay.vue'
 import PreGameState from './states/PreGameState.vue'

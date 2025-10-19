@@ -99,11 +99,6 @@ import type { DirectorGameData } from '@/types/gameStateTypes'
 // 异步加载批量空投对话框组件
 const BatchAirdropDialog = defineAsyncComponent(() => import('./BatchAirdropDialog.vue'))
 
-// 定义组件属性
-const props = defineProps<{
-  gameId: string
-}>()
-
 // 定义事件发射
 const emit = defineEmits<{
   (e: 'airdrop-accepted', items: any[], place: string): void

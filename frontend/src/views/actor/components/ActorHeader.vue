@@ -56,7 +56,6 @@ const props = defineProps<{
 const router = useRouter()
 
 // 响应式状态
-const actionLoading = ref(false)
 const showDetails = ref(false)
 
 // 计算属性

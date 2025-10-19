@@ -377,7 +377,7 @@ const updateGameStatus = async (game: GameListItem, _status: string) => {
     // 由于当前API设计中没有直接的状态更新接口，这里先用占位逻辑
     ElMessage.success(`游戏"${game.name}"状态已更新`)
     await loadGames()
-  } catch (error) {
+  } catch {
     ElMessage.error('更新游戏状态失败')
   }
 }

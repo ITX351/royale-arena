@@ -349,10 +349,6 @@ const confirmEndGame = () => {
   })
 }
 
-const goBack = () => {
-  router.push(`/game/${props.game.id}`)
-}
-
 const goHome = () => {
   router.push('/')
 }

@@ -179,7 +179,7 @@ const equipItem = async (itemId: string) => {
   
   try {
     emit('equip-item', itemId)
-  } catch (error) {
+  } catch {
     ElMessage.error('装备物品失败')
   } finally {
     setTimeout(() => {
@@ -195,7 +195,7 @@ const useItem = async (itemId: string) => {
   
   try {
     emit('use-item', itemId)
-  } catch (error) {
+  } catch {
     ElMessage.error('使用物品失败')
   } finally {
     setTimeout(() => {
@@ -211,7 +211,7 @@ const discardItem = async (itemId: string) => {
 
   try {
     emit('discard-item', itemId)
-  } catch (error) {
+  } catch {
     ElMessage.error('丢弃物品失败')
   } finally {
     setTimeout(() => {
@@ -227,7 +227,7 @@ const unequipWeapon = async () => {
   
   try {
     emit('unequip-weapon')
-  } catch (error) {
+  } catch {
     ElMessage.error('卸下武器失败')
   } finally {
     setTimeout(() => {
@@ -243,7 +243,7 @@ const unequipArmor = async () => {
   
   try {
     emit('unequip-armor')
-  } catch (error) {
+  } catch {
     ElMessage.error('卸下防具失败')
   } finally {
     setTimeout(() => {

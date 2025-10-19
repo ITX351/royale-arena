@@ -29,7 +29,7 @@
         <!-- 左侧内容区域 -->
         <div class="shared-left-content">
           <!-- 题头组件 -->
-          <Header 
+          <DirectorHeader 
             :game="game" 
             :director-password="directorPassword"
             @status-updated="handleStatusUpdated"
@@ -108,7 +108,7 @@ import type { KillRecord } from '@/types/game'
 import { authenticateGame } from '@/services/authService'
 
 // 组件导入 - 使用正确的相对路径
-import Header from './components/Header.vue'
+import DirectorHeader from './components/DirectorHeader.vue'
 import PreGameManagement from './management/PreGameManagement.vue'
 import InGameManagement from './management/InGameManagement.vue'
 import PostGameManagement from './management/PostGameManagement.vue'

@@ -83,11 +83,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { User, Clock, Document, View } from '@element-plus/icons-vue'
+import { User, Clock, View } from '@element-plus/icons-vue'
 import type { GameListItem } from '@/types/game'
 import { getGameStatusConfig, formatDateTime } from '@/utils/gameFilter'
-import { directorService } from '@/services/directorService'
 import { authenticateGame, handleAuthResult } from '@/services/authService'
 
 interface Props {

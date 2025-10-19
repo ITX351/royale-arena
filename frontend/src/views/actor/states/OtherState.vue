@@ -58,14 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { GameWithRules } from '@/types/game'
-import { GameStatus } from '@/types/game'
 import { formatTimestamp, formatGameStatus, getStatusTagType } from '@/utils/gameUtils'
-
-const props = defineProps<{
-  game: GameWithRules | null
-}>()
 </script>
 
 <style scoped>

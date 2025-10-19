@@ -200,7 +200,7 @@ export class WebSocketService {
         });
         break;
         
-      case 'game_state':
+      case 'game_state': {
         // 游戏状态更新消息
         const gameState: DirectorGameState = {
           global_state: data.data.global_state,
@@ -236,7 +236,7 @@ export class WebSocketService {
           }
         }
         break;
-        
+      }
       default:
         // 未知消息类型
         console.warn('未知的WebSocket消息类型:', data);

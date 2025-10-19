@@ -60,56 +60,6 @@ impl GameState {
         Ok(action_result.as_results())
     }
 
-    /// 调整地点状态
-    pub fn handle_modify_place(
-        &mut self,
-        place_name: &str,
-        is_destroyed: bool,
-    ) -> Result<ActionResults, String> {
-        // 更新指定地点的摧毁状态，同时记录需要处理的玩家
-        let players_to_kill = {
-            let place = self.places.get_mut(place_name).ok_or("Place not found")?;
-            place.is_destroyed = is_destroyed;
-            if is_destroyed {
-                place.players.clone()
-            } else {
-                Vec::new()
-            }
-        };
-
-        // 构造响应数据
-        let data = serde_json::json!({
-            "place": {
-                "name": place_name,
-                "is_destroyed": is_destroyed
-            }
-        });
-
-        let mut results = vec![ActionResult::new_system_message(
-            data,
-            vec![],
-            format!(
-                "导演调整地点 {} 状态为 {}",
-                place_name,
-                if is_destroyed {
-                    "已摧毁"
-                } else {
-                    "未摧毁"
-                }
-            ),
-            true,
-        )];
-
-        if is_destroyed {
-            for player_id in players_to_kill {
-                let mut death_outcome = self.kill_player(&player_id, None, "缩圈")?;
-                results.append(&mut death_outcome.results);
-            }
-        }
-
-        Ok(ActionResults { results })
-    }
-
     /// 设置缩圈地点
     pub fn handle_set_destroy_places(
         &mut self,

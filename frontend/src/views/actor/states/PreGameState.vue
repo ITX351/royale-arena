@@ -39,13 +39,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { GameWithRules } from '@/types/game'
 import { formatTimestamp } from '@/utils/gameUtils'
 
-const props = defineProps<{
-  game: GameWithRules | null
-}>()
 </script>
 
 <style scoped>
