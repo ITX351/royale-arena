@@ -91,6 +91,13 @@ export interface GameLoginResponse {
   message?: string
 }
 
+// 游戏身份验证响应
+export interface GameAuthenticationResponse {
+  role: 'actor' | 'director' | 'invalid'
+  actor_id?: string | null
+  actor_name?: string | null
+}
+
 // API响应基础类型
 export interface ApiResponse<T> {
   success: boolean

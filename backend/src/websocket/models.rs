@@ -221,7 +221,7 @@ impl Player {
     }
 
     /// 设置持续伤害效果
-    pub fn set_bleed_effect(&mut self, damage: i32, rounds: i32) {
+    pub fn set_bleed_effect(&mut self, damage: i32) {
         self.bleed_damage = damage;
     }
 

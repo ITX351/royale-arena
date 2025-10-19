@@ -9,6 +9,7 @@ mod director_integration_tests {
     };
     use royale_arena_backend::game::GameLogService;
     use royale_arena_backend::game::GameService;
+    use royale_arena_backend::game::models::GameAuthenticationRole;
     use royale_arena_backend::game::global_game_state_manager::GlobalGameStateManager;
     use royale_arena_backend::routes::AppState;
     use royale_arena_backend::rule_template::service::RuleTemplateService;
@@ -35,7 +36,7 @@ mod director_integration_tests {
             auth_service: AuthService::new(pool.clone(), JwtManager::new("test_secret_key", 24)),
             admin_service: AdminService::new(pool.clone(), 10),
             director_service: director_service.clone(),
-            game_service,
+            game_service: game_service.clone(),
             game_log_service: GameLogService::new(pool.clone()),
             game_state_manager: GlobalGameStateManager::new(pool.clone()),
             rule_template_service: RuleTemplateService::new(pool.clone()),
@@ -144,6 +145,36 @@ mod director_integration_tests {
         assert_eq!(result.success[0].name, "测试玩家3");
         assert!(result.failed[0].reason.contains("已存在"));
 
+        // 测试2.4: 批量添加演员 - 演员密码与导演密码相同
+        let conflicting_password_request = BatchAddPlayersRequest {
+            players: vec![
+                CreatePlayerRequest {
+                    player_name: "测试玩家4".to_string(),
+                    password: director_password.to_string(),
+                    team_id: Some(1),
+                },
+                CreatePlayerRequest {
+                    player_name: "测试玩家5".to_string(),
+                    password: director_password.to_string(),
+                    team_id: Some(2),
+                },
+            ],
+        };
+
+        let result = director_service
+            .batch_add_players(&game_id, director_password, conflicting_password_request)
+            .await?;
+
+        assert_eq!(result.success.len(), 0, "不应添加任何演员");
+        assert_eq!(result.failed.len(), 2, "应返回所有失败的演员信息");
+        assert!(
+            result
+                .failed
+                .iter()
+                .all(|failure| failure.reason.contains("演员密码不能与导演密码相同")),
+            "失败原因应提示演员密码与导演密码不能相同"
+        );
+
         // 测试3.1: 获取演员列表时的密码验证 - 错误的导演密码
         let result = director_service
             .get_players(&game_id, "wrong_password")
@@ -163,37 +194,66 @@ mod director_integration_tests {
         assert_eq!(player1.game_id, game_id);
 
         // 测试4.1: 游戏身份验证 - 导演密码正确（此时还没有演员，应该返回director）
-        let auth_result = director_service
+        let auth_result = game_service
             .authenticate_game(&game_id, director_password)
             .await?;
         assert_eq!(
-            auth_result, "director",
+            auth_result.role,
+            GameAuthenticationRole::Director,
             "使用正确的导演密码应该返回director"
         );
+        assert!(auth_result.actor_id.is_none(), "导演认证不应返回演员ID");
+        assert!(auth_result.actor_name.is_none(), "导演认证不应返回演员姓名");
 
         // 测试4.2: 游戏身份验证 - 导演密码错误
-        let auth_result = director_service
+        let auth_result = game_service
             .authenticate_game(&game_id, "wrong_password")
             .await?;
-        assert_eq!(auth_result, "invalid", "使用错误的导演密码应该返回invalid");
+        assert_eq!(
+            auth_result.role,
+            GameAuthenticationRole::Invalid,
+            "使用错误的导演密码应该返回invalid"
+        );
 
         // 测试4.3: 游戏身份验证 - 不存在的游戏
-        let auth_result = director_service
+        let auth_result = game_service
             .authenticate_game(&fake_game_id, director_password)
             .await?;
-        assert_eq!(auth_result, "invalid", "不存在的游戏应该返回invalid");
+        assert_eq!(
+            auth_result.role,
+            GameAuthenticationRole::Invalid,
+            "不存在的游戏应该返回invalid"
+        );
 
         // 测试4.4: 游戏身份验证 - 演员密码正确（使用刚刚添加的演员密码）
-        let auth_result = director_service
+        let auth_result = game_service
             .authenticate_game(&game_id, "abc123")
             .await?;
-        assert_eq!(auth_result, "actor", "使用正确的演员密码应该返回actor");
+        assert_eq!(
+            auth_result.role,
+            GameAuthenticationRole::Actor,
+            "使用正确的演员密码应该返回actor"
+        );
+        assert_eq!(
+            auth_result.actor_id.as_deref(),
+            Some(player1.id.as_str()),
+            "演员认证应返回正确的演员ID"
+        );
+        assert_eq!(
+            auth_result.actor_name.as_deref(),
+            Some(player1.name.as_str()),
+            "演员认证应返回正确的演员姓名"
+        );
 
         // 测试4.5: 游戏身份验证 - 演员密码错误
-        let auth_result = director_service
+        let auth_result = game_service
             .authenticate_game(&game_id, "wrong_player_password")
             .await?;
-        assert_eq!(auth_result, "invalid", "使用错误的演员密码应该返回invalid");
+        assert_eq!(
+            auth_result.role,
+            GameAuthenticationRole::Invalid,
+            "使用错误的演员密码应该返回invalid"
+        );
 
         // 测试5.1: 批量删除演员时的密码验证 - 错误的导演密码
         let delete_request = BatchDeletePlayersRequest {

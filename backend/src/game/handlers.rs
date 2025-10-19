@@ -182,16 +182,15 @@ pub async fn authenticate_game(
     State(state): State<AppState>,
     Path(game_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
-) -> Result<Json<String>, GameError> {
+) -> Result<Json<GameAuthenticationResponse>, GameError> {
     let password = params
         .get("password")
         .ok_or_else(|| GameError::ValidationError("Password is required".to_string()))?;
 
     let result = state
-        .director_service
+        .game_service
         .authenticate_game(&game_id, password)
-        .await
-        .map_err(|e| GameError::OtherError(format!("Authentication failed: {}", e)))?;
+        .await?;
 
     Ok(Json(result))
 }

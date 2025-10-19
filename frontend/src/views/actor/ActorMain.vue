@@ -93,13 +93,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { gameService } from '@/services/gameService'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
 import type { KillRecord } from '@/types/game'
+import { authenticateGame } from '@/services/authService'
 
 // 组件导入
 import Header from '@/views/actor/components/Header.vue'
@@ -113,6 +114,7 @@ import OtherState from './states/OtherState.vue'
 import '@/styles/director-actor-layout.css'
 
 const route = useRoute()
+const router = useRouter()
 const gameStateStore = useGameStateStore()
 
 // 响应式状态
@@ -124,6 +126,7 @@ const killRecords = ref<KillRecord[]>([])
 const killRecordsDialogVisible = ref(false)
 const initialMessagesLoaded = ref(false) // 新增状态，标记初始消息是否已加载
 const playerId = ref<string>('') // 新增状态，存储玩家ID
+const isAuthorized = ref(false)
 
 // 计算属性
 const gameId = computed(() => route.params.id as string)
@@ -179,10 +182,7 @@ const shouldShowLogMessage = computed(() => {
 
 // 生命周期
 onMounted(() => {
-  // 检查是否从URI中获取密码
-  checkURIPassword()
-  // 获取游戏详情
-  fetchGameDetail()
+  initialize()
 })
 
 onUnmounted(() => {
@@ -191,6 +191,46 @@ onUnmounted(() => {
 })
 
 // 方法实现
+const initialize = async () => {
+  checkURIPassword()
+
+  if (!gameId.value) {
+    loading.value = false
+    ElMessage.error('无效的游戏ID')
+    router.push('/')
+    return
+  }
+
+  if (!actorPassword.value) {
+    loading.value = false
+    ElMessage.error('缺少演员密码，请从登录页面进入')
+    router.push(`/game/${gameId.value}`)
+    return
+  }
+
+  const authResult = await authenticateGame(gameId.value, actorPassword.value)
+
+  if (!authResult.success || authResult.role !== 'actor') {
+    loading.value = false
+    const message = authResult.errorMessage || '无权限访问演员页面'
+    ElMessage.error(message)
+    router.push(`/game/${gameId.value}`)
+    return
+  }
+
+  if (!authResult.actorId) {
+    loading.value = false
+    ElMessage.error('未获取到演员身份信息，请重新登录')
+    router.push(`/game/${gameId.value}`)
+    return
+  }
+
+  playerId.value = authResult.actorId
+  isAuthorized.value = true
+
+  await fetchGameDetail()
+}
+
 const checkURIPassword = () => {
   // 匹配 /game/{gameId}/actor/{password} 或 /game/{gameId}/actor
   const match = route.fullPath.match(/\/game\/([^/]+)\/actor\/?(.*)$/)
@@ -208,9 +248,13 @@ const fetchGameDetail = async () => {
     if (response.success && response.data) {
       game.value = response.data
       
-      // 玩家ID将在WebSocket连接后获取
-      // 获取玩家消息和击杀记录将在WebSocket连接后处理
+      // 身份验证阶段已经拿到玩家ID，因此可以在需要时提前加载数据
       
+      if (isAuthorized.value && playerId.value) {
+        await fetchPlayerMessages()
+        await fetchPlayerKillRecords()
+      }
+
       // 根据游戏状态处理WebSocket连接
       if ((response.data.status === GameStatus.RUNNING || response.data.status === GameStatus.PAUSED) && actorPassword.value) {
         // 如果游戏处于进行中或暂停状态，建立WebSocket连接（不阻塞页面加载）
@@ -239,7 +283,7 @@ const fetchGameDetail = async () => {
 
 // 修改连接WebSocket的方法，获取玩家ID
 const connectWebSocket = async () => {
-  if (!game.value || !actorPassword.value) return
+  if (!game.value || !actorPassword.value || !isAuthorized.value) return
   
   try {
     // 连接时指定角色为玩家
@@ -252,7 +296,7 @@ const connectWebSocket = async () => {
 
 // 修改 fetchPlayerMessages 方法中的字段映射
 const fetchPlayerMessages = async () => {
-  if (!game.value || !actorPassword.value || !playerId.value) return
+  if (!game.value || !actorPassword.value || !playerId.value || !isAuthorized.value) return
   
   try {
     const response = await gameService.getPlayerMessages(
@@ -285,7 +329,7 @@ const fetchPlayerMessages = async () => {
 
 // 新增方法：获取玩家击杀记录
 const fetchPlayerKillRecords = async () => {
-  if (!game.value || !actorPassword.value || !playerId.value) return
+  if (!game.value || !actorPassword.value || !playerId.value || !isAuthorized.value) return
   
   try {
     const response = await gameService.getPlayerKillRecords(
@@ -302,11 +346,15 @@ const fetchPlayerKillRecords = async () => {
   }
 }
 
-// 监听玩家状态变化，当获取到玩家ID时获取消息记录
+// 监听玩家状态变化，当获取到新的玩家ID时刷新数据
 watch(
   () => gameStateStore.actorPlayer,
   (newActorPlayer) => {
-    if (newActorPlayer && newActorPlayer.id && !playerId.value) {
+    if (!isAuthorized.value) {
+      return
+    }
+
+    if (newActorPlayer && newActorPlayer.id && newActorPlayer.id !== playerId.value) {
       playerId.value = newActorPlayer.id
       // 一旦获取到玩家ID，立即获取消息记录
       fetchPlayerMessages()

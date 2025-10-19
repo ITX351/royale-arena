@@ -98,13 +98,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { gameService } from '@/services/gameService'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import { GameStatus } from '@/types/game'
 import type { KillRecord } from '@/types/game'
+import { authenticateGame } from '@/services/authService'
 
 // 组件导入 - 使用正确的相对路径
 import Header from './components/Header.vue'
@@ -118,6 +119,7 @@ import KillRecordDisplay from '@/components/KillRecordDisplay.vue'
 import '@/styles/director-actor-layout.css'
 
 const route = useRoute()
+const router = useRouter()
 const gameStateStore = useGameStateStore()
 
 // 添加管理组件引用
@@ -185,10 +187,7 @@ const shouldShowLogMessage = computed(() => {
 
 // 生命周期
 onMounted(() => {
-  // 检查是否从URI中获取密码
-  checkURIPassword()
-  // 获取游戏详情
-  fetchGameDetail()
+  initialize()
 })
 
 onUnmounted(() => {
@@ -197,6 +196,36 @@ onUnmounted(() => {
 })
 
 // 方法实现
+const initialize = async () => {
+  checkURIPassword()
+
+  if (!gameId.value) {
+    loading.value = false
+    ElMessage.error('无效的游戏ID')
+    router.push('/')
+    return
+  }
+
+  if (!directorPassword.value) {
+    loading.value = false
+    ElMessage.error('缺少导演密码，请从登录页面进入')
+    router.push(`/game/${gameId.value}`)
+    return
+  }
+
+  const authResult = await authenticateGame(gameId.value, directorPassword.value)
+
+  if (!authResult.success || authResult.role !== 'director') {
+    loading.value = false
+    const message = authResult.errorMessage || '无权限访问导演控制台'
+    ElMessage.error(message)
+    router.push(`/game/${gameId.value}`)
+    return
+  }
+
+  await fetchGameDetail()
+}
+
 const checkURIPassword = () => {
   // 匹配 /game/{gameId}/director/{password}
   const match = route.fullPath.match(/\/game\/([^/]+)\/director\/([^/]+)$/)

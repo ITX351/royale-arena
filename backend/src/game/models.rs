@@ -36,6 +36,25 @@ pub struct GetPlayerKillRecordsRequest {
     pub password: String,
 }
 
+/// 游戏身份角色类型
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GameAuthenticationRole {
+    Director,
+    Actor,
+    Invalid,
+}
+
+/// 游戏身份验证响应
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameAuthenticationResponse {
+    pub role: GameAuthenticationRole,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_name: Option<String>,
+}
+
 /// 游戏状态枚举
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "status", rename_all = "lowercase")]

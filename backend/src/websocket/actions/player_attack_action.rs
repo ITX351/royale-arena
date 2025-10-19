@@ -228,7 +228,7 @@ impl GameState {
 
             if dealt > 0 {
                 if let Some(bleed_value) = weapon_bleed_damage {
-                    target_player.set_bleed_effect(bleed_value, 0);
+                    target_player.set_bleed_effect(bleed_value);
                     main_bleed_value = Some(bleed_value);
                 }
                 if target_player.life == 0 && target_player.is_alive {
@@ -262,7 +262,7 @@ impl GameState {
 
                     if dealt > 0 {
                         if let Some(bleed_value) = weapon_bleed_damage {
-                            target.set_bleed_effect(bleed_value, 0);
+                            target.set_bleed_effect(bleed_value);
                             applied_bleed = Some(bleed_value);
                         }
 

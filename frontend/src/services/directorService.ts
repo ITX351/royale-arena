@@ -28,20 +28,6 @@ export class DirectorService {
   }
 
   /**
-   * 游戏身份验证
-   */
-  async authenticateGame(
-    gameId: string,
-    password: string
-  ): Promise<string> {
-    const response = await apiClient.get(
-      API_ENDPOINTS.GAME_AUTH(gameId),
-      { params: { password } }
-    )
-    return response.data
-  }
-
-  /**
    * 批量添加演员
    */
   async batchAddPlayers(

@@ -276,6 +276,52 @@ impl GameService {
         })
     }
 
+    /// 验证游戏身份
+    pub async fn authenticate_game(
+        &self,
+        game_id: &str,
+        password: &str,
+    ) -> Result<GameAuthenticationResponse, GameError> {
+        let actor = sqlx::query!(
+            "SELECT id, name FROM actors WHERE game_id = ? AND password = ?",
+            game_id,
+            password
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(actor) = actor {
+            return Ok(GameAuthenticationResponse {
+                role: GameAuthenticationRole::Actor,
+                actor_id: Some(actor.id),
+                actor_name: Some(actor.name),
+            });
+        }
+
+        let game = sqlx::query!(
+            "SELECT director_password FROM games WHERE id = ?",
+            game_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(game) = game {
+            if game.director_password == password {
+                return Ok(GameAuthenticationResponse {
+                    role: GameAuthenticationRole::Director,
+                    actor_id: None,
+                    actor_name: None,
+                });
+            }
+        }
+
+        Ok(GameAuthenticationResponse {
+            role: GameAuthenticationRole::Invalid,
+            actor_id: None,
+            actor_name: None,
+        })
+    }
+
     /// 根据ID获取游戏信息
     pub async fn get_game_by_id(&self, game_id: &str) -> Result<Game, GameError> {
         let game = sqlx::query_as!(

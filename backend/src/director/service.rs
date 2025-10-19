@@ -15,12 +15,8 @@ impl DirectorService {
         Self { pool }
     }
 
-    /// 验证导演密码
-    pub async fn verify_director_password(
-        &self,
-        game_id: &str,
-        password: &str,
-    ) -> Result<(), DirectorError> {
+    /// 获取导演明文密码
+    async fn get_director_password(&self, game_id: &str) -> Result<String, DirectorError> {
         let row = sqlx::query("SELECT director_password FROM games WHERE id = ?")
             .bind(game_id)
             .fetch_optional(&self.pool)
@@ -29,48 +25,23 @@ impl DirectorService {
         match row {
             Some(row) => {
                 let stored_password: String = row.get("director_password");
-                if stored_password == password {
-                    Ok(())
-                } else {
-                    Err(DirectorError::InvalidDirectorPassword)
-                }
+                Ok(stored_password)
             }
             None => Err(DirectorError::GameNotFound),
         }
     }
 
-    /// 游戏身份验证
-    pub async fn authenticate_game(
+    /// 验证导演密码
+    pub async fn verify_director_password(
         &self,
         game_id: &str,
         password: &str,
-    ) -> Result<String, DirectorError> {
-        // 首先检查是否是演员密码
-        let actor = sqlx::query!(
-            "SELECT id FROM actors WHERE game_id = ? AND password = ?",
-            game_id,
-            password
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DirectorError::DatabaseError)?;
-
-        if actor.is_some() {
-            return Ok("actor".to_string());
-        }
-
-        // 然后检查是否是导演密码
-        let game = sqlx::query!(
-            "SELECT id, director_password FROM games WHERE id = ?",
-            game_id
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DirectorError::DatabaseError)?;
-
-        match game {
-            Some(game) if game.director_password == password => Ok("director".to_string()),
-            _ => Ok("invalid".to_string()),
+    ) -> Result<(), DirectorError> {
+        let director_password = self.get_director_password(game_id).await?;
+        if director_password == password {
+            Ok(())
+        } else {
+            Err(DirectorError::InvalidDirectorPassword)
         }
     }
 
@@ -151,6 +122,28 @@ impl DirectorService {
     ) -> Result<BatchOperationResponse<PlayerInfo>, DirectorError> {
         // 验证导演密码
         self.verify_director_password(game_id, password).await?;
+
+        // 获取导演密码用于后续验证
+        let director_password = self.get_director_password(game_id).await?;
+
+        // 首先检查所有演员密码是否与导演密码相同
+        for player_request in &request.players {
+            if player_request.password == director_password {
+                // 如果发现任何演员密码与导演密码相同，拒绝所有演员的加入
+                let mut failed = Vec::new();
+                for player_request in request.players {
+                    failed.push(OperationFailure {
+                        player_name: Some(player_request.player_name.clone()),
+                        id: None,
+                        reason: "演员密码不能与导演密码相同".to_string(),
+                    });
+                }
+                return Ok(BatchOperationResponse {
+                    success: Vec::new(),
+                    failed,
+                });
+            }
+        }
 
         let mut success = Vec::new();
         let mut failed = Vec::new();

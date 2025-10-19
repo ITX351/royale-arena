@@ -1,10 +1,13 @@
 import { ElMessage } from 'element-plus'
-import { directorService } from './directorService'
-import type { GameListItem } from '@/types/game'
+import apiClient from './client'
+import { API_ENDPOINTS } from './config'
+import type { GameAuthenticationResponse } from '@/types/game'
 
 export interface AuthResult {
   success: boolean
   role?: 'director' | 'actor' | 'invalid'
+  actorId?: string
+  actorName?: string
   errorMessage?: string
 }
 
@@ -23,25 +26,41 @@ export async function authenticateGame(gameId: string, password: string): Promis
   }
 
   try {
-    // 使用新的认证接口进行权限验证
-    const authResult = await directorService.authenticateGame(gameId, password)
-    
-    if (authResult === 'director') {
+    // 使用认证接口进行权限验证
+    const response = await apiClient.get<GameAuthenticationResponse>(
+      API_ENDPOINTS.GAME_AUTH(gameId),
+      { params: { password } }
+    )
+
+    const {
+      role,
+      actor_id: actorIdRaw,
+      actor_name: actorNameRaw
+    } = response.data
+
+    if (role === 'director') {
       return {
         success: true,
         role: 'director'
       }
-    } else if (authResult === 'actor') {
+    } else if (role === 'actor') {
       return {
         success: true,
-        role: 'actor'
+        role: 'actor',
+        actorId: actorIdRaw ?? undefined,
+        actorName: actorNameRaw ?? undefined
       }
-    } else {
+    } else if (role === 'invalid') {
       return {
         success: false,
         role: 'invalid',
         errorMessage: '密码错误'
       }
+    }
+    
+    return {
+      success: false,
+      errorMessage: '未知的身份验证结果'
     }
   } catch (error) {
     console.error('登录失败:', error)
@@ -79,7 +98,8 @@ export function handleAuthResult(
     return true
   } else if (authResult.role === 'actor') {
     // 如果是演员身份，跳转到演员页面
-    ElMessage.success('成功以演员身份登录')
+    const actorName = authResult.actorName?.trim() || '演员'
+    ElMessage.success(`成功以演员身份登录：${actorName}`)
     router.push(`/game/${gameId}/actor/${encodeURIComponent(password)}`)
     return true
   }
