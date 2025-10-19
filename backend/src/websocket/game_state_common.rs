@@ -4,7 +4,7 @@ use std::mem;
 
 use rand::{rng, seq::SliceRandom};
 
-use super::models::{ActionResult, ActionResults, GameState};
+use super::models::*;
 use crate::game::game_rule_engine::Item;
 
 enum DeathDisposition {
@@ -248,6 +248,19 @@ impl GameState {
         Ok(action_result.as_results())
     }
 
+    pub fn consume_strength(&mut self, player_id: &str, amount: i32) -> Result<(), String> {
+        let player = self.players.get_mut(player_id).unwrap();
+
+        player.strength -= amount;
+
+        // 边界检查：确保体力不低于0
+        if player.strength < 0 {
+            player.strength = 0;
+        }
+
+        Ok(())
+    }
+
     fn drop_items_to_ground(&mut self, location: &str, items: Vec<Item>) -> Vec<String> {
         let item_names: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
 
@@ -271,5 +284,191 @@ impl GameState {
         if !values.is_empty() {
             segments.push(format!("{}: {}", label, values.join(", ")));
         }
+    }
+
+    /// 汇总当前地点的所有搜索目标
+    pub fn collect_search_targets(&self, player_id: &str) -> Vec<SearchTarget> {
+        let mut targets = Vec::new();
+
+        // 获取玩家当前位置
+        let player_location = &self.players[player_id].location;
+
+        if let Some(place) = self.places.get(player_location) {
+            // 添加其他玩家到搜索目标
+            for other_player_id in &place.players {
+                if other_player_id != player_id {
+                    // 只搜索存活的玩家
+                    if let Some(other_player) = self.players.get(other_player_id) {
+                        if other_player.is_alive {
+                            targets.push(SearchTarget::Player(other_player_id.clone()));
+                        }
+                    }
+                }
+            }
+
+            // 添加物品到搜索目标
+            for item in &place.items {
+                targets.push(SearchTarget::Item(item.id.clone()));
+            }
+        }
+
+        targets
+    }
+
+    /// 等概率随机选择一个搜索目标
+    pub fn select_random_target(&self, targets: &[SearchTarget]) -> SearchTarget {
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let index = rng.random_range(0..targets.len());
+        targets[index].clone()
+    }
+
+    /// 处理空搜索结果
+    pub fn handle_empty_search_result(&mut self, player_id: &str) -> Result<ActionResults, String> {
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.last_search_result = None;
+        }
+
+        let (player_strength, player_last_search_time) = {
+            let player = self.players.get(player_id).unwrap();
+            (player.strength, player.last_search_time)
+        };
+
+        let data = serde_json::json!({
+            "last_search_result": null,
+            "strength": player_strength,
+            "last_search_time": player_last_search_time
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "{} 搜索但没有发现任何东西",
+                self.players.get(player_id).unwrap().name
+            ),
+            true,
+        );
+        Ok(action_result.as_results())
+    }
+
+    /// 处理玩家搜索结果
+    pub fn handle_player_search_result(
+        &mut self,
+        player_id: &str,
+        target_player_id: &str,
+        is_visible: bool,
+    ) -> Result<ActionResults, String> {
+        let target_player_name = {
+            if let Some(target_player) = self.players.get(target_player_id) {
+                target_player.name.clone()
+            } else {
+                return Err("Target player not found".to_string());
+            }
+        };
+
+        // 更新玩家的上次搜索结果
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.last_search_result = Some(SearchResult {
+                target_type: SearchResultType::Player,
+                target_id: target_player_id.to_string(),
+                target_name: target_player_name.clone(),
+                is_visible,
+            });
+        }
+
+        let (player_strength, player_last_search_time) = {
+            let player = self.players.get(player_id).unwrap();
+            (player.strength, player.last_search_time)
+        };
+
+        let data = serde_json::json!({
+            "last_search_result": {
+                "target_type": "player",
+                "target_id": target_player_id,
+                "target_name": target_player_name,
+                "is_visible": is_visible
+            },
+            "strength": player_strength,
+            "last_search_time": player_last_search_time
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "{} 搜索发现了 {}",
+                self.players.get(player_id).unwrap().name,
+                target_player_name
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
+
+    /// 处理物品搜索结果
+    pub fn handle_item_search_result(
+        &mut self,
+        player_id: &str,
+        item_id: &str,
+        is_visible: bool,
+    ) -> Result<ActionResults, String> {
+        let item_name = {
+            let player = self.players.get(player_id).unwrap();
+
+            // 查找物品名称
+            if let Some(place) = self.places.get(&player.location) {
+                if let Some(item) = place.items.iter().find(|item| item.id == item_id) {
+                    item.name.clone()
+                } else {
+                    return Err("Item not found in place".to_string());
+                }
+            } else {
+                return Err("Place not found".to_string());
+            }
+        };
+
+        // 更新玩家的上次搜索结果
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.last_search_result = Some(SearchResult {
+                target_type: SearchResultType::Item,
+                target_id: item_id.to_string(),
+                target_name: item_name.clone(),
+                is_visible,
+            });
+        }
+
+        let (player_strength, player_last_search_time) = {
+            let player = self.players.get(player_id).unwrap();
+            (player.strength, player.last_search_time)
+        };
+
+        let data = serde_json::json!({
+            "last_search_result": {
+                "target_type": "item",
+                "target_id": item_id,
+                "target_name": item_name,
+                "is_visible": is_visible
+            },
+            "strength": player_strength,
+            "last_search_time": player_last_search_time
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "{} 搜索并发现了物品 {}",
+                self.players.get(player_id).unwrap().name,
+                item_name
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
     }
 }

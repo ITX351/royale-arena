@@ -12,18 +12,6 @@ impl GameState {
     /// # 返回值
     /// - `Ok(())`: 体力消耗成功
     /// - `Err(String)`: 玩家未找到
-    pub fn consume_strength(&mut self, player_id: &str, amount: i32) -> Result<(), String> {
-        let player = self.players.get_mut(player_id).unwrap();
-
-        player.strength -= amount;
-
-        // 边界检查：确保体力不低于0
-        if player.strength < 0 {
-            player.strength = 0;
-        }
-
-        Ok(())
-    }
     /// 处理玩家出生行动
     pub fn handle_born_action(
         &mut self,
@@ -347,7 +335,6 @@ impl GameState {
         // 验证目标玩家是否在同一地点
         let failed_message = "目标玩家已离开该地点".to_string();
         if target_player_location != player_location {
-            // 目标玩家已离开
             let action_result = ActionResult::new_info_message(
                 serde_json::json!({}),
                 vec![player_id.to_string()],
@@ -359,7 +346,6 @@ impl GameState {
 
         // 验证目标玩家是否已死亡
         if !target_player_alive {
-            // 目标玩家已死亡，不能攻击
             let action_result = ActionResult::new_info_message(
                 serde_json::json!({}),
                 vec![player_id.to_string()],
@@ -369,15 +355,17 @@ impl GameState {
             return Ok(action_result.as_results());
         }
 
-        // 根据是否装备武器计算伤害
-        let (base_damage, attack_method) = {
+        // 根据是否装备武器计算伤害及附加效果
+        let (base_damage, attack_method, weapon_aoe_damage, weapon_bleed_damage) = {
             let attacker = self.players.get(player_id).unwrap();
             if let Some(weapon) = &attacker.equipped_weapon
                 && let Some(attributes) = weapon.as_weapon()
             {
-                (attributes.damage, "武器")
+                let aoe = attributes.aoe_damage.filter(|value| *value > 0);
+                let bleed = attributes.bleed_damage.filter(|value| *value > 0);
+                (attributes.damage, "武器", aoe, bleed)
             } else {
-                (self.rule_engine.get_unarmed_damage(), "挥拳")
+                (self.rule_engine.get_unarmed_damage(), "挥拳", None, None)
             }
         };
 
@@ -394,6 +382,37 @@ impl GameState {
         };
 
         let damage = (base_damage - armor_defense).max(0);
+
+        // 预先收集可能的溅射目标
+        let aoe_targets: Vec<String> = if weapon_aoe_damage.is_some() {
+            if let Some(place) = self.places.get(&player_location) {
+                place
+                    .players
+                    .iter()
+                    .filter_map(|other_id| {
+                        if other_id.as_str() == player_id || other_id == &target_player_id {
+                            return None;
+                        }
+                        let is_alive = self
+                            .players
+                            .get(other_id)
+                            .map(|player| player.is_alive)
+                            .unwrap_or(false);
+                        if is_alive {
+                            Some(other_id.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
+        let attacker_name = self.players.get(player_id).unwrap().name.clone();
 
         let mut weapon_destroyed_result: Option<ActionResult> = None;
         let mut armor_destroyed_result: Option<ActionResult> = None;
@@ -488,95 +507,227 @@ impl GameState {
             }
         }
 
-        // 减少目标玩家生命值
-        let was_killed = {
+        // 对主目标造成伤害，并记录实际伤害与流血效果
+        let mut main_bleed_value: Option<i32> = None;
+        let mut main_requires_kill = false;
+        let main_actual_damage = {
             let target_player = self.players.get_mut(&target_player_id).unwrap();
-            target_player.life -= damage;
+            let before_life = target_player.life;
+            target_player.life = target_player.life.saturating_sub(damage);
+            let dealt = before_life - target_player.life;
 
-            // 检查目标玩家是否死亡
-            if target_player.life <= 0 {
-                target_player.life = 0;
-                true
-            } else {
-                false
+            if dealt > 0 {
+                if let Some(bleed_value) = weapon_bleed_damage {
+                    target_player.set_bleed_effect(bleed_value, 0);
+                    main_bleed_value = Some(bleed_value);
+                }
+                if target_player.life == 0 && target_player.is_alive {
+                    main_requires_kill = true;
+                }
             }
-        }; // 释放对目标玩家的可变借用
 
-        // 如果目标玩家被击杀，执行死亡处理
-        let mut death_results: Option<ActionResults> = None;
-        if was_killed {
-            let death_outcome = self.kill_player(&target_player_id, Some(player_id), "攻击致死")?;
-            death_results = Some(death_outcome);
+            dealt
+        };
+
+        let mut death_results: Vec<ActionResult> = Vec::new();
+        if main_requires_kill {
+            let mut death_outcome =
+                self.kill_player(&target_player_id, Some(player_id), "攻击致死")?;
+            death_results.append(&mut death_outcome.results);
         }
 
-        // 获取目标玩家的当前状态
-        let (target_player_life, target_player_is_alive) = {
+        // 处理武器溅射伤害
+        let mut aoe_impacts: Vec<(String, String, i32, i32, bool, Option<i32>)> = Vec::new();
+        let mut aoe_results: Vec<ActionResult> = Vec::new();
+        if let Some(aoe_damage) = weapon_aoe_damage {
+            for aoe_target_id in aoe_targets {
+                let mut applied_bleed: Option<i32> = None;
+                let mut requires_kill = false;
+
+                let actual_damage = {
+                    let target = self.players.get_mut(&aoe_target_id).unwrap();
+                    let before_life = target.life;
+                    target.life = target.life.saturating_sub(aoe_damage);
+                    let dealt = before_life - target.life;
+
+                    if dealt > 0 {
+                        if let Some(bleed_value) = weapon_bleed_damage {
+                            target.set_bleed_effect(bleed_value, 0);
+                            applied_bleed = Some(bleed_value);
+                        }
+
+                        if target.life == 0 && target.is_alive {
+                            requires_kill = true;
+                        }
+                    }
+
+                    dealt
+                };
+
+                if actual_damage == 0 {
+                    continue;
+                }
+
+                if requires_kill {
+                    let mut death_outcome =
+                        self.kill_player(&aoe_target_id, Some(player_id), "溅射伤害致死")?;
+                    death_results.append(&mut death_outcome.results);
+                }
+
+                let (target_name, life_after, is_alive_after, bleed_after) = {
+                    let target = self.players.get(&aoe_target_id).unwrap();
+                    (
+                        target.name.clone(),
+                        target.life,
+                        target.is_alive,
+                        target.bleed_damage,
+                    )
+                };
+
+                aoe_impacts.push((
+                    aoe_target_id.clone(),
+                    target_name.clone(),
+                    actual_damage,
+                    life_after,
+                    is_alive_after,
+                    applied_bleed,
+                ));
+
+                let mut victim_message = format!(
+                    "你受到溅射攻击，损失 {} 点生命值",
+                    actual_damage
+                );
+                if let Some(bleed_value) = applied_bleed {
+                    victim_message.push_str(&format!(" 并受到 {} 点流血效果", bleed_value));
+                }
+
+                let target_data = serde_json::json!({
+                    "message": victim_message,
+                    "life": life_after,
+                    "is_alive": is_alive_after,
+                    "bleed_damage": bleed_after,
+                });
+
+                aoe_results.push(ActionResult::new_system_message(
+                    target_data,
+                    vec![aoe_target_id],
+                    victim_message,
+                    false,
+                ));
+            }
+        }
+
+        // 获取主目标当前状态
+        let (target_player_life, target_player_is_alive, target_player_bleed) = {
             let target_player = self
                 .players
                 .get(&target_player_id)
                 .ok_or("Target player not found".to_string())?;
-            (target_player.life, target_player.is_alive)
+            (
+                target_player.life,
+                target_player.is_alive,
+                target_player.bleed_damage,
+            )
         };
 
-        let attacker_formatted_message = format!(
+        let mut attacker_formatted_message = format!(
             "{} 使用{}攻击 {} 造成 {} 点伤害",
-            self.players.get(player_id).unwrap().name,
-            attack_method,
-            target_player_name,
-            damage
+            attacker_name, attack_method, target_player_name, main_actual_damage
         );
-        let victim_formatted_message = format!("你被攻击了，受到 {} 点伤害", damage);
+        if let Some(bleed_value) = main_bleed_value {
+            attacker_formatted_message.push_str(&format!(" 并附加 {} 点流血", bleed_value));
+        }
 
-        // 向攻击者发送攻击结果（仅包括主目标）
+        if !aoe_impacts.is_empty() {
+            let mut segments: Vec<String> = Vec::new();
+            for impact in &aoe_impacts {
+                let mut segment = format!("{} 受到 {} 点伤害", impact.1, impact.2);
+                if let Some(bleed_value) = impact.5 {
+                    segment.push_str(&format!(" 并流血 {}", bleed_value));
+                }
+                if !impact.4 {
+                    segment.push_str("（阵亡）");
+                }
+                segments.push(segment);
+            }
+            attacker_formatted_message.push_str("；溅射命中 ");
+            attacker_formatted_message.push_str(&segments.join("，"));
+        }
+
+        let mut victim_formatted_message =
+            format!("你被攻击了，受到 {} 点伤害", main_actual_damage);
+        if let Some(bleed_value) = main_bleed_value {
+            victim_formatted_message.push_str(&format!(" 并受到 {} 点流血效果", bleed_value));
+        }
+
+        let aoe_hits_data: Vec<serde_json::Value> = aoe_impacts
+            .iter()
+            .map(|impact| {
+                serde_json::json!({
+                    "player_id": impact.0,
+                    "player_name": impact.1,
+                    "damage": impact.2,
+                    "life": impact.3,
+                    "is_alive": impact.4,
+                    "bleed_damage": impact.5,
+                })
+            })
+            .collect();
+
+        // 向攻击者发送攻击结果（包括溅射与流血信息）
         let data = serde_json::json!({
             "message": attacker_formatted_message,
             "target_player_life": target_player_life,
             "target_player_is_alive": target_player_is_alive,
+            "target_player_bleed_damage": target_player_bleed,
             "attack_method": attack_method,
-            "damage": damage,
+            "damage": main_actual_damage,
+            "bleed_damage": main_bleed_value,
+            "aoe_hits": aoe_hits_data,
+            "aoe_damage": weapon_aoe_damage,
         });
 
-        // 向被攻击者发送被攻击通知（不包括攻击者身份）
+        // 向被攻击者发送通知
         let target_data = serde_json::json!({
             "message": victim_formatted_message,
+            "life": target_player_life,
+            "is_alive": target_player_is_alive,
+            "bleed_damage": target_player_bleed,
         });
 
         // 消耗体力值并清除上一次搜索结果，防止连续攻击同一目标
         {
             let player = self.players.get_mut(player_id).unwrap();
-            // 清除攻击者的上一次搜索结果，防止连续攻击同一目标
             player.last_search_result = None;
         }
 
         self.consume_strength(player_id, attack_cost)?;
 
-        // 创建动作结果，向攻击者和导演发送完整消息
+        // 创建动作结果
         let full_action_result = ActionResult::new_system_message(
             data,
             vec![player_id.to_string()],
             attacker_formatted_message,
-            true, // 向导演广播
+            true,
         );
 
-        // 创建动作结果，向被攻击者发送差分消息（不向导演广播）
         let diff_action_result = ActionResult::new_system_message(
             target_data,
             vec![target_player_id.to_string()],
             victim_formatted_message,
-            false, // 不向导演广播
+            false,
         );
 
         // 汇总所有ActionResult并返回
         let mut results = vec![full_action_result, diff_action_result];
+        results.extend(aoe_results);
         if let Some(action) = weapon_destroyed_result {
             results.push(action);
         }
         if let Some(action) = armor_destroyed_result {
             results.push(action);
         }
-        if let Some(mut extra_results) = death_results {
-            results.append(&mut extra_results.results);
-        }
+        results.extend(death_results);
 
         let action_results = ActionResults { results };
 
@@ -1069,191 +1220,5 @@ impl GameState {
                 Ok(action_result.as_results())
             }
         }
-    }
-
-    /// 汇总当前地点的所有搜索目标
-    fn collect_search_targets(&self, player_id: &str) -> Vec<SearchTarget> {
-        let mut targets = Vec::new();
-
-        // 获取玩家当前位置
-        let player_location = &self.players[player_id].location;
-
-        if let Some(place) = self.places.get(player_location) {
-            // 添加其他玩家到搜索目标
-            for other_player_id in &place.players {
-                if other_player_id != player_id {
-                    // 只搜索存活的玩家
-                    if let Some(other_player) = self.players.get(other_player_id) {
-                        if other_player.is_alive {
-                            targets.push(SearchTarget::Player(other_player_id.clone()));
-                        }
-                    }
-                }
-            }
-
-            // 添加物品到搜索目标
-            for item in &place.items {
-                targets.push(SearchTarget::Item(item.id.clone()));
-            }
-        }
-
-        targets
-    }
-
-    /// 等概率随机选择一个搜索目标
-    fn select_random_target(&self, targets: &[SearchTarget]) -> SearchTarget {
-        use rand::Rng;
-        let mut rng = rand::rng();
-        let index = rng.random_range(0..targets.len());
-        targets[index].clone()
-    }
-
-    /// 处理空搜索结果
-    fn handle_empty_search_result(&mut self, player_id: &str) -> Result<ActionResults, String> {
-        {
-            let player = self.players.get_mut(player_id).unwrap();
-            player.last_search_result = None;
-        }
-
-        let (player_strength, player_last_search_time) = {
-            let player = self.players.get(player_id).unwrap();
-            (player.strength, player.last_search_time)
-        };
-
-        let data = serde_json::json!({
-            "last_search_result": null,
-            "strength": player_strength,
-            "last_search_time": player_last_search_time
-        });
-
-        let action_result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
-            format!(
-                "{} 搜索但没有发现任何东西",
-                self.players.get(player_id).unwrap().name
-            ),
-            true,
-        );
-        Ok(action_result.as_results())
-    }
-
-    /// 处理玩家搜索结果
-    fn handle_player_search_result(
-        &mut self,
-        player_id: &str,
-        target_player_id: &str,
-        is_visible: bool,
-    ) -> Result<ActionResults, String> {
-        let target_player_name = {
-            if let Some(target_player) = self.players.get(target_player_id) {
-                target_player.name.clone()
-            } else {
-                return Err("Target player not found".to_string());
-            }
-        };
-
-        // 更新玩家的上次搜索结果
-        {
-            let player = self.players.get_mut(player_id).unwrap();
-            player.last_search_result = Some(SearchResult {
-                target_type: SearchResultType::Player,
-                target_id: target_player_id.to_string(),
-                target_name: target_player_name.clone(),
-                is_visible,
-            });
-        }
-
-        let (player_strength, player_last_search_time) = {
-            let player = self.players.get(player_id).unwrap();
-            (player.strength, player.last_search_time)
-        };
-
-        let data = serde_json::json!({
-            "last_search_result": {
-                "target_type": "player",
-                "target_id": target_player_id,
-                "target_name": target_player_name,
-                "is_visible": is_visible
-            },
-            "strength": player_strength,
-            "last_search_time": player_last_search_time
-        });
-
-        let action_result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
-            format!(
-                "{} 搜索发现了 {}",
-                self.players.get(player_id).unwrap().name,
-                target_player_name
-            ),
-            true,
-        );
-
-        Ok(action_result.as_results())
-    }
-
-    /// 处理物品搜索结果
-    fn handle_item_search_result(
-        &mut self,
-        player_id: &str,
-        item_id: &str,
-        is_visible: bool,
-    ) -> Result<ActionResults, String> {
-        let item_name = {
-            let player = self.players.get(player_id).unwrap();
-
-            // 查找物品名称
-            if let Some(place) = self.places.get(&player.location) {
-                if let Some(item) = place.items.iter().find(|item| item.id == item_id) {
-                    item.name.clone()
-                } else {
-                    return Err("Item not found in place".to_string());
-                }
-            } else {
-                return Err("Place not found".to_string());
-            }
-        };
-
-        // 更新玩家的上次搜索结果
-        {
-            let player = self.players.get_mut(player_id).unwrap();
-            player.last_search_result = Some(SearchResult {
-                target_type: SearchResultType::Item,
-                target_id: item_id.to_string(),
-                target_name: item_name.clone(),
-                is_visible,
-            });
-        }
-
-        let (player_strength, player_last_search_time) = {
-            let player = self.players.get(player_id).unwrap();
-            (player.strength, player.last_search_time)
-        };
-
-        let data = serde_json::json!({
-            "last_search_result": {
-                "target_type": "item",
-                "target_id": item_id,
-                "target_name": item_name,
-                "is_visible": is_visible
-            },
-            "strength": player_strength,
-            "last_search_time": player_last_search_time
-        });
-
-        let action_result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
-            format!(
-                "{} 搜索并发现了物品 {}",
-                self.players.get(player_id).unwrap().name,
-                item_name
-            ),
-            true,
-        );
-
-        Ok(action_result.as_results())
     }
 }
