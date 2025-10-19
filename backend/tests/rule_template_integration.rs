@@ -80,6 +80,7 @@ async fn test_rule_template_complete_flow(
         "player": {
             "max_life": 100,
             "max_strength": 100,
+            "daily_life_recovery": 0,
             "daily_strength_recovery": 40
         },
         "action": {
@@ -89,6 +90,7 @@ async fn test_rule_template_complete_flow(
         },
         "rest_mode": {
             "life_recovery": 25,
+            "strength_recovery": 1000,
             "max_moves": 1
         },
         "teammate_behavior": 0
@@ -199,7 +201,13 @@ async fn test_rule_template_complete_flow(
         "player": {
             "max_life": 120,
             "max_strength": 120,
+            "daily_life_recovery": 3,
             "daily_strength_recovery": 50
+        },
+        "rest_mode": {
+            "life_recovery": 30,
+            "strength_recovery": 1200,
+            "max_moves": 2
         }
     });
 

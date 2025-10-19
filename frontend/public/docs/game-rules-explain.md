@@ -13,6 +13,7 @@
   "player": {
     "max_life": 100,
     "max_strength": 100,
+    "daily_life_recovery": 0,
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
     "max_backpack_items": 6,
@@ -30,6 +31,7 @@
   },
   "rest_mode": {
     "life_recovery": 25,
+    "strength_recovery": 1000,
     "max_moves": 1
   },
   "death_item_disposition": "killer_takes_loot",
@@ -46,6 +48,7 @@
   "display_names": {
     "player_max_life": "生命值",
     "player_max_strength": "体力值",
+    "player_daily_life_recovery": "每日生命恢复",
     "player_daily_strength_recovery": "每日体力恢复",
     "player_search_cooldown": "搜索冷却时间",
     "action_move": "移动",
@@ -94,6 +97,7 @@
   "player": {
     "max_life": 100,
     "max_strength": 100,
+    "daily_life_recovery": 0,
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
     "max_backpack_items": 6,
@@ -105,6 +109,7 @@
 字段说明：
 - `max_life`: 玩家的最大生命值
 - `max_strength`: 玩家的最大体力值
+- `daily_life_recovery`: 每天白天恢复的生命值
 - `daily_strength_recovery`: 每天白天恢复的体力值
 - `search_cooldown`: 搜索行动的冷却时间（秒）
 - `max_backpack_items`: 背包中最多允许存放的物品数量（包括已装备的武器和防具）
@@ -149,6 +154,7 @@
 {
   "rest_mode": {
     "life_recovery": 25,
+    "strength_recovery": 1000,
     "max_moves": 1
   }
 }
@@ -156,6 +162,7 @@
 
 字段说明：
 - `life_recovery`: 静养模式下恢复的生命值
+- `strength_recovery`: 静养模式下恢复的体力值
 - `max_moves`: 静养模式下每晚最多可移动的次数
 
 ## 3. 物品系统 (items)
@@ -431,6 +438,7 @@
   "display_names": {
     "player_max_life": "生命值",
     "player_max_strength": "体力值",
+    "player_daily_life_recovery": "每日生命恢复",
     "player_daily_strength_recovery": "每日体力恢复",
     "player_search_cooldown": "搜索冷却时间",
     "action_move": "移动",
@@ -450,6 +458,7 @@
 字段说明：
 - `player_max_life`: 生命值显示名称
 - `player_max_strength`: 体力值显示名称
+- `player_daily_life_recovery`: 每日生命恢复显示名称
 - `player_daily_strength_recovery`: 每日体力恢复显示名称
 - `player_search_cooldown`: 搜索冷却时间显示名称
 - `action_move`: 移动显示名称

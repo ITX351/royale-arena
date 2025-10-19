@@ -120,6 +120,7 @@ pub struct MapConfig {
 pub struct PlayerConfig {
     pub max_life: i32,
     pub max_strength: i32,
+    pub daily_life_recovery: i32,
     pub daily_strength_recovery: i32,
     pub search_cooldown: i64,
     pub max_backpack_items: usize,
@@ -146,6 +147,7 @@ pub struct ActionCosts {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RestModeConfig {
     pub life_recovery: i32,
+    pub strength_recovery: i32,
     pub max_moves: i32,
 }
 

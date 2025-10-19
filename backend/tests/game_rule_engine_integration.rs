@@ -14,6 +14,7 @@ const TEST_RULES_JSON: &str = r#"{
   "player": {
     "max_life": 101,
     "max_strength": 102,
+    "daily_life_recovery": 12,
     "daily_strength_recovery": 43,
     "search_cooldown": 4,
     "max_backpack_items": 2,
@@ -31,6 +32,7 @@ const TEST_RULES_JSON: &str = r#"{
   },
   "rest_mode": {
     "life_recovery": 13,
+    "strength_recovery": 55,
     "max_moves": 2
   },
   "death_item_disposition": "killer_takes_loot",
@@ -38,6 +40,7 @@ const TEST_RULES_JSON: &str = r#"{
   "display_names": {
     "player_max_life": "生命NAME",
     "player_max_strength": "体力NAME",
+    "player_daily_life_recovery": "每日生命恢复NAME",
     "player_daily_strength_recovery": "每日体力恢复NAME",
     "player_search_cooldown": "搜索冷却时间NAME",
     "player_unarmed_damage": "挥拳伤害NAME",
@@ -230,6 +233,7 @@ fn test_game_rule_engine_json_parsing() {
     // 验证玩家配置
     assert_eq!(rule_engine.player_config.max_life, 101);
     assert_eq!(rule_engine.player_config.max_strength, 102);
+    assert_eq!(rule_engine.player_config.daily_life_recovery, 12);
     assert_eq!(rule_engine.player_config.daily_strength_recovery, 43);
     assert_eq!(rule_engine.player_config.search_cooldown, 4);
     assert_eq!(rule_engine.player_config.max_backpack_items, 2);
@@ -247,6 +251,7 @@ fn test_game_rule_engine_json_parsing() {
 
     // 验证静养模式配置
     assert_eq!(rule_engine.rest_mode.life_recovery, 13);
+    assert_eq!(rule_engine.rest_mode.strength_recovery, 55);
     assert_eq!(rule_engine.rest_mode.max_moves, 2);
 
     // 验证队友行为配置

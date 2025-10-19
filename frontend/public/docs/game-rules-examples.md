@@ -17,6 +17,7 @@
   "player": {
     "max_life": 100,
     "max_strength": 100,
+    "daily_life_recovery": 0,
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
     "max_backpack_items": 6,
@@ -34,6 +35,7 @@
   },
   "rest_mode": {
     "life_recovery": 25,
+    "strength_recovery": 1000,
     "max_moves": 1
   },
   "death_item_disposition": "killer_takes_loot",
@@ -41,6 +43,7 @@
   "display_names": {
     "player_max_life": "生命值",
     "player_max_strength": "体力值",
+    "player_daily_life_recovery": "每日生命恢复",
     "player_daily_strength_recovery": "每日体力恢复",
     "player_search_cooldown": "搜索冷却时间",
     "player_unarmed_damage": "挥拳伤害",

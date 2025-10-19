@@ -124,6 +124,7 @@
                                   <h4>玩家配置</h4>
                                   <p><strong>最大生命值：</strong>{{ parsedRules.player.maxLife }}</p>
                                   <p><strong>最大体力值：</strong>{{ parsedRules.player.maxStrength }}</p>
+                                  <p><strong>每日生命恢复：</strong>{{ parsedRules.player.dailyLifeRecovery }}</p>
                                   <p><strong>每日体力恢复：</strong>{{ parsedRules.player.dailyStrengthRecovery }}</p>
                                   <p><strong>搜索冷却时间：</strong>{{ parsedRules.player.searchCooldown }}秒</p>
                                   <p><strong>背包最大物品数：</strong>{{ parsedRules.player.maxBackpackItems }}</p>
@@ -141,6 +142,7 @@
                                 <el-col :span="12">
                                   <h4>静养模式</h4>
                                   <p><strong>生命恢复：</strong>{{ parsedRules.restMode.lifeRecovery }}点</p>
+                                  <p><strong>体力恢复：</strong>{{ parsedRules.restMode.strengthRecovery }}点</p>
                                   <p><strong>最大移动次数：</strong>{{ parsedRules.restMode.maxMoves }}次</p>
                                   <p><strong>队友行为规则：</strong>{{ parsedRules.teammateBehavior }}</p>
                                   <p><strong>死亡后物品去向：</strong>{{ getDispositionDisplayText(parsedRules.deathItemDisposition) }}</p>

@@ -8,6 +8,7 @@ export interface ParsedGameRules {
   player: {
     maxLife: number;
     maxStrength: number;
+    dailyLifeRecovery: number;
     dailyStrengthRecovery: number;
     searchCooldown: number;
     maxBackpackItems: number;
@@ -25,6 +26,7 @@ export interface ParsedGameRules {
   };
   restMode: {
     lifeRecovery: number;
+    strengthRecovery: number;
     maxMoves: number;
   };
   deathItemDisposition: string; // 死亡后物品去向
@@ -88,6 +90,7 @@ export interface ParsedGameRules {
   displayNames: {
     playerMaxLife: string;
     playerMaxStrength: string;
+    playerDailyLifeRecovery: string;
     playerDailyStrengthRecovery: string;
     playerSearchCooldown: string;
     actionMove: string;
@@ -98,7 +101,7 @@ export interface ParsedGameRules {
     actionUse: string;
     actionThrow: string;
     actionDeliver: string;
-    playerUnarmedDamage: string;  // 更改为 player 前缀
+    playerUnarmedDamage: string;
     restLifeRecovery: string;
     restMaxMoves: string;
   };
@@ -143,10 +146,11 @@ export class GameRuleParser {
       player: {
         maxLife: 100,
         maxStrength: 100,
+        dailyLifeRecovery: 0,
         dailyStrengthRecovery: 40,
         searchCooldown: 30,
         maxBackpackItems: 4,
-        unarmedDamage: 5  // 新增：挥拳伤害默认值
+        unarmedDamage: 5
       },
       actionCosts: {
         move: 5,
@@ -160,6 +164,7 @@ export class GameRuleParser {
       },
       restMode: {
         lifeRecovery: 25,
+        strengthRecovery: 1000,
         maxMoves: 1
       },
       deathItemDisposition: "killer_takes_loot", // 默认值
@@ -181,6 +186,7 @@ export class GameRuleParser {
       displayNames: {
         playerMaxLife: "生命值",
         playerMaxStrength: "体力值",
+        playerDailyLifeRecovery: "每日生命恢复",
         playerDailyStrengthRecovery: "每日体力恢复",
         playerSearchCooldown: "搜索冷却时间",
         actionMove: "移动",
@@ -211,6 +217,7 @@ export class GameRuleParser {
     if (rulesConfig.player) {
       parsedRules.player.maxLife = rulesConfig.player.max_life || 100;
       parsedRules.player.maxStrength = rulesConfig.player.max_strength || 100;
+      parsedRules.player.dailyLifeRecovery = rulesConfig.player.daily_life_recovery || 0;
       parsedRules.player.dailyStrengthRecovery = rulesConfig.player.daily_strength_recovery || 40;
       parsedRules.player.searchCooldown = rulesConfig.player.search_cooldown || 30;
       parsedRules.player.maxBackpackItems = rulesConfig.player.max_backpack_items || 4;
@@ -236,6 +243,7 @@ export class GameRuleParser {
     // 解析静养模式配置
     if (rulesConfig.rest_mode) {
       parsedRules.restMode.lifeRecovery = rulesConfig.rest_mode.life_recovery || 25;
+      parsedRules.restMode.strengthRecovery = rulesConfig.rest_mode.strength_recovery ?? 1000;
       parsedRules.restMode.maxMoves = rulesConfig.rest_mode.max_moves || 1;
     } else {
       parsedRules.missingSections.push('rest_mode');
@@ -397,6 +405,7 @@ export class GameRuleParser {
     if (rulesConfig.display_names) {
       parsedRules.displayNames.playerMaxLife = rulesConfig.display_names.player_max_life || "生命值";
       parsedRules.displayNames.playerMaxStrength = rulesConfig.display_names.player_max_strength || "体力值";
+      parsedRules.displayNames.playerDailyLifeRecovery = rulesConfig.display_names.player_daily_life_recovery || "每日生命恢复";
       parsedRules.displayNames.playerDailyStrengthRecovery = rulesConfig.display_names.player_daily_strength_recovery || "每日体力恢复";
       parsedRules.displayNames.playerSearchCooldown = rulesConfig.display_names.player_search_cooldown || "搜索冷却时间";
       parsedRules.displayNames.actionMove = rulesConfig.display_names.action_move || "移动";
