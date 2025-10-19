@@ -524,13 +524,30 @@ impl GameState {
             .get_mut(player_id)
             .ok_or("Player not found".to_string())?;
 
-        // 查找并移除物品
-        let item_pos = player
-            .inventory
-            .iter()
-            .position(|i| i.name == item_name)
-            .ok_or("Item not found in player's inventory".to_string())?;
-        let removed_item = player.inventory.remove(item_pos);
+        // 优先检查已装备的物品并移除，以确保释放其占用的内存
+        let mut removed_item = if player
+            .equipped_weapon
+            .as_ref()
+            .map_or(false, |item| item.name == item_name)
+        {
+            player.equipped_weapon.take()
+        } else if player
+            .equipped_armor
+            .as_ref()
+            .map_or(false, |item| item.name == item_name)
+        {
+            player.equipped_armor.take()
+        } else {
+            None
+        };
+
+        if removed_item.is_none() {
+            if let Some(item_pos) = player.inventory.iter().position(|i| i.name == item_name) {
+                removed_item = Some(player.inventory.remove(item_pos));
+            }
+        }
+
+        let removed_item = removed_item.ok_or("Item not found on player".to_string())?;
 
         // 构造响应数据
         let data = serde_json::json!({

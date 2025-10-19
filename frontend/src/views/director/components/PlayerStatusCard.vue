@@ -70,6 +70,28 @@
           <el-table-column label="物品" min-width="200">
             <template #default="scope">
               <div class="items-container">
+                <el-tag
+                  v-if="scope.row.equipped_weapon"
+                  effect="dark"
+                  type="danger"
+                  size="small"
+                  class="equipment-tag weapon-tag"
+                  closable
+                  @close="() => scope.row.equipped_weapon && removeItem(scope.row.id, scope.row.equipped_weapon.name)"
+                >
+                  {{ scope.row.equipped_weapon.name }}
+                </el-tag>
+                <el-tag
+                  v-if="scope.row.equipped_armor"
+                  effect="dark"
+                  type="info"
+                  size="small"
+                  class="equipment-tag armor-tag"
+                  closable
+                  @close="() => scope.row.equipped_armor && removeItem(scope.row.id, scope.row.equipped_armor.name)"
+                >
+                  {{ scope.row.equipped_armor.name }}
+                </el-tag>
                 <el-tag 
                   v-for="(item, index) in scope.row.inventory" 
                   :key="index" 
@@ -369,6 +391,10 @@ const goToActorPage = (playerPassword: string) => {
 
 .item-tag {
   margin: 2px 0;
+}
+
+.equipment-tag {
+  font-weight: 600;
 }
 
 .dialog-footer {

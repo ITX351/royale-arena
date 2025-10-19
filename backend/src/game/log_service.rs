@@ -7,7 +7,6 @@ use crate::game::models::{
     MessageRecord,
     MessageType,
     KillRecord,
-    GetPlayerKillRecordsRequest,
     NewKillRecord,
 };
 use chrono::{DateTime, Utc};
@@ -244,11 +243,6 @@ impl GameLogService {
         player_id: &str,
         password: &str,
     ) -> Result<Vec<KillRecord>, GameError> {
-        // 验证请求参数
-        let request = GetPlayerKillRecordsRequest {
-            password: password.to_string(),
-        };
-
         // 验证玩家是否存在且密码正确
         let actor = sqlx::query!(
             "SELECT id FROM actors WHERE id = ? AND game_id = ? AND password = ?",

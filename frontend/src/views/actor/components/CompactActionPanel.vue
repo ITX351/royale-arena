@@ -2,6 +2,9 @@
   <!-- 玩家状态栏 -->
   <div class="player-status-bar">
     <div class="status-item">
+      <span class="status-value name">{{ player.name }}</span>
+    </div>
+    <div class="status-item">
       <span class="status-label">生命:</span>
       <span class="status-value life">{{ player.life }}</span>
     </div>
@@ -425,6 +428,10 @@ function formatDuration(durationMs: number) {
 
 .status-value.location {
   color: #409eff;
+}
+
+.status-value.name {
+  color: #303133;
 }
 
 .section-title {
