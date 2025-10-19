@@ -371,11 +371,12 @@ const handleGameAction = async (command: string, game: GameListItem) => {
   }
 }
 
-const updateGameStatus = async (game: GameListItem, _status: string) => {
+const updateGameStatus = async (game: GameListItem, status: string) => {
   try {
     // 这里需要调用更新游戏状态的API
-    // 由于当前API设计中没有直接的状态更新接口，这里先用占位逻辑
-    ElMessage.success(`游戏"${game.name}"状态已更新`)
+    // TODO: 由于当前API设计中没有直接的状态更新接口，这里先用占位逻辑
+    // ElMessage.success(`游戏"${game.name}"状态已更新`)
+    console.log(`更新游戏 ${game.id} 状态为 ${status} 的逻辑待实现`)
     await loadGames()
   } catch {
     ElMessage.error('更新游戏状态失败')

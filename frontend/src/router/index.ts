@@ -4,7 +4,6 @@ import { useAdminStore } from '@/stores/admin'
 // 懒加载组件
 const HomePage = () => import('@/views/HomePage.vue')
 const GameDetailPage = () => import('@/views/GameDetailPage.vue')
-const PlayerInterface = () => import('@/views/PlayerInterface.vue')
 const DirectorMain = () => import('@/views/director/DirectorMain.vue')
 const ActorMain = () => import('@/views/actor/ActorMain.vue')
 const AdminLoginPage = () => import('@/views/admin/AdminLoginPage.vue')
@@ -29,14 +28,6 @@ const routes = [
     component: GameDetailPage,
     meta: {
       title: '游戏详情'
-    }
-  },
-  {
-    path: '/game/:id/player',
-    name: 'PlayerInterface',
-    component: PlayerInterface,
-    meta: {
-      title: '玩家界面'
     }
   },
   {

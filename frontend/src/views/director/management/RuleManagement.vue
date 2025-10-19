@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { PrismEditor } from 'vue-prism-editor'
@@ -313,9 +313,6 @@ import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism-tomorrow.css'
 import MarkdownIt from 'markdown-it'
 
-
-// 忽略类型检查错误
-// @ts-ignore
 import type { GameWithRules } from '@/types/game'
 import { directorService } from '@/services/directorService'
 import { GameRuleParser, type ParsedGameRules } from '@/utils/gameRuleParser'
@@ -350,7 +347,6 @@ const documentationError = ref('')
 const ruleParser = new GameRuleParser()
 
 // 初始化Markdown渲染器
-// @ts-ignore
 const md = new MarkdownIt({
   html: true,
   linkify: true,
@@ -362,20 +358,11 @@ const md = new MarkdownIt({
 // 计算属性
 const isDirty = computed(() => editableRules.value !== originalRules.value)
 
-const formattedRules = computed(() => {
-  try {
-    const parsed = JSON.parse(editableRules.value)
-    return JSON.stringify(parsed, null, 2)
-  } catch {
-    return editableRules.value
-  }
-})
-
 const parsedRules = computed<ParsedGameRules>(() => {
   try {
     const rules = JSON.parse(editableRules.value)
     return ruleParser.parse(rules)
-  } catch (error) {
+  } catch {
     return ruleParser.parse({})
   }
 })
@@ -384,13 +371,11 @@ const parsedRules = computed<ParsedGameRules>(() => {
 
 const renderedDocumentation = computed(() => {
   if (!documentation.value) return ''
-  // @ts-ignore
   return md.render(documentation.value)
 })
 
 const renderedExamples = computed(() => {
   if (!examples.value) return ''
-  // @ts-ignore
   return md.render(examples.value)
 })
 

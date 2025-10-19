@@ -59,6 +59,11 @@
 
 <script setup lang="ts">
 import { formatTimestamp, formatGameStatus, getStatusTagType } from '@/utils/gameUtils'
+import type { GameWithRules } from '@/types/game'
+
+defineProps<{
+  game: GameWithRules | null
+}>()
 </script>
 
 <style scoped>

@@ -40,7 +40,11 @@
 
 <script setup lang="ts">
 import { formatTimestamp } from '@/utils/gameUtils'
+import type { GameWithRules } from '@/types/game'
 
+defineProps<{
+  game: GameWithRules | null
+}>()
 </script>
 
 <style scoped>

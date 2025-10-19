@@ -2,13 +2,15 @@ import { ElMessage } from 'element-plus'
 import type { DirectorGameState } from '@/types/gameStateTypes'
 import { API_CONFIG } from './config'
 
-// WebSocket连接状态枚举
-export enum WebSocketStatus {
-  CONNECTING = 'connecting',
-  CONNECTED = 'connected',
-  DISCONNECTED = 'disconnected',
-  ERROR = 'error'
-}
+// WebSocket连接状态常量
+export const WebSocketStatus = {
+  CONNECTING: 'connecting',
+  CONNECTED: 'connected',
+  DISCONNECTED: 'disconnected',
+  ERROR: 'error'
+} as const;
+
+export type WebSocketStatus = typeof WebSocketStatus[keyof typeof WebSocketStatus];
 
 // WebSocket事件类型
 export interface WebSocketEvent {

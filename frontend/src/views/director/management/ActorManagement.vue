@@ -77,19 +77,6 @@
                 <el-text v-else class="no-team">无</el-text>
               </template>
             </el-table-column>
-            
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  type="primary"
-                  @click="switchToPlayerView(row.id)"
-                  :icon="View"
-                >
-                  进入视角
-                </el-button>
-              </template>
-            </el-table-column>
           </el-table>
           
           <!-- 空状态 -->
@@ -259,15 +246,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowDown,
   ArrowUp,
   Plus,
   Delete,
-  Refresh,
-  View
+  Refresh
 } from '@element-plus/icons-vue'
 
 import { directorService } from '@/services/directorService'
@@ -283,8 +268,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'refresh'): void
 }>()
-
-const router = useRouter()
 
 // 响应式状态
 const state = reactive({
@@ -552,10 +535,6 @@ const handleBatchDelete = async () => {
   }
 }
 
-const switchToPlayerView = (_playerId: string) => {
-  // 跳转到指定演员视角 - 可以根据需要实现
-  router.push(`/game/${props.gameId}/player`)
-}
 </script>
 
 <style scoped>

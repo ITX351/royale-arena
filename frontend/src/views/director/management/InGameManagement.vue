@@ -114,12 +114,6 @@ defineProps<{
   directorPassword: string
 }>()
 
-// 定义事件发射
-const emit = defineEmits<{
-  (e: 'request-pause'): void
-  (e: 'request-end'): void
-}>()
-
 // 定义暴露给父组件的方法
 defineExpose({
   setBroadcastTarget
