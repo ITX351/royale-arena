@@ -8,11 +8,14 @@
           <el-tag type="danger" size="small">武器</el-tag>
           <div class="slot-item-name">{{ player.equipped_weapon.name }}</div>
           <div 
-            v-if="player.equipped_weapon.properties.damage"
+            v-if="hasItemProperties(player.equipped_weapon)"
             class="item-properties"
           >
-            <span>
-              伤害: {{ player.equipped_weapon.properties.damage }}
+            <span
+              v-for="property in extractItemProperties(player.equipped_weapon)"
+              :key="property.label"
+            >
+              {{ formatItemProperty(property) }}
             </span>
           </div>
           <el-button 
@@ -36,11 +39,14 @@
           <el-tag type="primary" size="small">防具</el-tag>
           <div class="slot-item-name">{{ player.equipped_armor.name }}</div>
           <div 
-            v-if="player.equipped_armor.properties.defense"
+            v-if="hasItemProperties(player.equipped_armor)"
             class="item-properties"
           >
-            <span>
-              防御: {{ player.equipped_armor.properties.defense }}
+            <span
+              v-for="property in extractItemProperties(player.equipped_armor)"
+              :key="property.label"
+            >
+              {{ formatItemProperty(property) }}
             </span>
           </div>
           <el-button 
@@ -79,21 +85,24 @@
         <div class="item-info">
           <div class="item-name">{{ item.name }}</div>
           <div class="item-type">
-            <el-tag :type="getItemTypeTagType(item.item_type)" size="small">
-              {{ getItemTypeLabel(item.item_type) }}
+            <el-tag :type="getItemTypeTagType(item.item_type?.type)" size="small">
+              {{ getItemTypeLabel(item.item_type?.type) }}
             </el-tag>
           </div>
           <div v-if="hasItemProperties(item)" class="item-properties">
-            <span v-if="item.properties.damage">伤害: {{ item.properties.damage }}</span>
-            <span v-if="item.properties.defense">防御: {{ item.properties.defense }}</span>
-            <span v-if="item.properties.effect_value">效果: {{ item.properties.effect_value }}</span>
+            <span
+              v-for="property in extractItemProperties(item)"
+              :key="property.label"
+            >
+              {{ formatItemProperty(property) }}
+            </span>
           </div>
         </div>
         
         <div class="item-actions">
           <!-- 装备按钮（仅武器和防具） -->
           <el-button 
-            v-if="item.item_type === 'weapon' || item.item_type === 'equipment'" 
+            v-if="item.item_type?.type === 'weapon' || item.item_type?.type === 'armor'" 
             type="primary" 
             size="small" 
             @click="equipItem(item.id)"
@@ -104,7 +113,7 @@
           
           <!-- 使用按钮（仅消耗品） -->
           <el-button 
-            v-if="item.item_type === 'consumable'" 
+            v-if="item.item_type?.type === 'consumable'" 
             type="success" 
             size="small" 
             @click="useItem(item.id)"
@@ -132,6 +141,8 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { Player, Item } from '@/types/gameStateTypes'
+import { getItemTypeLabel, getItemTypeTagType } from '@/utils/itemType'
+import { getItemDisplayProperties, type ItemDisplayProperty, formatItemProperty } from '@/utils/itemDisplay'
 
 const props = defineProps<{
   player: Player | null
@@ -150,27 +161,15 @@ const loadingItems = ref<string[]>([])
 const unequippingWeapon = ref(false)
 const unequippingArmor = ref(false)
 
-// 方法
-const getItemTypeLabel = (itemType: string) => {
-  switch (itemType) {
-    case 'weapon': return '武器'
-    case 'consumable': return '消耗品'
-    case 'equipment': return '防具'
-    default: return '未知'
+const extractItemProperties = (item?: Item | null): ItemDisplayProperty[] => {
+  if (!item) {
+    return []
   }
+  return getItemDisplayProperties(item)
 }
 
-const getItemTypeTagType = (itemType: string) => {
-  switch (itemType) {
-    case 'weapon': return 'danger'
-    case 'consumable': return 'success'
-    case 'equipment': return 'primary'
-    default: return 'info'
-  }
-}
-
-const hasItemProperties = (item: Item) => {
-  return item.properties && Object.keys(item.properties).length > 0
+const hasItemProperties = (item?: Item | null) => {
+  return extractItemProperties(item).length > 0
 }
 
 const equipItem = async (itemId: string) => {

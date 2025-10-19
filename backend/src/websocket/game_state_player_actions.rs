@@ -1,7 +1,6 @@
 //! GameState 玩家行动实现
 
 use super::models::*;
-use crate::game::game_rule_engine::{ItemType};
 
 impl GameState {
     /// 消耗玩家体力值
@@ -374,14 +373,15 @@ impl GameState {
         }
 
         // 根据是否装备武器计算伤害
-        let (damage, attack_method) = if let Some(weapon) = &self.players.get(player_id).unwrap().equipped_weapon {
-            // 有武器：使用武器伤害
-            // let weapon_damage = self.players.get(player_id).unwrap().get_weapon_damage();
-            let weapon_damage = 20; // 根据已装备武器的实际武器伤害值替换此处
-            (weapon_damage, "武器")
-        } else {
-            // 无武器：使用规则引擎获取挥拳伤害
-            (self.rule_engine.get_unarmed_damage(), "挥拳")
+        let (damage, attack_method) = {
+            let attacker = self.players.get(player_id).unwrap();
+            if let Some(weapon) = &attacker.equipped_weapon
+                && let Some(attributes) = weapon.as_weapon()
+            {
+                (attributes.damage, "武器")
+            } else {
+                (self.rule_engine.get_unarmed_damage(), "挥拳")
+            }
         };
 
         // 减少目标玩家生命值
@@ -482,11 +482,10 @@ impl GameState {
         // 使用规则引擎获取装备消耗
         let equip_cost = self.rule_engine.action_costs.equip;
 
-        // 获取玩家引用
-        let player = self.players.get_mut(player_id).unwrap();
-
-        // 验证玩家背包中是否存在指定物品
-        let item_index = player.inventory.iter().position(|item| item.id == item_id);
+        let item_index = {
+            let player = self.players.get(player_id).unwrap();
+            player.inventory.iter().position(|item| item.id == item_id)
+        };
         if item_index.is_none() {
             // 用Info类型返回错误提示
             let data = serde_json::json!({});
@@ -500,96 +499,88 @@ impl GameState {
         }
 
         let item_index = item_index.unwrap();
-        let item = player.inventory[item_index].clone();
-        let item_name = item.name.clone();
 
-        // 检查物品类型
-        match item.item_type {
-            ItemType::Weapon => {
-                // 装备武器
-                let (player_name, equipped_weapon, inventory) = {
-                    let player = self.players.get_mut(player_id).unwrap();
-                    player.inventory.remove(item_index);
+        let (item_snapshot, player_name) = {
+            let player_view = self.players.get(player_id).unwrap();
+            (
+                player_view.inventory[item_index].clone(),
+                player_view.name.clone(),
+            )
+        };
 
-                    // 如果已有武器，卸下旧武器到背包
-                    if let Some(old_weapon) = player.equip_weapon(item) {
-                        player.inventory.push(old_weapon);
-                    }
+        let item_name = item_snapshot.name.clone();
+        let is_weapon = item_snapshot.as_weapon().is_some();
+        let is_armor = item_snapshot.as_armor().is_some();
 
-                    (
-                        player.name.clone(),
-                        player.equipped_weapon.clone(),
-                        player.inventory.clone(),
-                    )
-                };
+        if is_weapon {
+            let (equipped_weapon, inventory) = {
+                let player = self.players.get_mut(player_id).unwrap();
+                let item = player.inventory.remove(item_index);
 
-                // 消耗体力值
-                self.consume_strength(player_id, equip_cost)?;
+                if let Some(old_weapon) = player.equip_weapon(item) {
+                    player.inventory.push(old_weapon);
+                }
 
-                // 向该玩家发送装备状态更新
-                let data = serde_json::json!({
-                    "equipped_weapon": equipped_weapon,
-                    "inventory": inventory,
-                    "strength": self.players.get(player_id).unwrap().strength
-                });
+                (
+                    player.equipped_weapon.clone(),
+                    player.inventory.clone(),
+                )
+            };
 
-                // 创建动作结果，只广播给发起者本人
-                let action_result = ActionResult::new_system_message(
-                    data,
-                    vec![player_id.to_string()],
-                    format!("{} 装备了武器 {}", player_name, item_name),
-                    true,
-                );
-                Ok(action_result.as_results())
-            }
-            ItemType::Equipment => {
-                // 装备防具
-                let (player_name, equipped_armor, inventory) = {
-                    let player = self.players.get_mut(player_id).unwrap();
-                    player.inventory.remove(item_index);
+            self.consume_strength(player_id, equip_cost)?;
 
-                    // 如果已有防具，卸下旧防具到背包
-                    if let Some(old_armor) = player.equip_armor(item) {
-                        player.inventory.push(old_armor);
-                    }
+            let data = serde_json::json!({
+                "equipped_weapon": equipped_weapon,
+                "inventory": inventory,
+                "strength": self.players.get(player_id).unwrap().strength
+            });
 
-                    (
-                        player.name.clone(),
-                        player.equipped_armor.clone(),
-                        player.inventory.clone(),
-                    )
-                };
+            let action_result = ActionResult::new_system_message(
+                data,
+                vec![player_id.to_string()],
+                format!("{} 装备了武器 {}", player_name, item_name),
+                true,
+            );
+            Ok(action_result.as_results())
+        } else if is_armor {
+            let (equipped_armor, inventory) = {
+                let player = self.players.get_mut(player_id).unwrap();
+                let item = player.inventory.remove(item_index);
 
-                // 消耗体力值
-                self.consume_strength(player_id, equip_cost)?;
+                if let Some(old_armor) = player.equip_armor(item) {
+                    player.inventory.push(old_armor);
+                }
 
-                // 向该玩家发送装备状态更新
-                let data = serde_json::json!({
-                    "equipped_armor": equipped_armor,
-                    "inventory": inventory,
-                    "strength": self.players.get(player_id).unwrap().strength
-                });
+                (
+                    player.equipped_armor.clone(),
+                    player.inventory.clone(),
+                )
+            };
 
-                // 创建动作结果，只广播给发起者本人
-                let action_result = ActionResult::new_system_message(
-                    data,
-                    vec![player_id.to_string()],
-                    format!("{} 装备了防具 {}", player_name, item_name),
-                    true,
-                );
-                Ok(action_result.as_results())
-            }
-            _ => {
-                // 非装备类物品不能装备
-                let data = serde_json::json!({});
-                let action_result = ActionResult::new_info_message(
-                    data,
-                    vec![player_id.to_string()],
-                    "该物品不是装备，无法装备".to_string(),
-                    false,
-                );
-                Ok(action_result.as_results())
-            }
+            self.consume_strength(player_id, equip_cost)?;
+
+            let data = serde_json::json!({
+                "equipped_armor": equipped_armor,
+                "inventory": inventory,
+                "strength": self.players.get(player_id).unwrap().strength
+            });
+
+            let action_result = ActionResult::new_system_message(
+                data,
+                vec![player_id.to_string()],
+                format!("{} 装备了防具 {}", player_name, item_name),
+                true,
+            );
+            Ok(action_result.as_results())
+        } else {
+            let data = serde_json::json!({});
+            let action_result = ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "该物品不是装备，无法装备".to_string(),
+                false,
+            );
+            Ok(action_result.as_results())
         }
     }
 
@@ -602,30 +593,31 @@ impl GameState {
         // 使用规则引擎获取使用消耗
         let use_cost = self.rule_engine.action_costs.use_item;
 
-        // 获取玩家引用
-        let player = self.players.get_mut(player_id).unwrap();
+        let (item_index, item_snapshot, player_name) = {
+            let player = self.players.get(player_id).unwrap();
+            match player.inventory.iter().position(|item| item.id == item_id) {
+                Some(index) => (
+                    index,
+                    player.inventory[index].clone(),
+                    player.name.clone(),
+                ),
+                None => {
+                    let data = serde_json::json!({});
+                    let action_result = ActionResult::new_info_message(
+                        data,
+                        vec![player_id.to_string()],
+                        "背包中没有该道具".to_string(),
+                        false,
+                    );
+                    return Ok(action_result.as_results());
+                }
+            }
+        };
 
-        // 验证玩家背包中是否存在指定物品
-        let item_index = player.inventory.iter().position(|item| item.id == item_id);
-        if item_index.is_none() {
-            // 用Info类型返回错误提示
-            let data = serde_json::json!({});
-            let action_result = ActionResult::new_info_message(
-                data,
-                vec![player_id.to_string()],
-                "背包中没有该道具".to_string(),
-                false,
-            );
-            return Ok(action_result.as_results());
-        }
-
-        let item_index = item_index.unwrap();
-        let item = player.inventory[item_index].clone();
-        let item_name = item.name.clone();
-        let player_name = player.name.clone();
-
-        // 检查物品类型，只能使用消耗品
-        if item.item_type != ItemType::Consumable {
+        let item_name = item_snapshot.name.clone();
+        let effect = if let Some(effect) = item_snapshot.as_consumable() {
+            effect.clone()
+        } else {
             let data = serde_json::json!({});
             let action_result = ActionResult::new_info_message(
                 data,
@@ -634,47 +626,32 @@ impl GameState {
                 false,
             );
             return Ok(action_result.as_results());
+        };
+
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.inventory.remove(item_index);
         }
 
-        // 解析消耗品效果
-        let effect_type = item.properties.get("effect_type").and_then(|v| v.as_str());
-        let effect_value = item
-            .properties
-            .get("effect_value")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32;
-        let cure_bleed = item
-            .properties
-            .get("cure_bleed")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-        // 从背包移除消耗品
-        player.inventory.remove(item_index);
-
         // 执行效果
-        match effect_type {
-            Some("heal") => {
+        match effect.effect_type.as_str() {
+            "heal" => {
                 // 治疗效果
                 let (life, bleed_damage, bleed_rounds_remaining) = {
                     let player = self.players.get_mut(player_id).unwrap();
-                    if cure_bleed && player.has_bleed_effect() {
+                    let had_bleed = player.has_bleed_effect();
+                    let cure_level = effect.cure_bleed.unwrap_or(0);
+
+                    if had_bleed && cure_level > 0 {
                         // 解除流血效果
                         player.clear_bleed_effect();
+                    }
 
-                        // 判断是否是红花丹类（强效治疗，同时恢复生命）
-                        // 红花丹类通过 effect_value > 0 区分
-                        if effect_value > 0 {
-                            // 红花丹类：解除流血 + 恢复生命
-                            player.life += effect_value;
-                            if player.life > player.max_life {
-                                player.life = player.max_life;
-                            }
-                        }
-                        // 绗带类：仅解除流血，不增加生命
-                    } else {
-                        // 没有流血效果，正常恢复生命
-                        player.life += effect_value;
+                    let heal_amount = effect.effect_value;
+                    let allow_heal = heal_amount > 0 && (!had_bleed || cure_level >= 2);
+
+                    if allow_heal {
+                        player.life += heal_amount;
                         if player.life > player.max_life {
                             player.life = player.max_life;
                         }
@@ -705,11 +682,11 @@ impl GameState {
                 );
                 Ok(action_result.as_results())
             }
-            Some("strength") => {
+            "strength" => {
                 // 体力恢复效果
                 {
                     let player = self.players.get_mut(player_id).unwrap();
-                    player.strength += effect_value;
+                    player.strength += effect.effect_value;
                     if player.strength > player.max_strength {
                         player.strength = player.max_strength;
                     }

@@ -3,15 +3,22 @@
 // 游戏阶段枚举
 export type GamePhase = 'day' | 'night';
 
-// 物品类型枚举
-export type ItemType = 'weapon' | 'consumable' | 'equipment';
+// 物品类型分类
+export type ItemCategory = 'weapon' | 'armor' | 'consumable' | 'utility' | 'upgrader';
+
+// 物品类型载荷
+export interface ItemType {
+  type: ItemCategory;
+  properties?: Record<string, any>;
+}
 
 // 物品接口
 export interface Item {
   id: string;
   name: string;
+  internal_name: string | null;
+  rarity: string | null;
   item_type: ItemType;
-  properties: Record<string, any>;
 }
 
 // 导演视角的玩家接口

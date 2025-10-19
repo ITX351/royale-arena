@@ -36,7 +36,7 @@ export interface ConsumableConfig {
   name: string
   effect_type: string
   effect_value: number
-  cure_bleed?: boolean
+  cure_bleed?: number
 }
 
 // 升级器配置接口
@@ -337,7 +337,7 @@ export function createItemParser(rulesJson: any, existingItems: string[] = []): 
   return new ItemParser(rulesJson, existingItems)
 }
 
-import type { DirectorGameData, DirectorPlace } from '@/types/gameStateTypes'
+import type { DirectorGameData } from '@/types/gameStateTypes'
 
 /**
  * 从游戏状态中提取场上已存在的物品名称

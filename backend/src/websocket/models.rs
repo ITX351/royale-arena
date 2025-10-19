@@ -1,6 +1,6 @@
 //! WebSocket相关模型定义
 
-use crate::game::game_rule_engine::{GameRuleEngine, Item, ItemType};
+use crate::game::game_rule_engine::{GameRuleEngine, Item};
 use crate::game::models::MessageType;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};

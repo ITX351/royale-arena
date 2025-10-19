@@ -5,26 +5,95 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-/// 物品类
+/// 物品实例，背包与场景中统一使用
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     /// 物品ID
     pub id: String,
-    /// 物品名称
+    /// 物品显示名称
     pub name: String,
-    /// 物品类型（武器、消耗品等）
+    /// 物品内部名称（如果存在）
+    pub internal_name: Option<String>,
+    /// 物品稀有度（仅武器、防具、升级器等有值）
+    pub rarity: Option<String>,
+    /// 物品具体类型及属性
     pub item_type: ItemType,
-    /// 物品属性（伤害值、恢复值等）
-    pub properties: serde_json::Value,
+}
+
+impl Item {
+    /// 创建基础物品实例
+    fn new(
+        name: String,
+        internal_name: Option<String>,
+        rarity: Option<String>,
+        item_type: ItemType,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name,
+            internal_name,
+            rarity,
+            item_type,
+        }
+    }
+
+    /// 获取武器属性
+    pub fn as_weapon(&self) -> Option<&WeaponProperties> {
+        if let ItemType::Weapon(properties) = &self.item_type {
+            Some(properties)
+        } else {
+            None
+        }
+    }
+
+    /// 获取防具属性
+    pub fn as_armor(&self) -> Option<&ArmorProperties> {
+        if let ItemType::Armor(properties) = &self.item_type {
+            Some(properties)
+        } else {
+            None
+        }
+    }
+
+    /// 获取消耗品效果
+    pub fn as_consumable(&self) -> Option<&ConsumableEffect> {
+        if let ItemType::Consumable(effect) = &self.item_type {
+            Some(effect)
+        } else {
+            None
+        }
+    }
+
+    /// 获取工具/陷阱/升级器属性
+    #[allow(dead_code)]
+    pub fn as_utility(&self) -> Option<&UtilityProperties> {
+        if let ItemType::Utility(properties) = &self.item_type {
+            Some(properties)
+        } else {
+            None
+        }
+    }
+
+    /// 获取升级器属性
+    #[allow(dead_code)]
+    pub fn as_upgrader(&self) -> Option<&UpgraderProperties> {
+        if let ItemType::Upgrader(properties) = &self.item_type {
+            Some(properties)
+        } else {
+            None
+        }
+    }
 }
 
 /// 物品类型枚举
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "properties", rename_all = "snake_case")]
 pub enum ItemType {
-    Weapon,
-    Consumable,
-    Equipment,
+    Weapon(WeaponProperties),
+    Armor(ArmorProperties),
+    Consumable(ConsumableEffect),
+    Utility(UtilityProperties),
+    Upgrader(UpgraderProperties),
 }
 
 /// 游戏规则引擎
@@ -146,6 +215,7 @@ pub struct ArmorConfig {
 pub struct ArmorProperties {
     pub defense: i32,
     pub votes: i32,
+    pub uses: Option<i32>,
 }
 
 /// 其他物品配置
@@ -174,12 +244,36 @@ pub struct ConsumableConfig {
     pub cure_bleed: Option<i32>,
 }
 
+/// 消耗品效果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsumableEffect {
+    pub effect_type: String,
+    pub effect_value: i32,
+    pub cure_bleed: Option<i32>,
+}
+
 /// 升级器配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpgraderConfig {
     pub internal_name: String,
     pub display_names: Vec<String>,
     pub rarity: String,
+}
+
+/// 工具 / 陷阱属性
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UtilityProperties {
+    pub utility_type: String,
+    pub votes: Option<i32>,
+    pub uses: Option<i32>,
+    pub targets: Option<i32>,
+    pub damage: Option<i32>,
+}
+
+/// 升级器属性
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpgraderProperties {
+    pub upgrader_type: String,
 }
 
 /// 升级配方
@@ -326,12 +420,12 @@ impl GameRuleEngine {
         for weapon in &self.items_config.weapons {
             for display_name in &weapon.display_names {
                 if display_name == item_name {
-                    return Ok(Item {
-                        id: Uuid::new_v4().to_string(),
-                        name: item_name.to_string(),
-                        item_type: ItemType::Weapon,
-                        properties: serde_json::to_value(&weapon.properties).unwrap_or_default(),
-                    });
+                    return Ok(Item::new(
+                        item_name.to_string(),
+                        Some(weapon.internal_name.clone()),
+                        Some(weapon.rarity.clone()),
+                        ItemType::Weapon(weapon.properties.clone()),
+                    ));
                 }
             }
         }
@@ -340,12 +434,12 @@ impl GameRuleEngine {
         for armor in &self.items_config.armors {
             for display_name in &armor.display_names {
                 if display_name == item_name {
-                    return Ok(Item {
-                        id: Uuid::new_v4().to_string(),
-                        name: item_name.to_string(),
-                        item_type: ItemType::Equipment,
-                        properties: serde_json::to_value(&armor.properties).unwrap_or_default(),
-                    });
+                    return Ok(Item::new(
+                        item_name.to_string(),
+                        Some(armor.internal_name.clone()),
+                        Some(armor.rarity.clone()),
+                        ItemType::Armor(armor.properties.clone()),
+                    ));
                 }
             }
         }
@@ -353,34 +447,38 @@ impl GameRuleEngine {
         // 3. 搜索消耗品
         for consumable in &self.items_config.consumables {
             if consumable.name == item_name {
-                let mut properties = serde_json::json!({
-                    "effect_type": consumable.effect_type,
-                    "effect_value": consumable.effect_value
-                });
+                let effect = ConsumableEffect {
+                    effect_type: consumable.effect_type.clone(),
+                    effect_value: consumable.effect_value,
+                    cure_bleed: consumable.cure_bleed,
+                };
 
-                // 如果有治疗流血效果，添加该属性
-                if let Some(cure_bleed) = consumable.cure_bleed {
-                    properties["cure_bleed"] = serde_json::Value::Number(cure_bleed.into());
-                }
-
-                return Ok(Item {
-                    id: Uuid::new_v4().to_string(),
-                    name: item_name.to_string(),
-                    item_type: ItemType::Consumable,
-                    properties,
-                });
+                return Ok(Item::new(
+                    item_name.to_string(),
+                    None,
+                    None,
+                    ItemType::Consumable(effect),
+                ));
             }
         }
 
         // 4. 搜索其他道具
         for other_item in &self.items_config.other_items {
             if other_item.name == item_name {
-                return Ok(Item {
-                    id: Uuid::new_v4().to_string(),
-                    name: item_name.to_string(),
-                    item_type: ItemType::Equipment,
-                    properties: serde_json::to_value(&other_item.properties).unwrap_or_default(),
-                });
+                let utility = UtilityProperties {
+                    utility_type: other_item.category.clone(),
+                    votes: Some(other_item.properties.votes),
+                    uses: other_item.properties.uses,
+                    targets: other_item.properties.targets,
+                    damage: other_item.properties.damage,
+                };
+
+                return Ok(Item::new(
+                    item_name.to_string(),
+                    None,
+                    None,
+                    ItemType::Utility(utility),
+                ));
             }
         }
 
@@ -388,15 +486,14 @@ impl GameRuleEngine {
         for upgrader in &self.items_config.upgraders {
             for display_name in &upgrader.display_names {
                 if display_name == item_name {
-                    return Ok(Item {
-                        id: Uuid::new_v4().to_string(),
-                        name: item_name.to_string(),
-                        item_type: ItemType::Equipment,
-                        properties: serde_json::json!({
-                            "upgrader_type": upgrader.internal_name,
-                            "rarity": upgrader.rarity
+                    return Ok(Item::new(
+                        item_name.to_string(),
+                        Some(upgrader.internal_name.clone()),
+                        Some(upgrader.rarity.clone()),
+                        ItemType::Upgrader(UpgraderProperties {
+                            upgrader_type: upgrader.internal_name.clone(),
                         }),
-                    });
+                    ));
                 }
             }
         }
