@@ -104,7 +104,7 @@ pub struct GameRuleEngine {
     pub action_costs: ActionCosts,
     pub rest_mode: RestModeConfig,
     pub items_config: ItemsConfig,
-    pub teammate_behavior: TeammateBehaior,
+    pub teammate_behavior: TeammateBehavior, // TODO: 实现队友行为规则
     pub death_item_disposition: DeathItemDisposition,
 }
 
@@ -153,7 +153,7 @@ pub struct RestModeConfig {
 
 /// 队友行为配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TeammateBehaior {
+pub struct TeammateBehavior {
     pub mode: i32, // 0: 无队友伤害免疫, 1: 有队友伤害免疫
 }
 
@@ -337,7 +337,7 @@ impl GameRuleEngine {
         .map_err(|e| format!("Failed to parse items config: {}", e))?;
 
         // 解析队友行为配置
-        let teammate_behavior = TeammateBehaior {
+        let teammate_behavior = TeammateBehavior {
             mode: rules_value
                 .get("teammate_behavior")
                 .and_then(|v| v.as_i64())

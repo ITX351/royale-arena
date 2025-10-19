@@ -255,6 +255,26 @@ impl GameState {
         Ok(())
     }
 
+    /// 在非移动行动中终止静养状态
+    pub fn end_rest_mode_for_action(&mut self, player_id: &str) {
+        if let Some(player) = self.players.get_mut(player_id) {
+            if player.rest_mode {
+                player.rest_mode = false;
+            }
+        }
+    }
+
+    /// 记录一次移动并根据规则决定是否终止静养
+    pub fn record_move_for_rest_mode(&mut self, player_id: &str) {
+        let max_moves = self.rule_engine.rest_mode.max_moves;
+        if let Some(player) = self.players.get_mut(player_id) {
+            player.rest_moves_used = player.rest_moves_used.saturating_add(1);
+            if player.rest_mode && player.rest_moves_used > max_moves {
+                player.rest_mode = false;
+            }
+        }
+    }
+
     fn drop_items_to_ground(&mut self, location: &str, items: Vec<Item>) -> Vec<String> {
         let item_names: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
 

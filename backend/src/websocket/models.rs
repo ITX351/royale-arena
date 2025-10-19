@@ -72,14 +72,6 @@ pub struct ItemDeletionItem {
 //     pub data: JsonValue,
 // }
 
-/// 游戏阶段枚举
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum GamePhase {
-    Day,
-    Night,
-}
-
 /// 游戏状态类
 #[derive(Debug, Clone, Serialize)]
 pub struct GameState {
@@ -89,8 +81,6 @@ pub struct GameState {
     pub players: HashMap<String, Player>,
     /// 地点状态映射，键为地点名称
     pub places: HashMap<String, Place>,
-    /// 当前游戏阶段（白天/夜晚）
-    pub game_phase: GamePhase,
     /// 天气条件（影响搜索可见性）
     pub weather: f64,
     /// 投票记录，键为投票者ID，值为被投票者ID
@@ -420,7 +410,6 @@ impl GameState {
             game_id,
             players: HashMap::new(),
             places: HashMap::new(),
-            game_phase: GamePhase::Day,
             weather: 1.0,
             votes: HashMap::new(),
             rules_config,
@@ -443,7 +432,6 @@ impl GameState {
     /// 生成全局状态信息
     pub fn generate_global_state_info(&self) -> serde_json::Value {
         serde_json::json!({
-            "game_phase": self.game_phase,
             "weather": self.weather,
             "night_start_time": self.night_start_time,
             "night_end_time": self.night_end_time,
@@ -465,7 +453,6 @@ impl<'de> Deserialize<'de> for GameState {
             game_id: String,
             players: HashMap<String, Player>,
             places: HashMap<String, Place>,
-            game_phase: GamePhase,
             weather: f64,
             votes: HashMap<String, String>,
             rules_config: serde_json::Value,
@@ -487,7 +474,6 @@ impl<'de> Deserialize<'de> for GameState {
             game_id: helper.game_id,
             players: helper.players,
             places: helper.places,
-            game_phase: helper.game_phase,
             weather: helper.weather,
             votes: helper.votes,
             rules_config: helper.rules_config,

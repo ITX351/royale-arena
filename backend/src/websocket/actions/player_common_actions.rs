@@ -103,6 +103,8 @@ impl GameState {
         // 消耗体力值
         self.consume_strength(player_id, move_cost)?;
 
+        self.record_move_for_rest_mode(player_id);
+
         // 向该玩家发送位置更新结果
         let data = serde_json::json!({
             "location": target_place,

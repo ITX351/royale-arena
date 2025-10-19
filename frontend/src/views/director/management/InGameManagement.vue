@@ -4,6 +4,9 @@
       <template #header>
         <div class="card-header">
           <h3>游戏中管理</h3>
+          <el-button type="danger" size="small" @click="handleNightSettlement">
+            夜晚结算
+          </el-button>
         </div>
       </template>
       
@@ -98,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, toRefs } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
@@ -107,12 +110,15 @@ import PlaceStatusCard from '../components/PlaceStatusCard.vue'
 import PlayerStatusCard from '../components/PlayerStatusCard.vue'
 import AirdropPanel from '../components/AirdropPanel.vue'
 import BroadcastMessage from '../components/BroadcastMessage.vue'
+import { useManualSaveGame } from '../composables/useManualSaveGame'
 
 // 定义组件属性
-defineProps<{
+const props = defineProps<{
   game: GameWithRules
   directorPassword: string
 }>()
+
+const { game } = toRefs(props)
 
 // 定义暴露给父组件的方法
 defineExpose({
@@ -144,6 +150,10 @@ const directorPlayerList = computed<Player[]>(() => {
 const placeList = computed<Place[]>(() => {
   return store.directorPlaceList
 })
+
+const gameIdRef = computed(() => props.game.id)
+const directorPasswordRef = computed(() => props.directorPassword)
+const { manualSave: manualSaveGame } = useManualSaveGame(gameIdRef, directorPasswordRef)
 
 // 监听全局状态变化，更新控制面板值
 watch(
@@ -239,6 +249,20 @@ const handleMessageSent = (message: string, targetType: 'all' | 'player', target
   console.log('消息发送:', { message, targetType, targetPlayer })
 }
 
+const handleNightSettlement = async () => {
+  const result = await manualSaveGame({
+    successMessage: (saveFileName) =>
+      `夜晚结算前已自动存盘${saveFileName ? `：${saveFileName}` : ''}`
+  })
+
+  if (!result.success) {
+    return
+  }
+
+  store.triggerNightSettlement()
+  ElMessage.success('夜晚结算指令已发送')
+}
+
 function formatWeather(value?: number) {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '1.0'
@@ -260,6 +284,13 @@ function clampWeather(value: number) {
 .card-header h3 {
   margin: 0;
   color: #303133;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .card-header h4 {

@@ -1,8 +1,5 @@
 // 导演视角的游戏状态类型定义
 
-// 游戏阶段枚举
-export type GamePhase = 'day' | 'night';
-
 // 物品类型分类
 export type ItemCategory = 'weapon' | 'armor' | 'consumable' | 'utility' | 'upgrader';
 
@@ -77,7 +74,6 @@ export interface SearchResult {
 
 // 全局游戏状态接口
 export interface GlobalState {
-  game_phase: GamePhase;
   weather: number;
   night_start_time: string | null;
   night_end_time: string | null;

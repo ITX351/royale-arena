@@ -128,6 +128,7 @@ import {
   shouldShowResumeButton,
   shouldShowEndButton
 } from '@/utils/gameUtils'
+import { useManualSaveGame } from '../composables/useManualSaveGame'
 
 // Props
 const props = defineProps<{
@@ -149,6 +150,10 @@ const showDetails = ref(false)
 const showSaveFileDialog = ref(false)
 const saveFiles = ref<any[]>([])
 const selectedSaveFile = ref<any>(null)
+
+const gameIdRef = computed(() => props.game.id)
+const directorPasswordRef = computed(() => props.directorPassword)
+const { manualSave: manualSaveGame } = useManualSaveGame(gameIdRef, directorPasswordRef)
 
 // 计算属性
 const statusDisplayText = computed(() => {
@@ -251,32 +256,13 @@ const pauseGame = () => {
 }
 
 const saveGame = async () => {
-  if (!props.directorPassword) {
-    ElMessage.error('缺少导演密码')
-    return
-  }
-  
   actionLoading.value = true
-  
+
   try {
-    const response = await directorService.manualSaveGame(
-      props.game.id,
-      props.directorPassword
-    )
-    
-    if (response.success) {
-      ElMessage.success(`游戏状态已保存至: ${response.save_file_name}`)
+    const result = await manualSaveGame()
+    if (result.success) {
       emit('status-updated')
-    } else {
-      throw new Error(response.message || '存盘失败')
     }
-  } catch (error: any) {
-    console.error('存盘失败:', error)
-    ElMessage.error(
-      error.response?.status === 401 
-        ? '导演密码错误' 
-        : (error.message || '存盘失败')
-    )
   } finally {
     actionLoading.value = false
   }

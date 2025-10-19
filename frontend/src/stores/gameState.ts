@@ -249,6 +249,11 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('remove_player_item', { player_id: playerId, item_name: itemName })
   }
 
+  // 夜晚结算
+  const triggerNightSettlement = () => {
+    sendDirectorAction('night_settlement')
+  }
+
   const handleWebSocketEvent = (event: WebSocketEvent) => {
     switch (event.type) {
       case 'state_update':
@@ -331,6 +336,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendBatchItemDeletion,
     addPlayerItem, // 新增导出
     removePlayerItem, // 新增导出
+    triggerNightSettlement,
     clearError
   }
 })

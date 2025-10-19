@@ -132,6 +132,7 @@ impl PlayerActionScheduler {
                         ValidationType::Strength(search_cost)
                     ]
                 );
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_search_action(player_id);
             }
             "pick" => {
@@ -148,6 +149,7 @@ impl PlayerActionScheduler {
                         ValidationType::Strength(pick_cost)
                     ]
                 );
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_pick_action(player_id);
             }
             "attack" => {
@@ -163,6 +165,7 @@ impl PlayerActionScheduler {
                         ValidationType::Strength(attack_cost)
                     ]
                 );
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_attack_action(player_id);
             }
             "equip" => {
@@ -182,6 +185,7 @@ impl PlayerActionScheduler {
                     .item_id
                     .as_ref()
                     .ok_or("Missing item_id parameter")?;
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_equip_action(player_id, item_id);
             }
             "use" => {
@@ -201,6 +205,7 @@ impl PlayerActionScheduler {
                     .item_id
                     .as_ref()
                     .ok_or("Missing item_id parameter")?;
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_use_action(player_id, item_id);
             }
             "throw" => {
@@ -220,6 +225,7 @@ impl PlayerActionScheduler {
                     .item_id
                     .as_ref()
                     .ok_or("Missing item_id parameter")?;
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_throw_action(player_id, item_id);
             }
             "unequip" => {
@@ -237,6 +243,7 @@ impl PlayerActionScheduler {
                     .slot_type
                     .as_ref()
                     .ok_or("Missing slot_type parameter")?;
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_unequip_action(player_id, slot_type);
             }
             "deliver" => {
@@ -259,6 +266,7 @@ impl PlayerActionScheduler {
                     .message
                     .as_ref()
                     .ok_or("Missing message parameter")?;
+                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_deliver_action(player_id, target_player_id, message);
             }
             "send" => {

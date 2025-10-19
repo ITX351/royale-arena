@@ -193,6 +193,8 @@ impl DirectorActionScheduler {
                 game_state.handle_director_message_to_player(&player_id, &message)
             }
 
+            "night_settlement" => game_state.handle_night_settlement(),
+
             _ => Err(format!("Unknown director action type: {}", action_type)),
         }
     }

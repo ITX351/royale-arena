@@ -82,30 +82,35 @@
       </div>
 
       <div class="action-buttons" v-if="hasSpawned">
-        <el-button 
-          type="success" 
-          size="small"
-          :disabled="actionsDisabled"
-          @click="handleSearch"
-        >
-          搜索
-        </el-button>
-        <el-button 
-          type="danger" 
-          size="small"
-          :disabled="actionsDisabled || !hasValidTarget"
-          @click="handleAttack"
-        >
-          攻击
-        </el-button>
-        <el-button 
-          type="warning" 
-          size="small"
-          :disabled="actionsDisabled || !hasItemTarget"
-          @click="handlePick"
-        >
-          捡拾
-        </el-button>
+        <div class="primary-actions">
+          <el-button 
+            type="success" 
+            size="small"
+            :disabled="actionsDisabled"
+            @click="handleSearch"
+          >
+            搜索
+          </el-button>
+          <el-button 
+            type="danger" 
+            size="small"
+            :disabled="actionsDisabled || !hasValidTarget"
+            @click="handleAttack"
+          >
+            攻击
+          </el-button>
+          <el-button 
+            type="warning" 
+            size="small"
+            :disabled="actionsDisabled || !hasItemTarget"
+            @click="handlePick"
+          >
+            捡拾
+          </el-button>
+        </div>
+        <div class="rest-status-chip" :class="restStatusClass">
+          <span class="rest-status-text">{{ restStatusLabel }}</span>
+        </div>
       </div>
     </div>
 
@@ -222,6 +227,18 @@ const hasSpawned = computed(() => {
 const playerBleedDamage = computed(() => {
   const bleed = props.player.bleed_damage
   return typeof bleed === 'number' && bleed > 0 ? bleed : 0
+})
+
+const isResting = computed(() => {
+  return Boolean(props.player.rest_mode)
+})
+
+const restStatusLabel = computed(() => {
+  return isResting.value ? '静养中' : '已行动'
+})
+
+const restStatusClass = computed(() => {
+  return isResting.value ? 'rest-active' : 'rest-inactive'
 })
 
 const playerVoteCount = computed(() => {
@@ -470,6 +487,31 @@ function formatDuration(durationMs: number) {
   color: #303133;
 }
 
+.rest-status-chip {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+.rest-status-chip.rest-active {
+  background: #f0f9eb;
+}
+
+.rest-status-chip.rest-inactive {
+  background: #f4f4f5;
+}
+
+.rest-status-text {
+  color: #303133;
+}
+
+.rest-status-chip.rest-active .rest-status-text {
+  color: #67c23a;
+}
+
 .section-title {
   margin: 0 0 12px 0;
   font-size: 14px;
@@ -495,9 +537,19 @@ function formatDuration(durationMs: number) {
 }
 
 .action-buttons {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.primary-actions {
   display: flex;
   gap: 12px;
-  align-items: center;
+}
+
+.primary-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .timing-hints {
@@ -610,6 +662,15 @@ function formatDuration(durationMs: number) {
   .status-item.votes {
     margin-left: 0;
     align-self: flex-end;
+  }
+
+  .rest-status-chip {
+    margin-left: 0;
+  }
+
+  .primary-actions {
+    justify-content: center;
+    width: 100%;
   }
   
   .action-row {
