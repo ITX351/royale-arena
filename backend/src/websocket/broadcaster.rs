@@ -52,7 +52,7 @@ impl MessageBroadcaster {
                 })
             })
             .collect();
-        
+
         // 构建玩家视角的玩家列表信息（不包括玩家id和名字以外的任何信息）
         let actor_players: Vec<JsonValue> = game_state
             .players

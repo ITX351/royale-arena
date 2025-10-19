@@ -161,7 +161,13 @@ pub struct Player {
 
 impl Player {
     /// 创建新的玩家（使用规则引擎的默认值）
-    pub fn new(id: String, name: String, password: String, team_id: u32, rule_engine: &GameRuleEngine) -> Self {
+    pub fn new(
+        id: String,
+        name: String,
+        password: String,
+        team_id: u32,
+        rule_engine: &GameRuleEngine,
+    ) -> Self {
         let max_life = rule_engine.player_config.max_life;
         let max_strength = rule_engine.player_config.max_strength;
 

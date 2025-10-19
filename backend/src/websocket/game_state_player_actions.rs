@@ -328,10 +328,7 @@ impl GameState {
                 return Ok(action_result.as_results());
             };
 
-            (
-                player.location.clone(),
-                target_player_id,
-            )
+            (player.location.clone(), target_player_id)
         };
 
         // 验证目标玩家是否存在且在同一地点
@@ -521,10 +518,7 @@ impl GameState {
                     player.inventory.push(old_weapon);
                 }
 
-                (
-                    player.equipped_weapon.clone(),
-                    player.inventory.clone(),
-                )
+                (player.equipped_weapon.clone(), player.inventory.clone())
             };
 
             self.consume_strength(player_id, equip_cost)?;
@@ -551,10 +545,7 @@ impl GameState {
                     player.inventory.push(old_armor);
                 }
 
-                (
-                    player.equipped_armor.clone(),
-                    player.inventory.clone(),
-                )
+                (player.equipped_armor.clone(), player.inventory.clone())
             };
 
             self.consume_strength(player_id, equip_cost)?;
@@ -596,11 +587,7 @@ impl GameState {
         let (item_index, item_snapshot, player_name) = {
             let player = self.players.get(player_id).unwrap();
             match player.inventory.iter().position(|item| item.id == item_id) {
-                Some(index) => (
-                    index,
-                    player.inventory[index].clone(),
-                    player.name.clone(),
-                ),
+                Some(index) => (index, player.inventory[index].clone(), player.name.clone()),
                 None => {
                     let data = serde_json::json!({});
                     let action_result = ActionResult::new_info_message(

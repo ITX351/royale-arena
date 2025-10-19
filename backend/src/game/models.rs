@@ -366,19 +366,25 @@ impl NewKillRecord {
 
         let data = &action_result.data;
 
-        if data
-            .get("is_alive")
-            .and_then(|value| value.as_bool())
-            != Some(false)
-        {
+        if data.get("is_alive").and_then(|value| value.as_bool()) != Some(false) {
             return None;
         }
 
         let victim_id = data.get("player_id").and_then(|value| value.as_str())?;
         let cause = data.get("reason").and_then(|value| value.as_str())?;
-        let killer_id = data.get("killer_id").and_then(|value| value.as_str()).map(|value| value.to_string());
-        let weapon = data.get("weapon").and_then(|value| value.as_str()).map(|value| value.to_string());
-        let location = data.get("location_before_death").and_then(|value| value.as_str()).filter(|value| !value.is_empty()).map(|value| value.to_string());
+        let killer_id = data
+            .get("killer_id")
+            .and_then(|value| value.as_str())
+            .map(|value| value.to_string());
+        let weapon = data
+            .get("weapon")
+            .and_then(|value| value.as_str())
+            .map(|value| value.to_string());
+        let location = data
+            .get("location_before_death")
+            .and_then(|value| value.as_str())
+            .filter(|value| !value.is_empty())
+            .map(|value| value.to_string());
 
         Some(NewKillRecord {
             game_id: game_id.to_string(),

@@ -119,7 +119,7 @@ impl GlobalGameStateManager {
                 // 代码块结束时自动释放锁
                 cloned
             };
-            
+
             let serialized = serde_json::to_string(&cloned_game_state)
                 .map_err(|e| format!("Failed to serialize game state: {}", e))?;
 

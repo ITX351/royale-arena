@@ -3,11 +3,7 @@
 
 use crate::game::errors::GameError;
 use crate::game::models::{
-    GetPlayerMessagesRequest,
-    MessageRecord,
-    MessageType,
-    KillRecord,
-    NewKillRecord,
+    GetPlayerMessagesRequest, KillRecord, MessageRecord, MessageType, NewKillRecord,
 };
 use chrono::{DateTime, Utc};
 use sqlx::MySqlPool;
@@ -26,10 +22,7 @@ impl GameLogService {
     }
 
     /// 新增击杀记录
-    pub async fn add_kill_record(
-        &self,
-        params: &NewKillRecord,
-    ) -> Result<KillRecord, String> {
+    pub async fn add_kill_record(&self, params: &NewKillRecord) -> Result<KillRecord, String> {
         let id = Uuid::new_v4().to_string();
 
         let killer_id_for_query = params.killer_id.as_deref();

@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, Request, State},
     response::Json,
 };
-use serde::{Deserialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -163,7 +163,7 @@ pub async fn delete_game_logs(
         )
     } else {
         None
-        };
+    };
 
     // 删除日志记录
     let deleted_count = state
@@ -247,7 +247,7 @@ pub async fn delete_game_kill_records(
         )
     } else {
         None
-        };
+    };
 
     // 删除击杀记录
     let deleted_count = state

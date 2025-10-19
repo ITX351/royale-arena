@@ -39,13 +39,13 @@ impl ActionParams {
 /// 验证类型枚举
 #[derive(Debug)]
 enum ValidationType {
-    Alive,          // 玩家存活
-    Born,           // 玩家已出生
-    NotBorn,        // 玩家未出生
-    NotBound,       // 玩家未被捆绑
-    Strength(i32),  // 体力验证（带消耗值）
-    InventorySpace, // 背包空间验证
-    NightActionTime,// 夜晚行动时间验证
+    Alive,           // 玩家存活
+    Born,            // 玩家已出生
+    NotBorn,         // 玩家未出生
+    NotBound,        // 玩家未被捆绑
+    Strength(i32),   // 体力验证（带消耗值）
+    InventorySpace,  // 背包空间验证
+    NightActionTime, // 夜晚行动时间验证
 }
 
 /// 玩家行动调度器
@@ -88,7 +88,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::NotBound,
                         ValidationType::NotBorn
@@ -106,7 +106,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -125,7 +125,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -140,7 +140,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -156,7 +156,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -171,7 +171,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -190,7 +190,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -209,7 +209,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound,
@@ -227,7 +227,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::Born,
                         ValidationType::NotBound
@@ -245,7 +245,7 @@ impl PlayerActionScheduler {
                     game_state,
                     player_id,
                     vec![
-                        ValidationType::NightActionTime,  // 新增验证
+                        ValidationType::NightActionTime, // 新增验证
                         ValidationType::Alive,
                         ValidationType::NotBound,
                         ValidationType::Strength(deliver_cost)
@@ -305,9 +305,7 @@ impl PlayerActionScheduler {
             ValidationType::InventorySpace => {
                 Self::check_inventory_space_from_ref(player, game_state, player_id)
             }
-            ValidationType::NightActionTime => {
-                Self::check_night_action_time(game_state, player_id)
-            }
+            ValidationType::NightActionTime => Self::check_night_action_time(game_state, player_id),
         }
     }
 
@@ -424,13 +422,16 @@ impl PlayerActionScheduler {
     }
 
     /// 验证夜晚行动时间
-    fn check_night_action_time(game_state: &GameState, player_id: &str) -> Result<(), ActionResults> {
+    fn check_night_action_time(
+        game_state: &GameState,
+        player_id: &str,
+    ) -> Result<(), ActionResults> {
         // 检查夜晚开始和结束时间是否都已设置
         match (&game_state.night_start_time, &game_state.night_end_time) {
             // 如果都设置了，检查当前时间是否在范围内
             (Some(start_time), Some(end_time)) => {
                 let current_time = chrono::Utc::now();
-                
+
                 // 检查当前时间是否在夜晚行动时间范围内
                 if current_time < *start_time || current_time > *end_time {
                     let data = serde_json::json!({});

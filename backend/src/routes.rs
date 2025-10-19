@@ -14,9 +14,9 @@ use crate::director::{
 };
 use crate::game::global_game_state_manager::GlobalGameStateManager;
 use crate::game::{
-    GameLogService, GameService, authenticate_game, create_game, delete_game, get_game_with_rules,
-    get_games, get_player_messages, update_game, get_director_messages, delete_game_logs,
-    get_player_kill_records, get_director_kill_records, delete_game_kill_records
+    GameLogService, GameService, authenticate_game, create_game, delete_game,
+    delete_game_kill_records, delete_game_logs, get_director_kill_records, get_director_messages,
+    get_game_with_rules, get_games, get_player_kill_records, get_player_messages, update_game,
 };
 use crate::rule_template::{RuleTemplateService, create_template, get_templates, update_template};
 use crate::websocket::global_connection_manager::GlobalConnectionManager;
@@ -143,7 +143,10 @@ pub fn create_routes(
         // 新增的导演查询日志接口
         .route("/game/{game_id}/director/logs", get(get_director_messages))
         // 新增的导演查询击杀记录接口
-        .route("/game/{game_id}/director/kill-records", get(get_director_kill_records))
+        .route(
+            "/game/{game_id}/director/kill-records",
+            get(get_director_kill_records),
+        )
         .with_state(app_state.clone());
 
     // 玩家接口路由（无需JWT认证，使用玩家密码验证）

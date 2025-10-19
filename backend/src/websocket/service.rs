@@ -494,9 +494,10 @@ impl WebSocketService {
                         }
                     }
 
-                    if let Some(kill_record_params) =
-                        NewKillRecord::build_kill_record_params(&updated_game_state.game_id, action_result)
-                    {
+                    if let Some(kill_record_params) = NewKillRecord::build_kill_record_params(
+                        &updated_game_state.game_id,
+                        action_result,
+                    ) {
                         if let Err(e) = self
                             .app_state
                             .game_log_service
