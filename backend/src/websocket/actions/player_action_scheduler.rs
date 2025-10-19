@@ -2,7 +2,7 @@
 //!
 //! 负责玩家行动的权限验证和分发调度
 
-use super::models::{ActionResult, ActionResults, GameState, Player};
+use crate::websocket::models::{ActionResult, ActionResults, GameState, Player};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 

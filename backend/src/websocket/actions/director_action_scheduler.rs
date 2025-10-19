@@ -2,7 +2,7 @@
 //!
 //! 负责导演行动的分发调度，导演拥有特殊权限，无需验证前置条件
 
-use super::models::{ActionResults, AirdropItem, GameState, ItemDeletionItem};
+use crate::websocket::models::{ActionResults, AirdropItem, GameState, ItemDeletionItem};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 

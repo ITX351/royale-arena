@@ -283,15 +283,6 @@ pub struct UpgradeRecipe {
     pub result: String,
 }
 
-/// 伤害计算结果
-#[derive(Debug, Clone)]
-pub struct DamageResult {
-    pub damage: i32,
-    pub aoe_damage: Option<i32>,
-    pub bleed_damage: Option<i32>,
-    pub is_fatal: bool,
-}
-
 impl GameRuleEngine {
     /// 从JSON配置创建规则引擎
     pub fn from_json(rules_json: &str) -> Result<Self, String> {
@@ -370,33 +361,6 @@ impl GameRuleEngine {
             death_item_disposition,
         })
     }
-
-    /// 计算武器伤害
-    pub fn calculate_weapon_damage(
-        &self,
-        weapon_internal_name: &str,
-        target_defense: i32,
-    ) -> Result<DamageResult, String> {
-        // 查找武器配置
-        let weapon = self
-            .items_config
-            .weapons
-            .iter()
-            .find(|w| w.internal_name == weapon_internal_name)
-            .ok_or_else(|| format!("Weapon not found: {}", weapon_internal_name))?;
-
-        // 计算基础伤害
-        let base_damage = weapon.properties.damage;
-        let actual_damage = (base_damage - target_defense).max(0);
-
-        Ok(DamageResult {
-            damage: actual_damage,
-            aoe_damage: weapon.properties.aoe_damage,
-            bleed_damage: weapon.properties.bleed_damage,
-            is_fatal: actual_damage > 0,
-        })
-    }
-
     /// 获取搜索冷却时间
     pub fn get_search_cooldown(&self) -> i64 {
         self.player_config.search_cooldown

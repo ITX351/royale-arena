@@ -1,6 +1,6 @@
 //! GameState 导演控制实现
 
-use super::models::*;
+use crate::websocket::models::{GameState, ActionResult, ActionResults, AirdropItem, ItemDeletionItem};
 
 impl GameState {
     // ===== 导演行为处理方法 =====

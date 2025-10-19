@@ -358,51 +358,6 @@ fn test_items_config_parsing() {
     assert_eq!(natural_recipes[1].result, "legendary_weapon");
 }
 
-/// 测试武器伤害计算
-#[test]
-fn test_weapon_damage_calculation() {
-    let rule_engine =
-        GameRuleEngine::from_json(TEST_RULES_JSON).expect("Failed to parse test rules JSON");
-
-    // 测试普通武器伤害
-    let damage_result = rule_engine
-        .calculate_weapon_damage("common_weapon", 0)
-        .expect("Failed to calculate common weapon damage");
-    assert_eq!(damage_result.damage, 11);
-    assert_eq!(damage_result.aoe_damage, None);
-    assert_eq!(damage_result.bleed_damage, None);
-    assert_eq!(damage_result.is_fatal, true);
-
-    // 测试传说武器的特殊效果
-    let damage_result = rule_engine
-        .calculate_weapon_damage("legendary_weapon", 0)
-        .expect("Failed to calculate legendary weapon damage");
-    assert_eq!(damage_result.damage, 44);
-    assert_eq!(damage_result.aoe_damage, Some(12));
-    assert_eq!(damage_result.bleed_damage, Some(7));
-    assert_eq!(damage_result.is_fatal, true);
-
-    // 测试防御力减免
-    let damage_result = rule_engine
-        .calculate_weapon_damage("common_weapon", 5)
-        .expect("Failed to calculate weapon damage with defense");
-    assert_eq!(damage_result.damage, 6); // 11 - 5 = 6
-
-    // 测试防御力完全抵挡
-    let damage_result = rule_engine
-        .calculate_weapon_damage("common_weapon", 15)
-        .expect("Failed to calculate weapon damage with high defense");
-    assert_eq!(damage_result.damage, 0); // max(11 - 15, 0) = 0
-    assert_eq!(damage_result.is_fatal, false);
-
-    // 测试未知武器
-    assert!(
-        rule_engine
-            .calculate_weapon_damage("unknown_weapon", 0)
-            .is_err()
-    );
-}
-
 /// 测试配置获取函数
 #[test]
 fn test_config_getters() {
