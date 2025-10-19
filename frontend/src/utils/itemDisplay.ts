@@ -57,18 +57,18 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
 
   switch (itemType) {
     case 'weapon':
-      if (properties.damage !== undefined) {
+      if (properties.damage != null) {
         entries.push({ label: '伤害', value: properties.damage })
       }
-      if (properties.aoe_damage !== undefined) {
+      if (properties.aoe_damage != null) {
         entries.push({ label: '溅射', value: properties.aoe_damage })
       }
-      if (properties.bleed_damage !== undefined) {
+      if (properties.bleed_damage != null) {
         entries.push({ label: '流血', value: properties.bleed_damage })
       }
       break
     case 'armor':
-      if (properties.defense !== undefined) {
+      if (properties.defense != null) {
         entries.push({ label: '防御', value: properties.defense })
       }
       break
@@ -79,10 +79,10 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
           value: EFFECT_TYPE_LABELS[properties.effect_type] ?? properties.effect_type,
         })
       }
-      if (properties.effect_value !== undefined) {
+      if (properties.effect_value != null) {
         entries.push({ label: '效果', value: properties.effect_value })
       }
-      if (properties.cure_bleed !== undefined && properties.cure_bleed !== null && properties.cure_bleed > 0) {
+      if (properties.cure_bleed != null && properties.cure_bleed > 0) {
         let cureDescription: string | number = properties.cure_bleed
         if (properties.cure_bleed === 1) {
           cureDescription = '抵消流血'
@@ -99,10 +99,10 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
           value: UTILITY_TYPE_LABELS[properties.utility_type] ?? properties.utility_type,
         })
       }
-      if (properties.targets !== undefined) {
+      if (properties.targets != null) {
         entries.push({ label: '目标', value: properties.targets })
       }
-      if (properties.damage !== undefined) {
+      if (properties.damage != null) {
         entries.push({ label: '伤害', value: properties.damage })
       }
       break
@@ -116,11 +116,11 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
       break
   }
 
-  if (properties.uses !== undefined && properties.uses !== null) {
+  if (properties.uses != null) {
     entries.push({ label: '次数', value: properties.uses })
   }
 
-  if (properties.votes !== undefined && properties.votes !== null) {
+  if (properties.votes != null) {
     entries.push({ label: '票数', value: properties.votes })
   }
 

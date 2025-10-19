@@ -139,7 +139,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { Player, Item } from '@/types/gameStateTypes'
 import { getItemTypeLabel, getItemTypeTagType } from '@/utils/itemType'
 import { getItemDisplayProperties, type ItemDisplayProperty, formatItemProperty } from '@/utils/itemDisplay'
@@ -206,31 +206,17 @@ const useItem = async (itemId: string) => {
 
 const discardItem = async (itemId: string) => {
   if (!props.player) return
-  
+
+  loadingItems.value.push(itemId)
+
   try {
-    await ElMessageBox.confirm(
-      '确定要丢弃这个物品吗？此操作不可撤销。',
-      '确认丢弃',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-    
-    loadingItems.value.push(itemId)
-    
-    try {
-      emit('discard-item', itemId)
-    } catch (error) {
-      ElMessage.error('丢弃物品失败')
-    } finally {
-      setTimeout(() => {
-        loadingItems.value = loadingItems.value.filter(id => id !== itemId)
-      }, 500)
-    }
-  } catch {
-    return
+    emit('discard-item', itemId)
+  } catch (error) {
+    ElMessage.error('丢弃物品失败')
+  } finally {
+    setTimeout(() => {
+      loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    }, 500)
   }
 }
 

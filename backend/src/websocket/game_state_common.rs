@@ -84,7 +84,6 @@ impl GameState {
             player.rest_life_recovery = 0;
             player.rest_moves_used = 0;
             player.bleed_damage = 0;
-            player.bleed_rounds_remaining = 0;
 
             (items, mem::take(&mut player.location))
         };
@@ -230,7 +229,6 @@ impl GameState {
         player.rest_life_recovery = 0;
         player.rest_moves_used = 0;
         player.bleed_damage = 0;
-        player.bleed_rounds_remaining = 0;
 
         let data = serde_json::json!({
             "player_id": player_id,

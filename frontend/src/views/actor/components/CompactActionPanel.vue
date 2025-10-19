@@ -16,6 +16,14 @@
       <span class="status-label">位置:</span>
       <span class="status-value location">{{ player.location || '未出生' }}</span>
     </div>
+    <div v-if="playerBleedDamage > 0" class="status-item bleed">
+      <span class="status-label">流血:</span>
+      <span class="status-value bleed">{{ playerBleedDamage }}</span>
+    </div>
+    <div class="status-item votes">
+      <span class="status-label">票数:</span>
+      <span class="status-value votes">{{ playerVoteCount }}</span>
+    </div>
   </div>
 
   <!-- 核心操作区 -->
@@ -176,6 +184,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
+import { calculatePlayerVotes } from '@/utils/playerUtils'
 
 const props = defineProps<{
   player: Player
@@ -208,6 +217,15 @@ const hasItemTarget = computed(() => {
 
 const hasSpawned = computed(() => {
   return Boolean(props.player.location)
+})
+
+const playerBleedDamage = computed(() => {
+  const bleed = props.player.bleed_damage
+  return typeof bleed === 'number' && bleed > 0 ? bleed : 0
+})
+
+const playerVoteCount = computed(() => {
+  return calculatePlayerVotes(props.player)
 })
 
 const nightStartMs = computed(() => {
@@ -434,6 +452,24 @@ function formatDuration(durationMs: number) {
   color: #303133;
 }
 
+.status-item.bleed {
+  background: #fde2e2;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.status-value.bleed {
+  color: #c45656;
+}
+
+.status-item.votes {
+  margin-left: auto;
+}
+
+.status-value.votes {
+  color: #303133;
+}
+
 .section-title {
   margin: 0 0 12px 0;
   font-size: 14px;
@@ -569,6 +605,11 @@ function formatDuration(durationMs: number) {
   .player-status-bar {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .status-item.votes {
+    margin-left: 0;
+    align-self: flex-end;
   }
   
   .action-row {

@@ -370,7 +370,7 @@ impl GameState {
         }
 
         // 根据是否装备武器计算伤害
-        let (damage, attack_method) = {
+        let (base_damage, attack_method) = {
             let attacker = self.players.get(player_id).unwrap();
             if let Some(weapon) = &attacker.equipped_weapon
                 && let Some(attributes) = weapon.as_weapon()
@@ -380,6 +380,113 @@ impl GameState {
                 (self.rule_engine.get_unarmed_damage(), "挥拳")
             }
         };
+
+        // 根据防具减免伤害
+        let armor_defense = {
+            let target = self.players.get(&target_player_id).unwrap();
+            if let Some(armor) = &target.equipped_armor
+                && let Some(attributes) = armor.as_armor()
+            {
+                attributes.defense
+            } else {
+                0
+            }
+        };
+
+        let damage = (base_damage - armor_defense).max(0);
+
+        let mut weapon_destroyed_result: Option<ActionResult> = None;
+        let mut armor_destroyed_result: Option<ActionResult> = None;
+
+        // 消耗武器耐久
+        {
+            let mut weapon_should_remove = false;
+            {
+                let attacker = self.players.get_mut(player_id).unwrap();
+                if let Some(weapon) = attacker.equipped_weapon.as_mut() {
+                    if let crate::game::game_rule_engine::ItemType::Weapon(properties) =
+                        &mut weapon.item_type
+                    {
+                        if let Some(uses) = properties.uses.as_mut() {
+                            *uses -= 1;
+                            if *uses <= 0 {
+                                *uses = 0;
+                                weapon_should_remove = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if weapon_should_remove {
+                let attacker = self.players.get_mut(player_id).unwrap();
+                if let Some(broken_weapon) = attacker.equipped_weapon.take() {
+                    let player_name = attacker.name.clone();
+                    let inventory_snapshot = attacker.inventory.clone();
+                    let strength_snapshot = attacker.strength;
+                    let equipped_weapon_snapshot = attacker.equipped_weapon.clone();
+                    let broken_weapon_name = broken_weapon.name.clone();
+
+                    let data = serde_json::json!({
+                        "equipped_weapon": equipped_weapon_snapshot,
+                        "inventory": inventory_snapshot,
+                        "strength": strength_snapshot
+                    });
+
+                    weapon_destroyed_result = Some(ActionResult::new_system_message(
+                        data,
+                        vec![player_id.to_string()],
+                        format!("{} 的武器 {} 已损坏", player_name, broken_weapon_name),
+                        true,
+                    ));
+                }
+            }
+        }
+
+        // 消耗护甲耐久
+        {
+            let mut armor_should_remove = false;
+            {
+                let target = self.players.get_mut(&target_player_id).unwrap();
+                if let Some(armor) = target.equipped_armor.as_mut() {
+                    if let crate::game::game_rule_engine::ItemType::Armor(properties) =
+                        &mut armor.item_type
+                    {
+                        if let Some(uses) = properties.uses.as_mut() {
+                            *uses -= 1;
+                            if *uses <= 0 {
+                                *uses = 0;
+                                armor_should_remove = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if armor_should_remove {
+                let target = self.players.get_mut(&target_player_id).unwrap();
+                if let Some(broken_armor) = target.equipped_armor.take() {
+                    let target_name = target.name.clone();
+                    let inventory_snapshot = target.inventory.clone();
+                    let strength_snapshot = target.strength;
+                    let equipped_armor_snapshot = target.equipped_armor.clone();
+                    let broken_armor_name = broken_armor.name.clone();
+
+                    let data = serde_json::json!({
+                        "equipped_armor": equipped_armor_snapshot,
+                        "inventory": inventory_snapshot,
+                        "strength": strength_snapshot
+                    });
+
+                    armor_destroyed_result = Some(ActionResult::new_system_message(
+                        data,
+                        vec![target_player_id.to_string()],
+                        format!("{} 的防具 {} 已损坏", target_name, broken_armor_name),
+                        true,
+                    ));
+                }
+            }
+        }
 
         // 减少目标玩家生命值
         let was_killed = {
@@ -461,6 +568,12 @@ impl GameState {
 
         // 汇总所有ActionResult并返回
         let mut results = vec![full_action_result, diff_action_result];
+        if let Some(action) = weapon_destroyed_result {
+            results.push(action);
+        }
+        if let Some(action) = armor_destroyed_result {
+            results.push(action);
+        }
         if let Some(mut extra_results) = death_results {
             results.append(&mut extra_results.results);
         }
@@ -624,14 +737,17 @@ impl GameState {
         match effect.effect_type.as_str() {
             "heal" => {
                 // 治疗效果
-                let (life, bleed_damage, bleed_rounds_remaining) = {
+                let (life_before, life_after, bleed_damage, curing_bleed) = {
                     let player = self.players.get_mut(player_id).unwrap();
+                    let life_before = player.life;
                     let had_bleed = player.has_bleed_effect();
                     let cure_level = effect.cure_bleed.unwrap_or(0);
+                    let mut curing_bleed = false;
 
                     if had_bleed && cure_level > 0 {
                         // 解除流血效果
                         player.clear_bleed_effect();
+                        curing_bleed = true;
                     }
 
                     let heal_amount = effect.effect_value;
@@ -644,52 +760,69 @@ impl GameState {
                         }
                     }
 
-                    (
-                        player.life,
-                        player.bleed_damage,
-                        player.bleed_rounds_remaining,
-                    )
+                    (life_before, player.life, player.bleed_damage, curing_bleed)
                 };
+
+                let life_delta = (life_after - life_before).max(0);
 
                 // 消耗体力值
                 self.consume_strength(player_id, use_cost)?;
 
+                let strength_after_use = self.players.get(player_id).unwrap().strength;
+
+                let mut log_message = format!(
+                    "{} 使用了 {}，生命值{}({:+})，体力{}",
+                    player_name, item_name, life_after, life_delta, strength_after_use
+                );
+                if curing_bleed {
+                    log_message.push_str("，解除了流血");
+                }
+
                 let data = serde_json::json!({
-                    "life": life,
+                    "life": life_after,
                     "bleed_damage": bleed_damage,
-                    "bleed_rounds_remaining": bleed_rounds_remaining,
-                    "strength": self.players.get(player_id).unwrap().strength
+                    "strength": strength_after_use
                 });
 
                 let action_result = ActionResult::new_system_message(
                     data,
                     vec![player_id.to_string()],
-                    format!("{} 使用了 {}", player_name, item_name),
+                    log_message,
                     true,
                 );
                 Ok(action_result.as_results())
             }
             "strength" => {
                 // 体力恢复效果
-                {
+                let restored_amount = {
                     let player = self.players.get_mut(player_id).unwrap();
+                    let before = player.strength;
                     player.strength += effect.effect_value;
                     if player.strength > player.max_strength {
                         player.strength = player.max_strength;
                     }
-                }
+                    let after = player.strength;
+                    (after - before).max(0)
+                };
 
                 // 消耗使用体力（在恢复后扣除）
                 self.consume_strength(player_id, use_cost)?;
 
+                let strength_after_use = self.players.get(player_id).unwrap().strength;
+
+                let log_message = format!(
+                    "{} 使用了 {}，体力{}(+{})",
+                    player_name, item_name, strength_after_use, restored_amount
+                );
+
                 let data = serde_json::json!({
-                    "strength": self.players.get(player_id).unwrap().strength,
+                    "strength": strength_after_use,
                 });
 
                 let action_result = ActionResult::new_system_message(
                     data,
                     vec![player_id.to_string()],
-                    format!("{} 使用了 {}", player_name, item_name),
+                    log_message,
                     true,
                 );
                 Ok(action_result.as_results())

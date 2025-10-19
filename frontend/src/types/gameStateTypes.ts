@@ -44,7 +44,6 @@ export interface Player {
   votes: number;
   team_id: number | null;
   bleed_damage: number;
-  bleed_rounds_remaining: number;
 }
 
 // 玩家视角的玩家列表
@@ -162,7 +161,6 @@ export interface PlayerStatusDetail {
   };
   effects: {
     bleed_damage: number;
-    bleed_rounds_remaining: number;
   };
   equipment: {
     weapon: Item | null;

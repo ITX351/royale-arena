@@ -155,8 +155,6 @@ pub struct Player {
     pub team_id: Option<u32>,
     /// 持续伤害效果（流血状态）
     pub bleed_damage: i32,
-    /// 持续伤害剩余回合数
-    pub bleed_rounds_remaining: i32,
 }
 
 impl Player {
@@ -193,7 +191,6 @@ impl Player {
             votes: 0,
             team_id: Some(team_id),
             bleed_damage: 0,
-            bleed_rounds_remaining: 0,
         }
     }
 
@@ -211,9 +208,8 @@ impl Player {
 
     /// 应用持续伤害效果
     pub fn apply_bleed_damage(&mut self) -> bool {
-        if self.bleed_rounds_remaining > 0 {
+        if self.bleed_damage > 0 {
             self.life -= self.bleed_damage;
-            self.bleed_rounds_remaining -= 1;
 
             if self.life <= 0 {
                 self.life = 0;
@@ -227,18 +223,16 @@ impl Player {
     /// 设置持续伤害效果
     pub fn set_bleed_effect(&mut self, damage: i32, rounds: i32) {
         self.bleed_damage = damage;
-        self.bleed_rounds_remaining = rounds;
     }
 
     /// 清除持续伤害效果
     pub fn clear_bleed_effect(&mut self) {
         self.bleed_damage = 0;
-        self.bleed_rounds_remaining = 0;
     }
 
     /// 检查是否有持续伤害效果
     pub fn has_bleed_effect(&self) -> bool {
-        self.bleed_rounds_remaining > 0
+        self.bleed_damage > 0
     }
 
     /// 装备武器（如已有装备则返回旧装备）
