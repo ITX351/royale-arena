@@ -4,7 +4,8 @@ use std::mem;
 
 use rand::{rng, seq::SliceRandom};
 
-use super::models::{ActionResult, ActionResults, GameState, Item};
+use super::models::{ActionResult, ActionResults, GameState};
+use crate::game::game_rule_engine::{Item};
 
 enum DeathDisposition {
     KillerTakes,

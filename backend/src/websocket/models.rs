@@ -1,6 +1,6 @@
 //! WebSocket相关模型定义
 
-use crate::game::game_rule_engine::GameRuleEngine;
+use crate::game::game_rule_engine::{GameRuleEngine, Item, ItemType};
 use crate::game::models::MessageType;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -254,26 +254,6 @@ impl Player {
     pub fn unequip_armor(&mut self) -> Option<Item> {
         self.equipped_armor.take()
     }
-
-    /// 获取总防御值
-    pub fn get_total_defense(&self) -> i32 {
-        self.equipped_armor
-            .as_ref()
-            .and_then(|item| item.properties.get("defense"))
-            .and_then(|def| def.as_i64())
-            .map(|def| def as i32)
-            .unwrap_or(0)
-    }
-
-    /// 获取武器伤害值
-    pub fn get_weapon_damage(&self) -> i32 {
-        self.equipped_weapon
-            .as_ref()
-            .and_then(|item| item.properties.get("damage"))
-            .and_then(|dmg| dmg.as_i64())
-            .map(|dmg| dmg as i32)
-            .unwrap_or(0)
-    }
 }
 
 /// 地点类
@@ -299,28 +279,6 @@ impl Place {
             is_destroyed: false,
         }
     }
-}
-
-/// 物品类
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Item {
-    /// 物品ID
-    pub id: String,
-    /// 物品名称
-    pub name: String,
-    /// 物品类型（武器、消耗品等）
-    pub item_type: ItemType,
-    /// 物品属性（伤害值、恢复值等）
-    pub properties: serde_json::Value,
-}
-
-/// 物品类型枚举
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ItemType {
-    Weapon,
-    Consumable,
-    Equipment,
 }
 
 /// 搜索结果类

@@ -1,10 +1,31 @@
 //! 游戏规则引擎
 //! 负责解析和管理游戏规则配置，确保前后端规则一致性
 
-use crate::websocket::models::{Item, ItemType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
+
+/// 物品类
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Item {
+    /// 物品ID
+    pub id: String,
+    /// 物品名称
+    pub name: String,
+    /// 物品类型（武器、消耗品等）
+    pub item_type: ItemType,
+    /// 物品属性（伤害值、恢复值等）
+    pub properties: serde_json::Value,
+}
+
+/// 物品类型枚举
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemType {
+    Weapon,
+    Consumable,
+    Equipment,
+}
 
 /// 游戏规则引擎
 #[derive(Debug, Clone)]

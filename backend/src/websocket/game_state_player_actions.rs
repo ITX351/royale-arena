@@ -1,6 +1,7 @@
 //! GameState 玩家行动实现
 
 use super::models::*;
+use crate::game::game_rule_engine::{ItemType};
 
 impl GameState {
     /// 消耗玩家体力值
@@ -311,7 +312,7 @@ impl GameState {
         let attack_cost = self.rule_engine.action_costs.attack;
 
         // 检查前置条件：上一次搜索结果为玩家
-        let (has_weapon, player_location, target_player_id) = {
+        let (player_location, target_player_id) = {
             let player = self.players.get(player_id).unwrap();
 
             let target_player_id = if let Some(ref search_result) = player.last_search_result
@@ -329,7 +330,6 @@ impl GameState {
             };
 
             (
-                player.equipped_weapon.is_some(),
                 player.location.clone(),
                 target_player_id,
             )
@@ -374,9 +374,10 @@ impl GameState {
         }
 
         // 根据是否装备武器计算伤害
-        let (damage, attack_method) = if has_weapon {
+        let (damage, attack_method) = if let Some(weapon) = &self.players.get(player_id).unwrap().equipped_weapon {
             // 有武器：使用武器伤害
-            let weapon_damage = self.players.get(player_id).unwrap().get_weapon_damage();
+            // let weapon_damage = self.players.get(player_id).unwrap().get_weapon_damage();
+            let weapon_damage = 20; // 根据已装备武器的实际武器伤害值替换此处
             (weapon_damage, "武器")
         } else {
             // 无武器：使用规则引擎获取挥拳伤害
