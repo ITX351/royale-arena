@@ -55,149 +55,163 @@ const TEST_RULES_JSON: &str = r#"{
     "rest_life_recovery": "生命恢复NAME",
     "rest_max_moves": "最大移动次数NAME"
   },
-  "items": {
+  "items_config": {
     "rarity_levels": [
       {"internal_name": "common", "display_name": "普通1", "prefix": "[绿1]", "is_airdropped": true},
       {"internal_name": "rare", "display_name": "稀有2", "prefix": "[蓝2]", "is_airdropped": true},
       {"internal_name": "epic", "display_name": "史诗3", "prefix": "[紫3]", "is_airdropped": false},
       {"internal_name": "legendary", "display_name": "传说4", "prefix": "[橙4]", "is_airdropped": false}
     ],
-    "weapons": [
-      {
-        "internal_name": "common_weapon",
-        "display_names": ["[绿]佩剑", "[绿]战斧"],
-        "rarity": "common",
-        "properties": {
-          "damage": 11,
-          "votes": 1
+    "items": {
+      "weapons": [
+        {
+          "internal_name": "common_weapon",
+          "display_names": ["[绿]佩剑", "[绿]战斧"],
+          "rarity": "common",
+          "properties": {
+            "damage": 11,
+            "votes": 1
+          }
+        },
+        {
+          "internal_name": "rare_weapon",
+          "display_names": ["[蓝]大太刀", "[蓝]死神镰刀"],
+          "rarity": "rare",
+          "properties": {
+            "damage": 22,
+            "votes": 2
+          }
+        },
+        {
+          "internal_name": "epic_weapon",
+          "display_names": ["[紫]青龙偃月刀"],
+          "rarity": "epic",
+          "properties": {
+            "damage": 33,
+            "votes": 3
+          }
+        },
+        {
+          "internal_name": "legendary_weapon",
+          "display_names": ["[橙]自然之力.晓"],
+          "rarity": "legendary",
+          "properties": {
+            "damage": 44,
+            "uses": 2,
+            "votes": 5,
+            "aoe_damage": 12,
+            "bleed_damage": 7
+          }
         }
-      },
-      {
-        "internal_name": "rare_weapon",
-        "display_names": ["[蓝]大太刀", "[蓝]死神镰刀"],
-        "rarity": "rare",
-        "properties": {
-          "damage": 22,
-          "votes": 2
+      ],
+      "armors": [
+        {
+          "internal_name": "common_armor",
+          "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
+          "rarity": "common",
+          "properties": {
+            "defense": 5,
+            "votes": 2
+          }
         }
-      },
-      {
-        "internal_name": "epic_weapon",
-        "display_names": ["[紫]青龙偃月刀"],
-        "rarity": "epic",
-        "properties": {
-          "damage": 33,
-          "votes": 3
+      ],
+      "utilities": [
+        {
+          "name": "[GPS]心跳探测仪1",
+          "properties": {
+            "category": "utility_locator",
+            "votes": 3,
+            "targets": 1,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[侦]手持式雷达2",
+          "properties": {
+            "category": "utility_revealer",
+            "votes": 3,
+            "targets": 2,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[神]生命启示3",
+          "properties": {
+            "category": "utility_seer",
+            "votes": 3,
+            "targets": 2
+          }
+        },
+        {
+          "name": "[炸]遥控地雷4",
+          "properties": {
+            "category": "trap",
+            "damage": 30,
+            "uses": 1,
+            "votes": 0
+          }
         }
-      },
-      {
-        "internal_name": "legendary_weapon",
-        "display_names": ["[橙]自然之力.晓"],
-        "rarity": "legendary",
-        "properties": {
-          "damage": 44,
-          "uses": 2,
-          "votes": 5,
-          "aoe_damage": 12,
-          "bleed_damage": 7
+      ],
+      "consumables": [
+        {
+          "name": "[HP30]绷带a",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 30,
+            "cure_bleed": 1
+          }
+        },
+        {
+          "name": "[HP50]止血绷带b",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 50,
+            "cure_bleed": 1
+          }
+        },
+        {
+          "name": "[HP100]红花丹c",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 100,
+            "cure_bleed": 2
+          }
+        },
+        {
+          "name": "[MP20]矿泉水d",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 20
+          }
+        },
+        {
+          "name": "[MP50]能量饮料e",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 50
+          }
+        },
+        {
+          "name": "[MP100]威士忌f",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 100
+          }
         }
-      }
-    ],
-    "armors": [
-      {
-        "internal_name": "common_armor",
-        "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
-        "rarity": "common",
-        "properties": {
-          "defense": 5,
-          "votes": 2
+      ],
+      "upgraders": [
+        {
+          "internal_name": "natural_upgrader",
+          "display_names": ["[合]自然升级器q"],
+          "rarity": "legendary"
+        },
+        {
+          "internal_name": "artificial_upgrader",
+          "display_names": ["[合]人造升级器w"],
+          "rarity": "rare"
         }
-      }
-    ],
-    "other_items": [
-      {
-        "name": "[GPS]心跳探测仪1",
-        "category": "utility_locator",
-        "properties": {
-          "votes": 3,
-          "targets": 1,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[侦]手持式雷达2",
-        "category": "utility_revealer",
-        "properties": {
-          "votes": 3,
-          "targets": 2,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[神]生命启示3",
-        "category": "utility_seer",
-        "properties": {
-          "votes": 3,
-          "targets": 2
-        }
-      },
-      {
-        "name": "[炸]遥控地雷4",
-        "category": "trap",
-        "properties": {
-          "damage": 30,
-          "uses": 1,
-          "votes": 0
-        }
-      }
-    ],
-    "consumables": [
-      {
-        "name": "[HP30]绷带a",
-        "effect_type": "heal",
-        "effect_value": 30,
-        "cure_bleed": 1
-      },
-      {
-        "name": "[HP50]止血绷带b",
-        "effect_type": "heal",
-        "effect_value": 50,
-        "cure_bleed": 1
-      },
-      {
-        "name": "[HP100]红花丹c",
-        "effect_type": "heal",
-        "effect_value": 100,
-        "cure_bleed": 2
-      },
-      {
-        "name": "[MP20]矿泉水d",
-        "effect_type": "strength",
-        "effect_value": 20
-      },
-      {
-        "name": "[MP50]能量饮料e",
-        "effect_type": "strength",
-        "effect_value": 50
-      },
-      {
-        "name": "[MP100]威士忌f",
-        "effect_type": "strength",
-        "effect_value": 100
-      }
-    ],
-    "upgraders": [
-      {
-        "internal_name": "natural_upgrader",
-        "display_names": ["[合]自然升级器q"],
-        "rarity": "legendary"
-      },
-      {
-        "internal_name": "artificial_upgrader",
-        "display_names": ["[合]人造升级器w"],
-        "rarity": "rare"
-      }
-    ],
+      ]
+    },
     "upgrade_recipes": {
       "natural_upgrader": [
         {
@@ -302,14 +316,16 @@ fn test_items_config_parsing() {
         false
     );
 
+    let items = &rule_engine.items_config.items;
+
     // 验证武器配置
-    assert_eq!(rule_engine.items_config.weapons.len(), 4);
-    let common_weapon = &rule_engine.items_config.weapons[0];
+    assert_eq!(items.weapons.len(), 4);
+    let common_weapon = &items.weapons[0];
     assert_eq!(common_weapon.internal_name, "common_weapon");
     assert_eq!(common_weapon.display_names.len(), 2);
     assert_eq!(common_weapon.display_names[0], "[绿]佩剑");
     assert_eq!(common_weapon.display_names[1], "[绿]战斧");
-    assert_eq!(common_weapon.rarity, "common");
+    assert_eq!(common_weapon.rarity.as_deref(), Some("common"));
     assert_eq!(common_weapon.properties.damage, 11);
     assert_eq!(common_weapon.properties.votes, 1);
     assert_eq!(common_weapon.properties.uses, None);
@@ -317,7 +333,7 @@ fn test_items_config_parsing() {
     assert_eq!(common_weapon.properties.bleed_damage, None);
 
     // 验证传说武器的特殊属性
-    let legendary_weapon = &rule_engine.items_config.weapons[3];
+    let legendary_weapon = &items.weapons[3];
     assert_eq!(legendary_weapon.internal_name, "legendary_weapon");
     assert_eq!(legendary_weapon.properties.damage, 44);
     assert_eq!(legendary_weapon.properties.uses, Some(2));
@@ -325,43 +341,45 @@ fn test_items_config_parsing() {
     assert_eq!(legendary_weapon.properties.bleed_damage, Some(7));
 
     // 验证防具配置
-    assert_eq!(rule_engine.items_config.armors.len(), 1);
-    let common_armor = &rule_engine.items_config.armors[0];
+    assert_eq!(items.armors.len(), 1);
+    let common_armor = &items.armors[0];
     assert_eq!(common_armor.internal_name, "common_armor");
     assert_eq!(common_armor.properties.defense, 5);
     assert_eq!(common_armor.properties.votes, 2);
 
-  // 验证其他物品配置
-  assert_eq!(rule_engine.items_config.other_items.len(), 4);
-  let heartbeat_locator = &rule_engine.items_config.other_items[0];
-  assert_eq!(heartbeat_locator.name, "[GPS]心跳探测仪1");
-  assert_eq!(heartbeat_locator.properties.targets, Some(1));
-  assert_eq!(heartbeat_locator.properties.uses_night, Some(1));
+    // 验证通用物品配置
+    assert_eq!(items.utilities.len(), 4);
+    let heartbeat_locator = &items.utilities[0];
+    assert_eq!(heartbeat_locator.name, "[GPS]心跳探测仪1");
+    assert_eq!(heartbeat_locator.properties.targets, Some(1));
+    assert_eq!(heartbeat_locator.properties.uses_night, Some(1));
+    assert_eq!(heartbeat_locator.properties.category, "utility_locator");
 
-  let handheld_radar = &rule_engine.items_config.other_items[1];
-  assert_eq!(handheld_radar.name, "[侦]手持式雷达2");
-  assert_eq!(handheld_radar.properties.targets, Some(2));
-  assert_eq!(handheld_radar.properties.uses_night, Some(1));
+    let handheld_radar = &items.utilities[1];
+    assert_eq!(handheld_radar.name, "[侦]手持式雷达2");
+    assert_eq!(handheld_radar.properties.targets, Some(2));
+    assert_eq!(handheld_radar.properties.uses_night, Some(1));
+    assert_eq!(handheld_radar.properties.category, "utility_revealer");
 
     // 验证消耗品配置
-    assert_eq!(rule_engine.items_config.consumables.len(), 6);
-    let heal_bandage = &rule_engine.items_config.consumables[0];
+    assert_eq!(items.consumables.len(), 6);
+    let heal_bandage = &items.consumables[0];
     assert_eq!(heal_bandage.name, "[HP30]绷带a");
-    assert_eq!(heal_bandage.effect_type, "heal");
-    assert_eq!(heal_bandage.effect_value, 30);
-    assert_eq!(heal_bandage.cure_bleed, Some(1));
+    assert_eq!(heal_bandage.properties.effect_type, "heal");
+    assert_eq!(heal_bandage.properties.effect_value, 30);
+    assert_eq!(heal_bandage.properties.cure_bleed, Some(1));
 
-    let strength_water = &rule_engine.items_config.consumables[3];
+    let strength_water = &items.consumables[3];
     assert_eq!(strength_water.name, "[MP20]矿泉水d");
-    assert_eq!(strength_water.effect_type, "strength");
-    assert_eq!(strength_water.effect_value, 20);
-    assert_eq!(strength_water.cure_bleed, None);
+    assert_eq!(strength_water.properties.effect_type, "strength");
+    assert_eq!(strength_water.properties.effect_value, 20);
+    assert_eq!(strength_water.properties.cure_bleed, None);
 
     // 验证升级器配置
-    assert_eq!(rule_engine.items_config.upgraders.len(), 2);
-    let natural_upgrader = &rule_engine.items_config.upgraders[0];
+    assert_eq!(items.upgraders.len(), 2);
+    let natural_upgrader = &items.upgraders[0];
     assert_eq!(natural_upgrader.internal_name, "natural_upgrader");
-    assert_eq!(natural_upgrader.rarity, "legendary");
+    assert_eq!(natural_upgrader.rarity.as_deref(), Some("legendary"));
 
     // 验证升级配方
     assert_eq!(rule_engine.items_config.upgrade_recipes.len(), 2);

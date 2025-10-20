@@ -58,185 +58,199 @@
     "rest_life_recovery": "生命恢复",
     "rest_max_moves": "最大移动次数"
   },
-  "items": {
+  "items_config": {
     "rarity_levels": [
       {"internal_name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
       {"internal_name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
       {"internal_name": "epic", "display_name": "史诗", "prefix": "[紫]", "is_airdropped": false},
       {"internal_name": "legendary", "display_name": "传说", "prefix": "[橙]", "is_airdropped": false}
     ],
-    "weapons": [
-      {
-        "internal_name": "common_weapon",
-        "display_names": ["[绿]佩剑", "[绿]战斧", "[绿]长矛", "[绿]皮鞭", "[绿]回力镖", "[绿]IM-10", "[绿]复合弓", "[绿]铁爪"],
-        "rarity": "common",
-        "properties": {
-          "damage": 10,
-          "votes": 1
+    "items": {
+      "weapons": [
+        {
+          "internal_name": "common_weapon",
+          "display_names": ["[绿]佩剑", "[绿]战斧", "[绿]长矛", "[绿]皮鞭", "[绿]回力镖", "[绿]IM-10", "[绿]复合弓", "[绿]铁爪"],
+          "rarity": "common",
+          "properties": {
+            "damage": 10,
+            "votes": 1
+          }
+        },
+        {
+          "internal_name": "rare_weapon",
+          "display_names": ["[蓝]大太刀", "[蓝]死神镰刀", "[蓝]斩马刀"],
+          "rarity": "rare",
+          "properties": {
+            "damage": 20,
+            "votes": 2
+          }
+        },
+        {
+          "internal_name": "epic_weapon",
+          "display_names": ["[紫]青龙偃月刀", "[紫]盘古斧"],
+          "rarity": "epic",
+          "properties": {
+            "damage": 35,
+            "votes": 3
+          }
+        },
+        {
+          "internal_name": "legendary_weapon",
+          "display_names": ["[橙]自然之力.晓", "[橙]自然之力.夜"],
+          "rarity": "legendary",
+          "properties": {
+            "damage": 50,
+            "uses": 5,
+            "votes": 0,
+            "aoe_damage": 40,
+            "bleed_damage": 10
+          }
         }
-      },
-      {
-        "internal_name": "rare_weapon",
-        "display_names": ["[蓝]大太刀", "[蓝]死神镰刀", "[蓝]斩马刀"],
-        "rarity": "rare",
-        "properties": {
-          "damage": 20,
-          "votes": 2
+      ],
+      "armors": [
+        {
+          "internal_name": "common_armor",
+          "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
+          "rarity": "common",
+          "properties": {
+            "defense": 5,
+            "votes": 2
+          }
+        },
+        {
+          "internal_name": "rare_armor",
+          "display_names": ["[蓝]锁子甲", "[蓝]鳞甲"],
+          "rarity": "rare",
+          "properties": {
+            "defense": 10,
+            "votes": 2
+          }
+        },
+        {
+          "internal_name": "epic_armor",
+          "display_names": ["[紫]板甲", "[紫]重甲"],
+          "rarity": "epic",
+          "properties": {
+            "defense": 15,
+            "votes": 3
+          }
+        },
+        {
+          "internal_name": "legendary_armor",
+          "display_names": ["[橙]神佑之铠", "[橙]不朽战甲"],
+          "rarity": "legendary",
+          "properties": {
+            "defense": 25,
+            "uses": 3,
+            "votes": 0
+          }
         }
-      },
-      {
-        "internal_name": "epic_weapon",
-        "display_names": ["[紫]青龙偃月刀", "[紫]盘古斧"],
-        "rarity": "epic",
-        "properties": {
-          "damage": 35,
-          "votes": 3
+      ],
+      "utilities": [
+        {
+          "name": "[控]电击棒",
+          "properties": {
+            "category": "utility_locator",
+            "votes": 3,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[GPS]心跳探测仪",
+          "properties": {
+            "category": "utility_locator",
+            "votes": 3,
+            "targets": 1,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[侦]手持式雷达",
+          "properties": {
+            "category": "utility_revealer",
+            "votes": 3,
+            "targets": 2,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[神]生命启示",
+          "properties": {
+            "category": "utility_seer",
+            "votes": 3,
+            "targets": 2
+          }
+        },
+        {
+          "name": "[炸]遥控地雷",
+          "properties": {
+            "category": "trap",
+            "damage": 30,
+            "uses": 1,
+            "votes": 0
+          }
         }
-      },
-      {
-        "internal_name": "legendary_weapon",
-        "display_names": ["[橙]自然之力.晓", "[橙]自然之力.夜"],
-        "rarity": "legendary",
-        "properties": {
-          "damage": 50,
-          "uses": 5,
-          "votes": 0,
-          "aoe_damage": 40,
-          "bleed_damage": 10
+      ],
+      "consumables": [
+        {
+          "name": "[HP30]绷带",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 30,
+            "cure_bleed": 1
+          }
+        },
+        {
+          "name": "[HP50]止血绷带",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 50,
+            "cure_bleed": 1
+          }
+        },
+        {
+          "name": "[HP100]红花丹",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 100,
+            "cure_bleed": 2
+          }
+        },
+        {
+          "name": "[MP20]矿泉水",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 20
+          }
+        },
+        {
+          "name": "[MP50]能量饮料",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 50
+          }
+        },
+        {
+          "name": "[MP100]威士忌",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 100
+          }
         }
-      }
-    ],
-    "armors": [
-      {
-        "internal_name": "common_armor",
-        "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
-        "rarity": "common",
-        "properties": {
-          "defense": 5,
-          "votes": 2
+      ],
+      "upgraders": [
+        {
+          "internal_name": "natural_upgrader",
+          "display_names": ["[合]自然升级器"],
+          "rarity": "legendary"
+        },
+        {
+          "internal_name": "artificial_upgrader",
+          "display_names": ["[合]人造升级器"],
+          "rarity": "rare"
         }
-      },
-      {
-        "internal_name": "rare_armor",
-        "display_names": ["[蓝]锁子甲", "[蓝]鳞甲"],
-        "rarity": "rare",
-        "properties": {
-          "defense": 10,
-          "votes": 2
-        }
-      },
-      {
-        "internal_name": "epic_armor",
-        "display_names": ["[紫]板甲", "[紫]重甲"],
-        "rarity": "epic",
-        "properties": {
-          "defense": 15,
-          "votes": 3
-        }
-      },
-      {
-        "internal_name": "legendary_armor",
-        "display_names": ["[橙]神佑之铠", "[橙]不朽战甲"],
-        "rarity": "legendary",
-        "properties": {
-          "defense": 25,
-          "uses": 3,
-          "votes": 0
-        }
-      }
-    ],
-    "other_items": [
-      {
-        "name": "[控]电击棒",
-        "category": "utility_locator",
-        "properties": {
-          "votes": 3,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[GPS]心跳探测仪",
-        "category": "utility_locator",
-        "properties": {
-          "votes": 3,
-          "targets": 1,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[侦]手持式雷达",
-        "category": "utility_revealer",
-        "properties": {
-          "votes": 3,
-          "targets": 2,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[神]生命启示",
-        "category": "utility_seer",
-        "properties": {
-          "votes": 3,
-          "targets": 2
-        }
-      },
-      {
-        "name": "[炸]遥控地雷",
-        "category": "trap",
-        "properties": {
-          "damage": 30,
-          "uses": 1,
-          "votes": 0
-        }
-      }
-    ],
-    "consumables": [
-      {
-        "name": "[HP30]绷带",
-        "effect_type": "heal",
-        "effect_value": 30,
-        "cure_bleed": 1
-      },
-      {
-        "name": "[HP50]止血绷带",
-        "effect_type": "heal",
-        "effect_value": 50,
-        "cure_bleed": 1
-      },
-      {
-        "name": "[HP100]红花丹",
-        "effect_type": "heal",
-        "effect_value": 100,
-        "cure_bleed": 2
-      },
-      {
-        "name": "[MP20]矿泉水",
-        "effect_type": "strength",
-        "effect_value": 20
-      },
-      {
-        "name": "[MP50]能量饮料",
-        "effect_type": "strength",
-        "effect_value": 50
-      },
-      {
-        "name": "[MP100]威士忌",
-        "effect_type": "strength",
-        "effect_value": 100
-      }
-    ],
-    "upgraders": [
-      {
-        "internal_name": "natural_upgrader",
-        "display_names": ["[合]自然升级器"],
-        "rarity": "legendary"
-      },
-      {
-        "internal_name": "artificial_upgrader",
-        "display_names": ["[合]人造升级器"],
-        "rarity": "rare"
-      }
-    ],
+      ]
+    },
     "upgrade_recipes": {
       "natural_upgrader": [
         {

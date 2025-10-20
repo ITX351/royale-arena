@@ -35,13 +35,15 @@
     "max_moves": 1
   },
   "death_item_disposition": "killer_takes_loot",
-  "items": {
+  "items_config": {
     "rarity_levels": [],
-    "weapons": [],
-    "armors": [],
-    "other_items": [],
-    "consumables": [],
-    "upgraders": [],
+    "items": {
+      "weapons": [],
+      "armors": [],
+      "utilities": [],
+      "consumables": [],
+      "upgraders": []
+    },
     "upgrade_recipes": {}
   },
   "teammate_behavior": 0,
@@ -165,7 +167,7 @@
 - `strength_recovery`: 静养模式下恢复的体力值
 - `max_moves`: 静养模式下每晚最多可移动的次数
 
-## 3. 物品系统 (items)
+## 3. 物品系统 (items_config)
 
 ### 稀有度等级 (rarity_levels)
 
@@ -173,7 +175,7 @@
 
 ```json
 {
-  "items": {
+  "items_config": {
     "rarity_levels": [
       {"internal_name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
       {"internal_name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
@@ -196,30 +198,32 @@
 
 ```json
 {
-  "items": {
-    "weapons": [
-      {
-        "internal_name": "common_weapon",
-        "display_names": ["[绿]佩剑", "[绿]战斧", "[绿]长矛", "[绿]皮鞭", "[绿]回力镖", "[绿]IM-10", "[绿]复合弓", "[绿]铁爪"],
-        "rarity": "common",
-        "properties": {
-          "damage": 10,
-          "votes": 1
+  "items_config": {
+    "items": {
+      "weapons": [
+        {
+          "internal_name": "common_weapon",
+          "display_names": ["[绿]佩剑", "[绿]战斧", "[绿]长矛", "[绿]皮鞭", "[绿]回力镖", "[绿]IM-10", "[绿]复合弓", "[绿]铁爪"],
+          "rarity": "common",
+          "properties": {
+            "damage": 10,
+            "votes": 1
+          }
+        },
+        {
+          "internal_name": "legendary_weapon",
+          "display_names": ["[橙]自然之力.晓", "[橙]自然之力.午", "[橙]自然之力.夜", "[橙]自然之力.日", "[橙]自然之力.月", "[橙]自然之力.星", "[橙]自然之力.水", "[橙]自然之力.火", "[橙]自然之力.风"],
+          "rarity": "legendary",
+          "properties": {
+            "damage": 40,
+            "uses": 5,
+            "votes": 0,
+            "aoe_damage": 40,
+            "bleed_damage": 10
+          }
         }
-      },
-      {
-        "internal_name": "legendary_weapon",
-        "display_names": ["[橙]自然之力.晓", "[橙]自然之力.午", "[橙]自然之力.夜", "[橙]自然之力.日", "[橙]自然之力.月", "[橙]自然之力.星", "[橙]自然之力.水", "[橙]自然之力.火", "[橙]自然之力.风"],
-        "rarity": "legendary",
-        "properties": {
-          "damage": 40,
-          "uses": 5,
-          "votes": 0,
-          "aoe_damage": 40,
-          "bleed_damage": 10
-        }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
@@ -243,18 +247,20 @@
 
 ```json
 {
-  "items": {
-    "armors": [
-      {
-        "internal_name": "common_armor",
-        "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
-        "rarity": "common",
-        "properties": {
-          "defense": 5,
-          "votes": 2
+  "items_config": {
+    "items": {
+      "armors": [
+        {
+          "internal_name": "common_armor",
+          "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
+          "rarity": "common",
+          "properties": {
+            "defense": 5,
+            "votes": 2
+          }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
@@ -268,70 +274,74 @@
   - `votes`: 被攻击时获得的票数加成
   - `uses`: 使用次数（无限使用的道具不包含此字段）
 
-### 其他道具 (other_items)
+### 功能道具 (utilities)
 
 定义游戏中的其他类型道具。
 
 ```json
 {
-  "items": {
-    "other_items": [
-      {
-        "name": "[控]电击棒",
-        "category": "utility_locator",
-        "properties": {
-          "votes": 3,
-          "uses_night": 1
+  "items_config": {
+    "items": {
+      "utilities": [
+        {
+          "name": "[控]电击棒",
+          "properties": {
+            "category": "utility_locator",
+            "votes": 3,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[GPS]心跳探测仪",
+          "properties": {
+            "category": "utility_locator",
+            "votes": 3,
+            "targets": 1,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[侦]手持式雷达",
+          "properties": {
+            "category": "utility_revealer",
+            "votes": 3,
+            "targets": 2,
+            "uses_night": 1
+          }
+        },
+        {
+          "name": "[神]生命启示",
+          "properties": {
+            "category": "utility_seer",
+            "votes": 3,
+            "targets": 2
+          }
+        },
+        {
+          "name": "[炸]遥控地雷",
+          "properties": {
+            "category": "trap",
+            "damage": 30,
+            "uses": 1,
+            "votes": 0
+          }
         }
-      },
-      {
-        "name": "[GPS]心跳探测仪",
-        "category": "utility_locator",
-        "properties": {
-          "votes": 3,
-          "targets": 1,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[侦]手持式雷达",
-        "category": "utility_revealer",
-        "properties": {
-          "votes": 3,
-          "targets": 2,
-          "uses_night": 1
-        }
-      },
-      {
-        "name": "[神]生命启示",
-        "category": "utility_seer",
-        "properties": {
-          "votes": 3,
-          "targets": 2
-        }
-      },
-      {
-        "name": "[炸]遥控地雷",
-        "category": "trap",
-        "properties": {
-          "damage": 30,
-          "uses": 1,
-          "votes": 0
-        }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
 
 字段说明：
 - `name`: 道具的显示名称
-- `category`: 道具的分类
-  - `utility_locator`: 定位工具类道具（如心跳探测仪，用于探测目标位置）
-  - `utility_revealer`: 揭示工具类道具（如手持式雷达，用于揭示目标信息）
-  - `utility_seer`: 预言工具类道具（如生命启示，用于预知位置信息）
-  - `trap`: 陷阱类道具（如遥控地雷）
+- `internal_name`: 可选，便于编写流程脚本时引用的内部名称
+- `rarity`: 可选，标识该道具的稀有度（部分工具可能也跟随空投规则）
 - `properties`: 道具的属性
+  - `category`: 道具的分类
+    - `utility_locator`: 定位工具类道具（如心跳探测仪，用于探测目标位置）
+    - `utility_revealer`: 揭示工具类道具（如手持式雷达，用于揭示目标信息）
+    - `utility_seer`: 预言工具类道具（如生命启示，用于预知位置信息）
+    - `trap`: 陷阱类道具（如遥控地雷）
   - `uses`: 使用次数（对于有限使用次数的道具，如遥控地雷；无限使用的道具不包含此字段）
   - `votes`: 使用时获得的票数加成
   - `targets`: 可作用的目标数量（仅适用于定位、揭示和预言类道具）
@@ -356,35 +366,46 @@
 
 ```json
 {
-  "items": {
-    "consumables": [
-      {
-        "name": "[HP30]绷带",
-        "effect_type": "heal",
-        "effect_value": 30,
-        "cure_bleed": 1
-      },
-      {
-        "name": "[HP100]红花丹",
-        "effect_type": "heal",
-        "effect_value": 100,
-        "cure_bleed": 2
-      },
-      {
-        "name": "[MP20]矿泉水",
-        "effect_type": "strength",
-        "effect_value": 20
-      }
-    ]
+  "items_config": {
+    "items": {
+      "consumables": [
+        {
+          "name": "[HP30]绷带",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 30,
+            "cure_bleed": 1
+          }
+        },
+        {
+          "name": "[HP100]红花丹",
+          "properties": {
+            "effect_type": "heal",
+            "effect_value": 100,
+            "cure_bleed": 2
+          }
+        },
+        {
+          "name": "[MP20]矿泉水",
+          "properties": {
+            "effect_type": "strength",
+            "effect_value": 20
+          }
+        }
+      ]
+    }
   }
 }
 ```
 
 字段说明：
 - `name`: 消耗品的显示名称
-- `effect_type`: 效果类型（heal=治疗, strength=恢复体力）
-- `effect_value`: 效果数值
-- `cure_bleed`: 是否能解除持续伤害，0为无法解除，1为成功解除流血时不加血，2为完全解除流血并增加生命值
+- `internal_name`: 可选，消耗品的内部名称
+- `rarity`: 可选，消耗品的稀有度
+- `properties`: 消耗品的效果配置
+  - `effect_type`: 效果类型（heal=治疗, strength=恢复体力）
+  - `effect_value`: 效果数值
+  - `cure_bleed`: 是否能解除持续伤害，0或缺省为无法解除，1为成功解除流血时不加血，2为完全解除流血并增加生命值
 
 消耗品详细功能说明：
 1. 治疗类消耗品
@@ -400,19 +421,21 @@
 
 ```json
 {
-  "items": {
-    "upgraders": [
-      {
-        "internal_name": "natural_upgrader",
-        "display_names": ["[合]自然升级器"],
-        "rarity": "legendary"
-      },
-      {
-        "internal_name": "artificial_upgrader",
-        "display_names": ["[合]人造升级器"],
-        "rarity": "rare"
-      }
-    ],
+  "items_config": {
+    "items": {
+      "upgraders": [
+        {
+          "internal_name": "natural_upgrader",
+          "display_names": ["[合]自然升级器"],
+          "rarity": "legendary"
+        },
+        {
+          "internal_name": "artificial_upgrader",
+          "display_names": ["[合]人造升级器"],
+          "rarity": "rare"
+        }
+      ]
+    },
     "upgrade_recipes": {
       "natural_upgrader": [
         {
@@ -430,7 +453,7 @@
   - `internal_name`: 升级道具的内部标识符
   - `display_names`: 升级道具的显示名称
   - `rarity`: 升级道具的稀有度
-- `upgrade_recipes`: 合成配方
+- `upgrade_recipes`: 合成配方（键为升级器的internal_name）
   - `result`: 合成结果（目标物品的internal_name）
   - `ingredients`: 所需材料（原料物品的internal_name列表）
 

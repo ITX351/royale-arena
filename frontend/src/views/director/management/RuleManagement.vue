@@ -174,8 +174,8 @@
                             <div class="parser-section">
                               <el-tabs v-model="activeItemTab" type="card">
                                 <el-tab-pane label="稀有度级别" name="rarity">
-                                  <el-table :data="parsedRules.items.rarityLevels" style="width: 100%">
-                                    <el-table-column prop="name" label="内部名称" />
+                                  <el-table :data="parsedRules.itemsConfig.rarityLevels" style="width: 100%">
+                                    <el-table-column prop="internalName" label="内部名称" />
                                     <el-table-column prop="displayName" label="显示名称" />
                                     <el-table-column prop="prefix" label="前缀" />
                                     <el-table-column label="是否空投">
@@ -187,7 +187,7 @@
                                 </el-tab-pane>
                                 
                                 <el-tab-pane label="武器" name="weapons">
-                                  <el-table :data="parsedRules.items.weapons" style="width: 100%">
+                                  <el-table :data="parsedRules.itemsConfig.items.weapons" style="width: 100%">
                                     <el-table-column prop="internalName" label="内部名称" />
                                     <el-table-column prop="rarity" label="稀有度" />
                                     <el-table-column label="显示名称">
@@ -197,27 +197,53 @@
                                     </el-table-column>
                                     <el-table-column label="属性">
                                       <template #default="scope">
+                                        <div>伤害: {{ scope.row.properties.damage }}</div>
                                         <div v-if="scope.row.properties.uses !== undefined">使用次数: {{ scope.row.properties.uses }}</div>
-                                          <div>票数: {{ scope.row.properties.votes }}</div>
-                                          <div v-if="scope.row.properties.aoeDamage !== undefined">范围伤害: {{ scope.row.properties.aoeDamage }}</div>
-                                          <div v-if="scope.row.properties.bleedDamage !== undefined">流血伤害: {{ scope.row.properties.bleedDamage }}</div>
+                                        <div>票数: {{ scope.row.properties.votes }}</div>
+                                        <div v-if="scope.row.properties.aoeDamage !== undefined">范围伤害: {{ scope.row.properties.aoeDamage }}</div>
+                                        <div v-if="scope.row.properties.bleedDamage !== undefined">流血伤害: {{ scope.row.properties.bleedDamage }}</div>
+                                      </template>
+                                    </el-table-column>
+                                  </el-table>
+                                </el-tab-pane>
+
+                                <el-tab-pane label="防具" name="armors">
+                                  <el-table :data="parsedRules.itemsConfig.items.armors" style="width: 100%">
+                                    <el-table-column prop="internalName" label="内部名称" />
+                                    <el-table-column prop="rarity" label="稀有度" />
+                                    <el-table-column label="显示名称">
+                                      <template #default="scope">
+                                        {{ scope.row.displayNames.join(', ') }}
+                                      </template>
+                                    </el-table-column>
+                                    <el-table-column label="属性">
+                                      <template #default="scope">
+                                        <div>防御: {{ scope.row.properties.defense }}</div>
+                                        <div>票数: {{ scope.row.properties.votes }}</div>
+                                        <div v-if="scope.row.properties.uses !== undefined">使用次数: {{ scope.row.properties.uses }}</div>
                                       </template>
                                     </el-table-column>
                                   </el-table>
                                 </el-tab-pane>
                                 
-                                <el-tab-pane label="其他物品" name="other">
-                                  <el-table :data="parsedRules.items.otherItems" style="width: 100%">
+                                <el-tab-pane label="功能物品" name="utilities">
+                                  <el-table :data="parsedRules.itemsConfig.items.utilities" style="width: 100%">
                                     <el-table-column prop="name" label="名称" />
-                                    <el-table-column prop="category" label="类别" />
+                                    <el-table-column prop="internalName" label="内部名称" />
+                                    <el-table-column prop="rarity" label="稀有度" />
+                                    <el-table-column label="类别">
+                                      <template #default="scope">
+                                        {{ scope.row.properties.category || '未指定' }}
+                                      </template>
+                                    </el-table-column>
                                     <el-table-column label="属性">
                                       <template #default="scope">
                                         <div>
                                           <div v-if="scope.row.properties.uses !== undefined">使用次数: {{ scope.row.properties.uses }}</div>
                                           <div v-if="scope.row.properties.usesNight !== undefined">每晚使用次数: {{ scope.row.properties.usesNight }}</div>
-                                          <div>票数: {{ scope.row.properties.votes }}</div>
-                                          <div v-if="scope.row.properties.targets">目标数: {{ scope.row.properties.targets }}</div>
-                                          <div v-if="scope.row.properties.damage">伤害: {{ scope.row.properties.damage }}</div>
+                                          <div v-if="scope.row.properties.votes !== undefined">票数: {{ scope.row.properties.votes }}</div>
+                                          <div v-if="scope.row.properties.targets !== undefined">目标数: {{ scope.row.properties.targets }}</div>
+                                          <div v-if="scope.row.properties.damage !== undefined">伤害: {{ scope.row.properties.damage }}</div>
                                         </div>
                                       </template>
                                     </el-table-column>
@@ -225,7 +251,7 @@
                                 </el-tab-pane>
                                 
                                 <el-tab-pane label="升级道具" name="upgraders">
-                                  <el-table :data="parsedRules.items.upgraders" style="width: 100%">
+                                  <el-table :data="parsedRules.itemsConfig.items.upgraders" style="width: 100%">
                                     <el-table-column prop="internalName" label="内部名称" />
                                     <el-table-column prop="rarity" label="稀有度" />
                                     <el-table-column label="显示名称">
@@ -237,7 +263,7 @@
                                 </el-tab-pane>
                                 
                                 <el-tab-pane label="合成配方" name="recipes">
-                                  <div v-for="(recipes, upgrader) in parsedRules.items.upgradeRecipes" :key="upgrader">
+                                  <div v-for="(recipes, upgrader) in parsedRules.itemsConfig.upgradeRecipes" :key="upgrader">
                                     <h4>{{ upgrader }}</h4>
                                     <el-table :data="recipes" style="width: 100%">
                                       <el-table-column prop="result" label="结果" />
@@ -250,13 +276,23 @@
                                   </div>
                                 </el-tab-pane>
                                 <el-tab-pane label="消耗品" name="consumables">
-                                  <el-table :data="parsedRules.items.consumables" style="width: 100%">
+                                  <el-table :data="parsedRules.itemsConfig.items.consumables" style="width: 100%">
                                     <el-table-column prop="name" label="名称" />
-                                    <el-table-column prop="effectType" label="效果类型" />
-                                    <el-table-column prop="effectValue" label="效果值" />
+                                    <el-table-column label="效果类型">
+                                      <template #default="scope">
+                                        {{ scope.row.properties.effectType }}
+                                      </template>
+                                    </el-table-column>
+                                    <el-table-column label="效果值">
+                                      <template #default="scope">
+                                        {{ scope.row.properties.effectValue }}
+                                      </template>
+                                    </el-table-column>
                                     <el-table-column label="治愈流血">
                                       <template #default="scope">
-                                        {{ scope.row.cureBleed == 0 ? '否' : scope.row.cureBleed == 1 ? '抵消' : '治愈' }}
+                                        <span v-if="scope.row.properties.cureBleed === undefined">否</span>
+                                        <span v-else-if="scope.row.properties.cureBleed === 1">抵消</span>
+                                        <span v-else>治愈</span>
                                       </template>
                                     </el-table-column>
                                   </el-table>

@@ -1,3 +1,91 @@
+// 稀有度配置
+interface RarityLevelConfig {
+  internalName: string;
+  displayName: string;
+  prefix: string;
+  isAirdropped: boolean;
+}
+
+// 定义武器属性接口
+interface WeaponProperties {
+  damage: number;
+  uses?: number;
+  votes: number;
+  aoeDamage?: number;
+  bleedDamage?: number;
+}
+
+interface WeaponConfig {
+  internalName: string;
+  displayNames: string[];
+  rarity?: string;
+  properties: WeaponProperties;
+}
+
+// 定义护甲属性接口
+interface ArmorProperties {
+  defense: number;
+  uses?: number;
+  votes: number;
+}
+
+interface ArmorConfig {
+  internalName: string;
+  displayNames: string[];
+  rarity?: string;
+  properties: ArmorProperties;
+}
+
+// 定义功能道具属性接口
+interface UtilityProperties {
+  category: string;
+  votes?: number;
+  uses?: number;
+  targets?: number;
+  damage?: number;
+  usesNight?: number;
+}
+
+interface UtilityConfig {
+  name: string;
+  internalName?: string;
+  rarity?: string;
+  properties: UtilityProperties;
+}
+
+// 定义消耗品属性接口
+interface ConsumableProperties {
+  effectType: string;
+  effectValue: number;
+  cureBleed?: number;
+}
+
+interface ConsumableConfig {
+  name: string;
+  internalName?: string;
+  rarity?: string;
+  properties: ConsumableProperties;
+}
+
+interface UpgraderConfig {
+  internalName: string;
+  displayNames: string[];
+  rarity?: string;
+}
+
+interface UpgradeRecipeConfig {
+  result: string;
+  ingredients: string[];
+}
+
+interface ItemsByCategoryConfig {
+  weapons: WeaponConfig[];
+  armors: ArmorConfig[];
+  utilities: UtilityConfig[];
+  consumables: ConsumableConfig[];
+  upgraders: UpgraderConfig[];
+}
+
 // 定义规则解析结果接口
 export interface ParsedGameRules {
   // 基础规则
@@ -12,7 +100,7 @@ export interface ParsedGameRules {
     dailyStrengthRecovery: number;
     searchCooldown: number;
     maxBackpackItems: number;
-    unarmedDamage: number;  // 挥拳伤害
+    unarmedDamage: number; // 挥拳伤害
   };
   actionCosts: {
     move: number;
@@ -37,56 +125,14 @@ export interface ParsedGameRules {
     canViewStatus: boolean;
     canTransferItems: boolean;
   }; // 解析后的队友行为效果
-  
+
   // 物品规则
-  items: {
-    rarityLevels: Array<{
-      internalName: string;
-      displayName: string;
-      prefix: string;
-      isAirdropped: boolean;
-    }>;
-    weapons: Array<{
-      internalName: string;
-      displayNames: string[];
-      rarity: string;
-      category: string;
-      properties: {
-        damage: number;
-        uses?: number;
-        votes: number;
-        aoeDamage?: number;
-        bleedDamage?: number;
-      };
-    }>;
-    otherItems: Array<{
-      name: string;
-      category: string;
-      properties: {
-        uses?: number;
-        votes: number;
-        targets?: number;
-        damage?: number;
-        usesNight?: number;
-      };
-    }>;
-    upgraders: Array<{
-      internalName: string;
-      displayNames: string[];
-      rarity: string;
-    }>;
-    upgradeRecipes: Record<string, Array<{
-      result: string;
-      ingredients: string[];
-    }>>;
-    consumables: Array<{
-      name: string;
-      effectType: string;
-      effectValue: number;
-      cureBleed: number;
-    }>;
+  itemsConfig: {
+    rarityLevels: RarityLevelConfig[];
+    items: ItemsByCategoryConfig;
+    upgradeRecipes: Record<string, UpgradeRecipeConfig[]>;
   };
-  
+
   // 显示名称配置
   displayNames: {
     playerMaxLife: string;
@@ -106,35 +152,10 @@ export interface ParsedGameRules {
     restLifeRecovery: string;
     restMaxMoves: string;
   };
-  
+
   // 解析状态
   parsingIssues: string[];
   missingSections: string[];
-}
-
-// 定义武器属性接口
-interface WeaponProperties {
-  damage: number;
-  uses?: number;
-  votes: number;
-  aoeDamage?: number;
-  bleedDamage?: number;
-}
-
-// 定义护甲属性接口
-interface ArmorProperties {
-  defense: number;
-  uses?: number;
-  votes: number;
-}
-
-// 定义其他物品属性接口
-interface OtherItemProperties {
-  uses?: number;
-  votes: number;
-  targets?: number;
-  damage?: number;
-  usesNight?: number;
 }
 
 // 定义规则解析器类
@@ -177,13 +198,16 @@ export class GameRuleParser {
         canViewStatus: false,
         canTransferItems: false
       },
-      items: {
+      itemsConfig: {
         rarityLevels: [],
-        weapons: [],
-        otherItems: [],
-        upgraders: [],
-        upgradeRecipes: {},
-        consumables: []
+        items: {
+          weapons: [],
+          armors: [],
+          utilities: [],
+          consumables: [],
+          upgraders: []
+        },
+        upgradeRecipes: {}
       },
       displayNames: {
         playerMaxLife: "生命值",
@@ -275,137 +299,182 @@ export class GameRuleParser {
     }
 
     // 解析物品系统配置
-    if (rulesConfig.items) {
+    if (rulesConfig.items_config) {
+      const itemsConfig = rulesConfig.items_config;
+
       // 解析稀有度级别
-      if (rulesConfig.items.rarity_levels) {
-        parsedRules.items.rarityLevels = rulesConfig.items.rarity_levels.map((level: any) => ({
+      if (Array.isArray(itemsConfig.rarity_levels)) {
+        parsedRules.itemsConfig.rarityLevels = itemsConfig.rarity_levels.map((level: any) => ({
           internalName: level.internal_name || '',
           displayName: level.display_name || '',
           prefix: level.prefix || '',
           isAirdropped: level.is_airdropped !== undefined ? level.is_airdropped : true
         }));
+      } else if (itemsConfig.rarity_levels !== undefined) {
+        parsedRules.parsingIssues.push('items_config.rarity_levels 应为数组');
       }
 
+      const categories = itemsConfig.items || {};
+
       // 解析武器
-      if (rulesConfig.items.weapons) {
-        parsedRules.items.weapons = rulesConfig.items.weapons.map((weapon: any) => {
-          // 解析武器属性
+      if (Array.isArray(categories.weapons)) {
+        parsedRules.itemsConfig.items.weapons = categories.weapons.map((weapon: any) => {
           const properties: WeaponProperties = {
-            damage: weapon.properties?.damage || 0,
-            votes: weapon.properties?.votes || 0
+            damage: weapon.properties?.damage ?? 0,
+            votes: weapon.properties?.votes ?? 0
           };
-          
-          // 如果有使用次数，则添加到属性中
+
           if (weapon.properties?.uses !== undefined) {
             properties.uses = weapon.properties.uses;
           }
-          
-          // 如果是橙色武器，解析特殊属性
-          if (weapon.rarity === 'legendary' && weapon.properties) {
-            if (weapon.properties.aoe_damage !== undefined) {
-              properties.aoeDamage = weapon.properties.aoe_damage;
-            }
-            if (weapon.properties.bleed_damage !== undefined) {
-              properties.bleedDamage = weapon.properties.bleed_damage;
-            }
+          if (weapon.properties?.aoe_damage !== undefined) {
+            properties.aoeDamage = weapon.properties.aoe_damage;
           }
-          
+          if (weapon.properties?.bleed_damage !== undefined) {
+            properties.bleedDamage = weapon.properties.bleed_damage;
+          }
+
+          const rarity = typeof weapon.rarity === 'string' && weapon.rarity.length > 0
+            ? weapon.rarity
+            : undefined;
+
           return {
             internalName: weapon.internal_name || '',
             displayNames: weapon.display_names || [],
-            rarity: weapon.rarity || '',
-            category: 'weapon',
+            rarity,
             properties
           };
         });
+      } else if (categories.weapons !== undefined) {
+        parsedRules.parsingIssues.push('items_config.items.weapons 应为数组');
+      } else {
+        parsedRules.itemsConfig.items.weapons = [];
       }
 
-      // 解析护甲
-      if (rulesConfig.items.armors) {
-        const armors = rulesConfig.items.armors.map((armor: any) => {
-          // 解析护甲属性
+      // 解析防具
+      if (Array.isArray(categories.armors)) {
+        parsedRules.itemsConfig.items.armors = categories.armors.map((armor: any) => {
           const properties: ArmorProperties = {
-            defense: armor.properties?.defense || 0,
-            votes: armor.properties?.votes || 0
+            defense: armor.properties?.defense ?? 0,
+            votes: armor.properties?.votes ?? 0
           };
-          
-          // 如果有使用次数，则添加到属性中
+
           if (armor.properties?.uses !== undefined) {
             properties.uses = armor.properties.uses;
           }
-          
+
+          const rarity = typeof armor.rarity === 'string' && armor.rarity.length > 0
+            ? armor.rarity
+            : undefined;
+
           return {
             internalName: armor.internal_name || '',
             displayNames: armor.display_names || [],
-            rarity: armor.rarity || '',
-            category: 'equipment_armor',
+            rarity,
             properties
           };
         });
-        parsedRules.items.weapons = [...parsedRules.items.weapons, ...armors];
+      } else if (categories.armors !== undefined) {
+        parsedRules.parsingIssues.push('items_config.items.armors 应为数组');
+      } else {
+        parsedRules.itemsConfig.items.armors = [];
       }
 
-      // 解析其他物品
-      if (rulesConfig.items.other_items) {
-        parsedRules.items.otherItems = rulesConfig.items.other_items.map((item: any) => {
-          // 解析其他物品属性
-          const properties: OtherItemProperties = {
-            votes: item.properties?.votes || 0
+      // 解析功能道具
+      if (Array.isArray(categories.utilities)) {
+        parsedRules.itemsConfig.items.utilities = categories.utilities.map((item: any) => {
+          const properties: UtilityProperties = {
+            category: item.properties?.category || ''
           };
-          
-          // 如果有使用次数，则添加到属性中
+
+          if (item.properties?.votes !== undefined) {
+            properties.votes = item.properties.votes;
+          }
           if (item.properties?.uses !== undefined) {
             properties.uses = item.properties.uses;
           }
-          
-          // 如果有夜间使用次数限制，则添加到属性中
+          if (item.properties?.targets !== undefined) {
+            properties.targets = item.properties.targets;
+          }
+          if (item.properties?.damage !== undefined) {
+            properties.damage = item.properties.damage;
+          }
           if (item.properties?.uses_night !== undefined) {
             properties.usesNight = item.properties.uses_night;
           }
 
-          // 如果有目标数量，则添加到属性中
-          if (item.properties?.targets !== undefined) {
-            properties.targets = item.properties.targets;
-          }
-          
-          // 如果有伤害值，则添加到属性中
-          if (item.properties?.damage !== undefined) {
-            properties.damage = item.properties.damage;
-          }
-          
+          const rarity = typeof item.rarity === 'string' && item.rarity.length > 0
+            ? item.rarity
+            : undefined;
+
           return {
             name: item.name || '',
-            category: item.category || '',
+            internalName: item.internal_name || undefined,
+            rarity,
             properties
           };
         });
-      }
-
-      // 解析升级道具
-      if (rulesConfig.items.upgraders) {
-        parsedRules.items.upgraders = rulesConfig.items.upgraders.map((upgrader: any) => ({
-          internalName: upgrader.internal_name || '',
-          displayNames: upgrader.display_names || [],
-          rarity: upgrader.rarity || ''
-        }));
-      }
-
-      // 解析合成配方
-      if (rulesConfig.items.upgrade_recipes) {
-        parsedRules.items.upgradeRecipes = rulesConfig.items.upgrade_recipes;
+      } else if (categories.utilities !== undefined) {
+        parsedRules.parsingIssues.push('items_config.items.utilities 应为数组');
+      } else {
+        parsedRules.itemsConfig.items.utilities = [];
       }
 
       // 解析消耗品
-      if (rulesConfig.items.consumables) {
-        parsedRules.items.consumables = rulesConfig.items.consumables.map((consumable: any) => ({
-          name: consumable.name || '',
-          effectType: consumable.effect_type || '',
-          effectValue: consumable.effect_value || 0,
-          cureBleed: consumable.cure_bleed || 0
-        }));
+      if (Array.isArray(categories.consumables)) {
+        parsedRules.itemsConfig.items.consumables = categories.consumables.map((consumable: any) => {
+          const properties: ConsumableProperties = {
+            effectType: consumable.properties?.effect_type || '',
+            effectValue: consumable.properties?.effect_value ?? 0
+          };
+
+          if (consumable.properties?.cure_bleed !== undefined) {
+            properties.cureBleed = consumable.properties.cure_bleed;
+          }
+
+          const rarity = typeof consumable.rarity === 'string' && consumable.rarity.length > 0
+            ? consumable.rarity
+            : undefined;
+
+          return {
+            name: consumable.name || '',
+            internalName: consumable.internal_name || undefined,
+            rarity,
+            properties
+          };
+        });
+      } else if (categories.consumables !== undefined) {
+        parsedRules.parsingIssues.push('items_config.items.consumables 应为数组');
+      } else {
+        parsedRules.itemsConfig.items.consumables = [];
+      }
+
+      // 解析升级器
+      if (Array.isArray(categories.upgraders)) {
+        parsedRules.itemsConfig.items.upgraders = categories.upgraders.map((upgrader: any) => {
+          const rarity = typeof upgrader.rarity === 'string' && upgrader.rarity.length > 0
+            ? upgrader.rarity
+            : undefined;
+
+          return {
+            internalName: upgrader.internal_name || '',
+            displayNames: upgrader.display_names || [],
+            rarity
+          };
+        });
+      } else if (categories.upgraders !== undefined) {
+        parsedRules.parsingIssues.push('items_config.items.upgraders 应为数组');
+      } else {
+        parsedRules.itemsConfig.items.upgraders = [];
+      }
+
+      if (itemsConfig.upgrade_recipes && typeof itemsConfig.upgrade_recipes === 'object') {
+        parsedRules.itemsConfig.upgradeRecipes = itemsConfig.upgrade_recipes;
+      } else if (itemsConfig.upgrade_recipes !== undefined) {
+        parsedRules.parsingIssues.push('items_config.upgrade_recipes 应为对象');
       }
     } else {
-      parsedRules.missingSections.push('items');
+      parsedRules.missingSections.push('items_config');
     }
 
     // 解析显示名称配置
@@ -435,7 +504,7 @@ export class GameRuleParser {
     const errors: string[] = [];
     
     // 检查必需的顶层字段
-    const requiredFields = ['map', 'player', 'action_costs', 'rest_mode', 'teammate_behavior', 'items'];
+  const requiredFields = ['map', 'player', 'action_costs', 'rest_mode', 'teammate_behavior', 'items_config'];
     for (const field of requiredFields) {
       if (!rulesConfig[field]) {
         errors.push(`缺少必需字段: ${field}`);
@@ -479,130 +548,157 @@ export class GameRuleParser {
     }
     
     // 检查物品系统
-    if (rulesConfig.items) {
-      if (!Array.isArray(rulesConfig.items.rarity_levels)) {
-        errors.push('稀有度级别必须是数组');
+    if (rulesConfig.items_config) {
+      const itemsConfig = rulesConfig.items_config;
+
+      if (!Array.isArray(itemsConfig.rarity_levels)) {
+        errors.push('items_config.rarity_levels 必须是数组');
       }
-      
-      // 检查武器配置
-      if (rulesConfig.items.weapons) {
-        if (!Array.isArray(rulesConfig.items.weapons)) {
-          errors.push('武器配置必须是数组');
-        } else {
-          rulesConfig.items.weapons.forEach((weapon: any, index: number) => {
-            if (!weapon.internal_name) {
-              errors.push(`武器[${index}]缺少内部名称`);
-            }
-            if (!weapon.display_names || !Array.isArray(weapon.display_names)) {
-              errors.push(`武器[${index}]显示名称必须是数组`);
-            }
-            if (!weapon.rarity) {
-              errors.push(`武器[${index}]缺少稀有度`);
-            }
-            if (!weapon.properties) {
-              errors.push(`武器[${index}]缺少属性配置`);
-            } else {
-              if (typeof weapon.properties.damage !== 'number') {
-                errors.push(`武器[${index}]伤害值必须是数字`);
+
+      if (!itemsConfig.items || typeof itemsConfig.items !== 'object') {
+        errors.push('items_config.items 必须存在且为对象');
+      } else {
+        const categories = itemsConfig.items;
+
+        if (categories.weapons !== undefined) {
+          if (!Array.isArray(categories.weapons)) {
+            errors.push('items_config.items.weapons 必须是数组');
+          } else {
+            categories.weapons.forEach((weapon: any, index: number) => {
+              if (!weapon.internal_name) {
+                errors.push(`武器[${index}]缺少内部名称`);
               }
-              if (typeof weapon.properties.votes !== 'number') {
-                errors.push(`武器[${index}]票数必须是数字`);
+              if (!weapon.display_names || !Array.isArray(weapon.display_names)) {
+                errors.push(`武器[${index}]显示名称必须是数组`);
               }
-              if (weapon.properties.uses !== undefined && typeof weapon.properties.uses !== 'number') {
-                errors.push(`武器[${index}]使用次数必须是数字`);
+              if (!weapon.properties) {
+                errors.push(`武器[${index}]缺少属性配置`);
+              } else {
+                if (typeof weapon.properties.damage !== 'number') {
+                  errors.push(`武器[${index}]伤害值必须是数字`);
+                }
+                if (typeof weapon.properties.votes !== 'number') {
+                  errors.push(`武器[${index}]票数必须是数字`);
+                }
+                if (weapon.properties.uses !== undefined && typeof weapon.properties.uses !== 'number') {
+                  errors.push(`武器[${index}]使用次数必须是数字`);
+                }
+                if (weapon.properties.aoe_damage !== undefined && typeof weapon.properties.aoe_damage !== 'number') {
+                  errors.push(`武器[${index}]范围伤害必须是数字`);
+                }
+                if (weapon.properties.bleed_damage !== undefined && typeof weapon.properties.bleed_damage !== 'number') {
+                  errors.push(`武器[${index}]流血伤害必须是数字`);
+                }
               }
-            }
-          });
+            });
+          }
+        }
+
+        if (categories.armors !== undefined) {
+          if (!Array.isArray(categories.armors)) {
+            errors.push('items_config.items.armors 必须是数组');
+          } else {
+            categories.armors.forEach((armor: any, index: number) => {
+              if (!armor.internal_name) {
+                errors.push(`防具[${index}]缺少内部名称`);
+              }
+              if (!armor.display_names || !Array.isArray(armor.display_names)) {
+                errors.push(`防具[${index}]显示名称必须是数组`);
+              }
+              if (!armor.properties) {
+                errors.push(`防具[${index}]缺少属性配置`);
+              } else {
+                if (typeof armor.properties.defense !== 'number') {
+                  errors.push(`防具[${index}]防御值必须是数字`);
+                }
+                if (typeof armor.properties.votes !== 'number') {
+                  errors.push(`防具[${index}]票数必须是数字`);
+                }
+                if (armor.properties.uses !== undefined && typeof armor.properties.uses !== 'number') {
+                  errors.push(`防具[${index}]使用次数必须是数字`);
+                }
+              }
+            });
+          }
+        }
+
+        if (categories.utilities !== undefined) {
+          if (!Array.isArray(categories.utilities)) {
+            errors.push('items_config.items.utilities 必须是数组');
+          } else {
+            categories.utilities.forEach((item: any, index: number) => {
+              if (!item.name) {
+                errors.push(`功能物品[${index}]缺少名称`);
+              }
+              if (!item.properties) {
+                errors.push(`功能物品[${index}]缺少属性配置`);
+              } else {
+                if (!item.properties.category) {
+                  errors.push(`功能物品[${index}]缺少分类`);
+                }
+                if (item.properties.votes !== undefined && typeof item.properties.votes !== 'number') {
+                  errors.push(`功能物品[${index}]票数必须是数字`);
+                }
+                if (item.properties.uses !== undefined && typeof item.properties.uses !== 'number') {
+                  errors.push(`功能物品[${index}]使用次数必须是数字`);
+                }
+                if (item.properties.targets !== undefined && typeof item.properties.targets !== 'number') {
+                  errors.push(`功能物品[${index}]目标数量必须是数字`);
+                }
+                if (item.properties.damage !== undefined && typeof item.properties.damage !== 'number') {
+                  errors.push(`功能物品[${index}]伤害值必须是数字`);
+                }
+                if (item.properties.uses_night !== undefined && typeof item.properties.uses_night !== 'number') {
+                  errors.push(`功能物品[${index}]夜间使用次数必须是数字`);
+                }
+              }
+            });
+          }
+        }
+
+        if (categories.consumables !== undefined) {
+          if (!Array.isArray(categories.consumables)) {
+            errors.push('items_config.items.consumables 必须是数组');
+          } else {
+            categories.consumables.forEach((consumable: any, index: number) => {
+              if (!consumable.name) {
+                errors.push(`消耗品[${index}]缺少名称`);
+              }
+              if (!consumable.properties) {
+                errors.push(`消耗品[${index}]缺少属性配置`);
+              } else {
+                if (!consumable.properties.effect_type) {
+                  errors.push(`消耗品[${index}]缺少效果类型`);
+                }
+                if (typeof consumable.properties.effect_value !== 'number') {
+                  errors.push(`消耗品[${index}]效果值必须是数字`);
+                }
+                if (consumable.properties.cure_bleed !== undefined && typeof consumable.properties.cure_bleed !== 'number') {
+                  errors.push(`消耗品[${index}]治愈流血字段必须是数字`);
+                }
+              }
+            });
+          }
+        }
+
+        if (categories.upgraders !== undefined) {
+          if (!Array.isArray(categories.upgraders)) {
+            errors.push('items_config.items.upgraders 必须是数组');
+          } else {
+            categories.upgraders.forEach((upgrader: any, index: number) => {
+              if (!upgrader.internal_name) {
+                errors.push(`升级器[${index}]缺少内部名称`);
+              }
+              if (!upgrader.display_names || !Array.isArray(upgrader.display_names)) {
+                errors.push(`升级器[${index}]显示名称必须是数组`);
+              }
+            });
+          }
         }
       }
-      
-      // 检查护甲配置
-      if (rulesConfig.items.armors) {
-        if (!Array.isArray(rulesConfig.items.armors)) {
-          errors.push('护甲配置必须是数组');
-        } else {
-          rulesConfig.items.armors.forEach((armor: any, index: number) => {
-            if (!armor.internal_name) {
-              errors.push(`护甲[${index}]缺少内部名称`);
-            }
-            if (!armor.display_names || !Array.isArray(armor.display_names)) {
-              errors.push(`护甲[${index}]显示名称必须是数组`);
-            }
-            if (!armor.rarity) {
-              errors.push(`护甲[${index}]缺少稀有度`);
-            }
-            if (!armor.properties) {
-              errors.push(`护甲[${index}]缺少属性配置`);
-            } else {
-              if (typeof armor.properties.defense !== 'number') {
-                errors.push(`护甲[${index}]防御值必须是数字`);
-              }
-              if (typeof armor.properties.votes !== 'number') {
-                errors.push(`护甲[${index}]票数必须是数字`);
-              }
-              if (armor.properties.uses !== undefined && typeof armor.properties.uses !== 'number') {
-                errors.push(`护甲[${index}]使用次数必须是数字`);
-              }
-            }
-          });
-        }
-      }
-      
-      // 检查其他物品配置
-      if (rulesConfig.items.other_items) {
-        if (!Array.isArray(rulesConfig.items.other_items)) {
-          errors.push('其他物品配置必须是数组');
-        } else {
-          rulesConfig.items.other_items.forEach((item: any, index: number) => {
-            if (!item.name) {
-              errors.push(`其他物品[${index}]缺少名称`);
-            }
-            if (!item.category) {
-              errors.push(`其他物品[${index}]缺少分类`);
-            }
-            if (!item.properties) {
-              errors.push(`其他物品[${index}]缺少属性配置`);
-            } else {
-              if (typeof item.properties.votes !== 'number') {
-                errors.push(`其他物品[${index}]票数必须是数字`);
-              }
-              if (item.properties.uses !== undefined && typeof item.properties.uses !== 'number') {
-                errors.push(`其他物品[${index}]使用次数必须是数字`);
-              }
-              if (item.properties.targets !== undefined && typeof item.properties.targets !== 'number') {
-                errors.push(`其他物品[${index}]目标数量必须是数字`);
-              }
-              if (item.properties.damage !== undefined && typeof item.properties.damage !== 'number') {
-                errors.push(`其他物品[${index}]伤害值必须是数字`);
-              }
-              if (item.properties.uses_night !== undefined && typeof item.properties.uses_night !== 'number') {
-                errors.push(`其他物品[${index}]每晚使用次数必须是数字`);
-              }
-            }
-          });
-        }
-      }
-      
-      // 检查消耗品配置
-      if (rulesConfig.items.consumables) {
-        if (!Array.isArray(rulesConfig.items.consumables)) {
-          errors.push('消耗品配置必须是数组');
-        } else {
-          rulesConfig.items.consumables.forEach((consumable: any, index: number) => {
-            if (!consumable.name) {
-              errors.push(`消耗品[${index}]缺少名称`);
-            }
-            if (!consumable.effect_type) {
-              errors.push(`消耗品[${index}]缺少效果类型`);
-            }
-            if (typeof consumable.effect_value !== 'number') {
-              errors.push(`消耗品[${index}]效果值必须是数字`);
-            }
-            if (consumable.cure_bleed !== undefined && typeof consumable.cure_bleed !== 'boolean') {
-              errors.push(`消耗品[${index}]治愈流血状态必须是布尔值`);
-            }
-          });
-        }
+
+      if (itemsConfig.upgrade_recipes !== undefined && typeof itemsConfig.upgrade_recipes !== 'object') {
+        errors.push('items_config.upgrade_recipes 必须是对象');
       }
     }
     

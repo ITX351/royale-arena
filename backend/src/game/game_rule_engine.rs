@@ -56,16 +56,15 @@ impl Item {
     }
 
     /// 获取消耗品效果
-    pub fn as_consumable(&self) -> Option<&ConsumableEffect> {
-        if let ItemType::Consumable(effect) = &self.item_type {
-            Some(effect)
+    pub fn as_consumable(&self) -> Option<&ConsumableProperties> {
+        if let ItemType::Consumable(properties) = &self.item_type {
+            Some(properties)
         } else {
             None
         }
     }
 
-    /// 获取工具/陷阱/升级器属性
-    #[allow(dead_code)]
+    /// 获取工具/陷阱属性
     pub fn as_utility(&self) -> Option<&UtilityProperties> {
         if let ItemType::Utility(properties) = &self.item_type {
             Some(properties)
@@ -74,14 +73,9 @@ impl Item {
         }
     }
 
-    /// 获取升级器属性
-    #[allow(dead_code)]
-    pub fn as_upgrader(&self) -> Option<&UpgraderProperties> {
-        if let ItemType::Upgrader(properties) = &self.item_type {
-            Some(properties)
-        } else {
-            None
-        }
+    /// 是否为升级器
+    pub fn is_upgrader(&self) -> bool {
+        matches!(self.item_type, ItemType::Upgrader)
     }
 }
 
@@ -91,9 +85,9 @@ impl Item {
 pub enum ItemType {
     Weapon(WeaponProperties),
     Armor(ArmorProperties),
-    Consumable(ConsumableEffect),
+    Consumable(ConsumableProperties),
     Utility(UtilityProperties),
-    Upgrader(UpgraderProperties),
+    Upgrader,
 }
 
 /// 游戏规则引擎
@@ -104,6 +98,7 @@ pub struct GameRuleEngine {
     pub action_costs: ActionCosts,
     pub rest_mode: RestModeConfig,
     pub items_config: ItemsConfig,
+    #[allow(dead_code)]
     pub teammate_behavior: TeammateBehavior, // TODO: 实现队友行为规则
     pub death_item_disposition: DeathItemDisposition,
 }
@@ -166,13 +161,27 @@ pub struct DeathItemDisposition {
 /// 物品系统配置结构体
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemsConfig {
+    #[serde(default)]
     pub rarity_levels: Vec<RarityLevel>,
-    pub weapons: Vec<WeaponConfig>,
-    pub armors: Vec<ArmorConfig>,
-    pub other_items: Vec<OtherItemConfig>,
-    pub consumables: Vec<ConsumableConfig>,
-    pub upgraders: Vec<UpgraderConfig>,
+    #[serde(default)]
+    pub items: ItemsByCategory,
+    #[serde(default)]
     pub upgrade_recipes: HashMap<String, Vec<UpgradeRecipe>>,
+}
+
+/// 物品分类集合
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ItemsByCategory {
+    #[serde(default)]
+    pub weapons: Vec<WeaponConfig>,
+    #[serde(default)]
+    pub armors: Vec<ArmorConfig>,
+    #[serde(default)]
+    pub utilities: Vec<UtilityConfig>,
+    #[serde(default)]
+    pub consumables: Vec<ConsumableConfig>,
+    #[serde(default)]
+    pub upgraders: Vec<UpgraderConfig>,
 }
 
 /// 稀有度等级配置
@@ -189,7 +198,8 @@ pub struct RarityLevel {
 pub struct WeaponConfig {
     pub internal_name: String,
     pub display_names: Vec<String>,
-    pub rarity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
     pub properties: WeaponProperties,
 }
 
@@ -197,9 +207,12 @@ pub struct WeaponConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeaponProperties {
     pub damage: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub uses: Option<i32>,
     pub votes: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub aoe_damage: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bleed_damage: Option<i32>,
 }
 
@@ -208,7 +221,8 @@ pub struct WeaponProperties {
 pub struct ArmorConfig {
     pub internal_name: String,
     pub display_names: Vec<String>,
-    pub rarity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
     pub properties: ArmorProperties,
 }
 
@@ -217,41 +231,38 @@ pub struct ArmorConfig {
 pub struct ArmorProperties {
     pub defense: i32,
     pub votes: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub uses: Option<i32>,
 }
 
-/// 其他物品配置
+/// 工具 / 陷阱配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OtherItemConfig {
+pub struct UtilityConfig {
     pub name: String,
-    pub category: String,
-    pub properties: OtherItemProperties,
-}
-
-/// 其他物品属性
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OtherItemProperties {
-    pub votes: i32,
-    pub uses: Option<i32>,
-    pub targets: Option<i32>,
-    pub damage: Option<i32>,
-    pub uses_night: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub internal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
+    pub properties: UtilityProperties,
 }
 
 /// 消耗品配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsumableConfig {
     pub name: String,
-    pub effect_type: String,
-    pub effect_value: i32,
-    pub cure_bleed: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub internal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
+    pub properties: ConsumableProperties,
 }
 
-/// 消耗品效果
+/// 消耗品属性
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConsumableEffect {
+pub struct ConsumableProperties {
     pub effect_type: String,
     pub effect_value: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cure_bleed: Option<i32>,
 }
 
@@ -260,24 +271,24 @@ pub struct ConsumableEffect {
 pub struct UpgraderConfig {
     pub internal_name: String,
     pub display_names: Vec<String>,
-    pub rarity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
 }
 
 /// 工具 / 陷阱属性
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtilityProperties {
-    pub utility_type: String,
+    pub category: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub votes: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub uses: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub targets: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub damage: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub uses_night: Option<i32>,
-}
-
-/// 升级器属性
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpgraderProperties {
-    pub upgrader_type: String,
 }
 
 /// 升级配方
@@ -332,7 +343,7 @@ impl GameRuleEngine {
         // 解析物品系统配置
         let items_config = serde_json::from_value(
             rules_value
-                .get("items")
+                .get("items_config")
                 .unwrap_or(&serde_json::json!({}))
                 .clone(),
         )
@@ -385,89 +396,65 @@ impl GameRuleEngine {
     /// 根据物品名称从规则JSON中查找并创建物品对象
     pub fn create_item_from_name(&self, item_name: &str) -> Result<Item, String> {
         // 1. 搜索武器
-        for weapon in &self.items_config.weapons {
-            for display_name in &weapon.display_names {
-                if display_name == item_name {
-                    return Ok(Item::new(
-                        item_name.to_string(),
-                        Some(weapon.internal_name.clone()),
-                        Some(weapon.rarity.clone()),
-                        ItemType::Weapon(weapon.properties.clone()),
-                    ));
-                }
-            }
-        }
-
-        // 2. 搜索防具
-        for armor in &self.items_config.armors {
-            for display_name in &armor.display_names {
-                if display_name == item_name {
-                    return Ok(Item::new(
-                        item_name.to_string(),
-                        Some(armor.internal_name.clone()),
-                        Some(armor.rarity.clone()),
-                        ItemType::Armor(armor.properties.clone()),
-                    ));
-                }
-            }
-        }
-
-        // 3. 搜索消耗品
-        for consumable in &self.items_config.consumables {
-            if consumable.name == item_name {
-                let effect = ConsumableEffect {
-                    effect_type: consumable.effect_type.clone(),
-                    effect_value: consumable.effect_value,
-                    cure_bleed: consumable.cure_bleed,
-                };
-
+        for weapon in &self.items_config.items.weapons {
+            if weapon.display_names.iter().any(|name| name == item_name) {
                 return Ok(Item::new(
                     item_name.to_string(),
-                    None,
-                    None,
-                    ItemType::Consumable(effect),
+                    Some(weapon.internal_name.clone()),
+                    weapon.rarity.clone(),
+                    ItemType::Weapon(weapon.properties.clone()),
                 ));
             }
         }
 
-        // 4. 搜索其他道具
-        for other_item in &self.items_config.other_items {
-            if other_item.name == item_name {
-                let utility = UtilityProperties {
-                    utility_type: other_item.category.clone(),
-                    votes: Some(other_item.properties.votes),
-                    uses: other_item.properties.uses,
-                    targets: other_item.properties.targets,
-                    damage: other_item.properties.damage,
-                    uses_night: other_item.properties.uses_night,
-                };
-
+        // 2. 搜索防具
+        for armor in &self.items_config.items.armors {
+            if armor.display_names.iter().any(|name| name == item_name) {
                 return Ok(Item::new(
                     item_name.to_string(),
-                    None,
-                    None,
-                    ItemType::Utility(utility),
+                    Some(armor.internal_name.clone()),
+                    armor.rarity.clone(),
+                    ItemType::Armor(armor.properties.clone()),
+                ));
+            }
+        }
+
+        // 3. 搜索消耗品
+        for consumable in &self.items_config.items.consumables {
+            if consumable.name == item_name {
+                return Ok(Item::new(
+                    consumable.name.clone(),
+                    consumable.internal_name.clone(),
+                    consumable.rarity.clone(),
+                    ItemType::Consumable(consumable.properties.clone()),
+                ));
+            }
+        }
+
+        // 4. 搜索工具/陷阱
+        for utility in &self.items_config.items.utilities {
+            if utility.name == item_name {
+                return Ok(Item::new(
+                    utility.name.clone(),
+                    utility.internal_name.clone(),
+                    utility.rarity.clone(),
+                    ItemType::Utility(utility.properties.clone()),
                 ));
             }
         }
 
         // 5. 搜索升级器
-        for upgrader in &self.items_config.upgraders {
-            for display_name in &upgrader.display_names {
-                if display_name == item_name {
-                    return Ok(Item::new(
-                        item_name.to_string(),
-                        Some(upgrader.internal_name.clone()),
-                        Some(upgrader.rarity.clone()),
-                        ItemType::Upgrader(UpgraderProperties {
-                            upgrader_type: upgrader.internal_name.clone(),
-                        }),
-                    ));
-                }
+        for upgrader in &self.items_config.items.upgraders {
+            if upgrader.display_names.iter().any(|name| name == item_name) {
+                return Ok(Item::new(
+                    item_name.to_string(),
+                    Some(upgrader.internal_name.clone()),
+                    upgrader.rarity.clone(),
+                    ItemType::Upgrader,
+                ));
             }
         }
 
-        // 如果没有找到匹配的物品，返回错误
         Err(format!("未在规则JSON中找到物品: {}", item_name))
     }
 }
