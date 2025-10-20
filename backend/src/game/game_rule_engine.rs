@@ -235,6 +235,7 @@ pub struct OtherItemProperties {
     pub uses: Option<i32>,
     pub targets: Option<i32>,
     pub damage: Option<i32>,
+    pub uses_night: Option<i32>,
 }
 
 /// 消耗品配置
@@ -270,6 +271,7 @@ pub struct UtilityProperties {
     pub uses: Option<i32>,
     pub targets: Option<i32>,
     pub damage: Option<i32>,
+    pub uses_night: Option<i32>,
 }
 
 /// 升级器属性
@@ -437,6 +439,7 @@ impl GameRuleEngine {
                     uses: other_item.properties.uses,
                     targets: other_item.properties.targets,
                     damage: other_item.properties.damage,
+                    uses_night: other_item.properties.uses_night,
                 };
 
                 return Ok(Item::new(

@@ -120,7 +120,8 @@ const TEST_RULES_JSON: &str = r#"{
         "category": "utility_locator",
         "properties": {
           "votes": 3,
-          "targets": 1
+          "targets": 1,
+          "uses_night": 1
         }
       },
       {
@@ -128,7 +129,8 @@ const TEST_RULES_JSON: &str = r#"{
         "category": "utility_revealer",
         "properties": {
           "votes": 3,
-          "targets": 2
+          "targets": 2,
+          "uses_night": 1
         }
       },
       {
@@ -328,6 +330,18 @@ fn test_items_config_parsing() {
     assert_eq!(common_armor.internal_name, "common_armor");
     assert_eq!(common_armor.properties.defense, 5);
     assert_eq!(common_armor.properties.votes, 2);
+
+  // 验证其他物品配置
+  assert_eq!(rule_engine.items_config.other_items.len(), 4);
+  let heartbeat_locator = &rule_engine.items_config.other_items[0];
+  assert_eq!(heartbeat_locator.name, "[GPS]心跳探测仪1");
+  assert_eq!(heartbeat_locator.properties.targets, Some(1));
+  assert_eq!(heartbeat_locator.properties.uses_night, Some(1));
+
+  let handheld_radar = &rule_engine.items_config.other_items[1];
+  assert_eq!(handheld_radar.name, "[侦]手持式雷达2");
+  assert_eq!(handheld_radar.properties.targets, Some(2));
+  assert_eq!(handheld_radar.properties.uses_night, Some(1));
 
     // 验证消耗品配置
     assert_eq!(rule_engine.items_config.consumables.len(), 6);

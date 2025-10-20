@@ -67,6 +67,7 @@ export interface ParsedGameRules {
         votes: number;
         targets?: number;
         damage?: number;
+        usesNight?: number;
       };
     }>;
     upgraders: Array<{
@@ -133,6 +134,7 @@ interface OtherItemProperties {
   votes: number;
   targets?: number;
   damage?: number;
+  usesNight?: number;
 }
 
 // 定义规则解析器类
@@ -356,6 +358,11 @@ export class GameRuleParser {
             properties.uses = item.properties.uses;
           }
           
+          // 如果有夜间使用次数限制，则添加到属性中
+          if (item.properties?.uses_night !== undefined) {
+            properties.usesNight = item.properties.uses_night;
+          }
+
           // 如果有目标数量，则添加到属性中
           if (item.properties?.targets !== undefined) {
             properties.targets = item.properties.targets;
@@ -567,6 +574,9 @@ export class GameRuleParser {
               }
               if (item.properties.damage !== undefined && typeof item.properties.damage !== 'number') {
                 errors.push(`其他物品[${index}]伤害值必须是数字`);
+              }
+              if (item.properties.uses_night !== undefined && typeof item.properties.uses_night !== 'number') {
+                errors.push(`其他物品[${index}]每晚使用次数必须是数字`);
               }
             }
           });

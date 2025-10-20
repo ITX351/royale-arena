@@ -147,11 +147,20 @@
     ],
     "other_items": [
       {
+        "name": "[控]电击棒",
+        "category": "utility_locator",
+        "properties": {
+          "votes": 3,
+          "uses_night": 1
+        }
+      },
+      {
         "name": "[GPS]心跳探测仪",
         "category": "utility_locator",
         "properties": {
           "votes": 3,
-          "targets": 1
+          "targets": 1,
+          "uses_night": 1
         }
       },
       {
@@ -159,7 +168,8 @@
         "category": "utility_revealer",
         "properties": {
           "votes": 3,
-          "targets": 2
+          "targets": 2,
+          "uses_night": 1
         }
       },
       {
