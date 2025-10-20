@@ -122,6 +122,28 @@
           >
             使用
           </el-button>
+
+          <!-- 升级器按钮 -->
+          <el-button 
+            v-if="item.item_type?.type === 'upgrader'" 
+            type="primary" 
+            size="small" 
+            @click="upgradeEquip(item, 'weapon')"
+            :disabled="!player?.equipped_weapon"
+            :loading="loadingItems.includes(item.id)"
+          >
+            升级武器
+          </el-button>
+          <el-button 
+            v-if="item.item_type?.type === 'upgrader'" 
+            type="primary" 
+            size="small" 
+            @click="upgradeEquip(item, 'armor')"
+            :disabled="!player?.equipped_armor"
+            :loading="loadingItems.includes(item.id)"
+          >
+            升级防具
+          </el-button>
           
           <!-- 丢弃按钮 -->
           <el-button 
@@ -182,6 +204,7 @@ const emit = defineEmits<{
   (e: 'discard-item', itemId: string): void
   (e: 'unequip-weapon'): void
   (e: 'unequip-armor'): void
+  (e: 'upgrade-equip', payload: { itemId: string; slotType: 'weapon' | 'armor' }): void
 }>()
 
 // 响应式数据
@@ -304,6 +327,27 @@ const equipItem = async (itemId: string) => {
   } finally {
     setTimeout(() => {
       loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    }, 500)
+  }
+}
+
+const upgradeEquip = async (item: Item, slotType: 'weapon' | 'armor') => {
+  if (!props.player) return
+
+  if (!loadingItems.value.includes(item.id)) {
+    loadingItems.value.push(item.id)
+  }
+
+  try {
+    emit('upgrade-equip', {
+      itemId: item.id,
+      slotType
+    })
+  } catch {
+    ElMessage.error('升级装备失败')
+  } finally {
+    setTimeout(() => {
+      loadingItems.value = loadingItems.value.filter(id => id !== item.id)
     }, 500)
   }
 }

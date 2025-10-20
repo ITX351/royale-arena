@@ -214,6 +214,30 @@ impl PlayerActionScheduler {
                 game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_use_action(player_id, item_id, &action_params);
             }
+            "upgrade_equip" => {
+                let upgrade_cost = game_state.rule_engine.action_costs.use_item;
+                validate_or_return!(
+                    game_state,
+                    player_id,
+                    vec![
+                        ValidationType::NightActionTime,
+                        ValidationType::Alive,
+                        ValidationType::Born,
+                        ValidationType::NotBound,
+                        ValidationType::Strength(upgrade_cost)
+                    ]
+                );
+                let item_id = action_params
+                    .item_id
+                    .as_ref()
+                    .ok_or("Missing item_id parameter")?;
+                let slot_type = action_params
+                    .slot_type
+                    .as_ref()
+                    .ok_or("Missing slot_type parameter")?;
+                game_state.end_rest_mode_for_action(player_id);
+                return game_state.handle_upgrade_equipment_action(player_id, item_id, slot_type);
+            }
             "throw" => {
                 let throw_cost = game_state.rule_engine.action_costs.throw_item;
                 validate_or_return!(

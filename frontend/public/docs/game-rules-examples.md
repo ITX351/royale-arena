@@ -264,6 +264,18 @@
         {
           "result": "legendary_weapon",
           "ingredients": ["epic_weapon"]
+        },
+        {
+          "result": "rare_armor",
+          "ingredients": ["common_armor"]
+        },
+        {
+          "result": "epic_armor",
+          "ingredients": ["rare_armor"]
+        },
+        {
+          "result": "legendary_armor",
+          "ingredients": ["epic_armor"]
         }
       ],
       "artificial_upgrader": [
@@ -274,6 +286,14 @@
         {
           "result": "epic_weapon",
           "ingredients": ["rare_weapon"]
+        },
+        {
+          "result": "rare_armor",
+          "ingredients": ["common_armor"]
+        },
+        {
+          "result": "epic_armor",
+          "ingredients": ["rare_armor"]
         }
       ]
     }

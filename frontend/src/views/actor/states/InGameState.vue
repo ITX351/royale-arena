@@ -39,6 +39,7 @@
           @discard-item="handleDiscardItem"
           @unequip-weapon="handleUnequipWeapon"
           @unequip-armor="handleUnequipArmor"
+          @upgrade-equip="handleUpgradeEquip"
         />
       </div>
     </div>
@@ -119,6 +120,13 @@ const handleUnequipWeapon = () => {
 
 const handleUnequipArmor = () => {
   handlePlayerAction('unequip', { slot_type: 'armor' })
+}
+
+const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'armor' }) => {
+  handlePlayerAction('upgrade_equip', {
+    item_id: payload.itemId,
+    slot_type: payload.slotType
+  })
 }
 </script>
 

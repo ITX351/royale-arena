@@ -460,4 +460,25 @@ impl GameRuleEngine {
 
         Err(format!("未在规则JSON中找到物品: {}", item_name))
     }
+
+    /// 查找指定内部名称的武器配置
+    pub fn find_weapon_config_by_internal_name(
+        &self,
+        internal_name: &str,
+    ) -> Option<&WeaponConfig> {
+        self.items_config
+            .items
+            .weapons
+            .iter()
+            .find(|config| config.internal_name == internal_name)
+    }
+
+    /// 查找指定内部名称的防具配置
+    pub fn find_armor_config_by_internal_name(&self, internal_name: &str) -> Option<&ArmorConfig> {
+        self.items_config
+            .items
+            .armors
+            .iter()
+            .find(|config| config.internal_name == internal_name)
+    }
 }

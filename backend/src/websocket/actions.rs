@@ -5,6 +5,7 @@ pub mod director_night_settlement_action;
 pub mod player_attack_action;
 pub mod player_common_actions;
 pub mod player_use_action;
+pub mod player_upgrade_action;
 pub mod utils;
 
 pub mod director_action_scheduler;
