@@ -7,15 +7,8 @@
 //! 休养逻辑：如果夜晚结束时`rest_mode`仍然为真，额外恢复规则`rest_mode`中设置的生命值`life_recovery`，体力值`strength_recovery`。
 //! 休养备注：（除向导演发送消息外）玩家进行任何移动以外的行动时，将`rest_mode`置为假；玩家进行移动时累加`rest_moves_used`，当`rest_moves_used`超过规则设置中的`rest_mode.max_moves`时，将`rest_mode`置为假。
 
+use crate::websocket::actions::utils::format_delta;
 use crate::websocket::models::{ActionResult, ActionResults, GameState};
-
-fn format_delta(value: i32) -> String {
-    if value >= 0 {
-        format!("+{}", value)
-    } else {
-        value.to_string()
-    }
-}
 
 impl GameState {
     /// 调整地点状态
@@ -99,10 +92,7 @@ impl GameState {
             results.push(ActionResult::new_info_message(
                 data,
                 vec![],
-                format!(
-                    "夜晚结算：以下缩圈地点未找到，已跳过：{}",
-                    missing_joined
-                ),
+                format!("夜晚结算：以下缩圈地点未找到，已跳过：{}", missing_joined),
                 true,
             ));
         }
@@ -192,7 +182,8 @@ impl GameState {
 
                 if strength_recover != 0 {
                     let new_strength = ((before_strength as i64) + (strength_recover as i64))
-                        .clamp(0, player.max_strength as i64) as i32;
+                        .clamp(0, player.max_strength as i64)
+                        as i32;
                     player.strength = new_strength;
                 }
 
@@ -260,7 +251,8 @@ impl GameState {
 
                 if rest_strength != 0 {
                     let new_strength = ((before_strength as i64) + (rest_strength as i64))
-                        .clamp(0, player.max_strength as i64) as i32;
+                        .clamp(0, player.max_strength as i64)
+                        as i32;
                     player.strength = new_strength;
                 }
 

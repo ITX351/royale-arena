@@ -1,6 +1,9 @@
 //! GameState 导演控制实现
 
-use crate::websocket::models::{GameState, ActionResult, ActionResults, AirdropItem, ItemDeletionItem};
+use crate::websocket::actions::utils::format_delta;
+use crate::websocket::models::{
+    ActionResult, ActionResults, AirdropItem, GameState, ItemDeletionItem,
+};
 
 impl GameState {
     // ===== 导演行为处理方法 =====
@@ -295,11 +298,7 @@ impl GameState {
                 "导演设置 {} 生命值为 {} ({})",
                 player_name,
                 target_life,
-                if life_change > 0 {
-                    format!("+{}", life_change)
-                } else {
-                    life_change.to_string()
-                }
+                format_delta(life_change)
             ),
             true,
         );
@@ -313,56 +312,49 @@ impl GameState {
         player_id: &str,
         strength: i32,
     ) -> Result<ActionResults, String> {
-        // 更新指定玩家体力值
-        let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+        let (player_name, final_strength, strength_change) = {
+            let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+            let target_strength = strength.max(0);
 
-        // 检查体力值是否发生变化
-        if player.strength == strength {
-            // 如果没有变化，返回Info消息
-            let data = serde_json::json!({
-                "player_id": player_id,
-                "strength": player.strength,
-                "message": "体力值未发生变化"
-            });
+            if player.strength == target_strength {
+                let data = serde_json::json!({
+                    "player_id": player_id,
+                    "strength": player.strength,
+                    "message": "体力值未发生变化"
+                });
 
-            let log_message = format!(
-                "导演尝试设置 {} 体力值为 {}，但未发生变化",
-                player.name, strength
-            );
+                let log_message = format!(
+                    "导演尝试设置 {} 体力值为 {}，但未发生变化",
+                    player.name, target_strength
+                );
 
-            // 创建Info类型的动作结果，只广播给导演
-            return Ok(
-                ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
-            );
-        }
+                return Ok(
+                    ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+                );
+            }
 
-        let strength_change = strength - player.strength;
-        player.strength = strength;
+            let player_name = player.name.clone();
+            let previous_strength = player.strength;
+            player.strength = target_strength;
+            let final_strength = player.strength;
+            let strength_change = final_strength - previous_strength;
 
-        // 确保体力值在合理范围内
-        if player.strength < 0 {
-            player.strength = 0;
-        }
+            (player_name, final_strength, strength_change)
+        };
 
-        // 构造响应数据
         let data = serde_json::json!({
             "player_id": player_id,
-            "strength": player.strength
+            "strength": final_strength
         });
 
-        // 创建动作结果，广播给该玩家和所有导演
         let action_result = ActionResult::new_system_message(
             data,
             vec![player_id.to_string()],
             format!(
                 "导演设置 {} 体力值为 {} ({})",
-                player.name,
-                strength,
-                if strength_change > 0 {
-                    format!("+{}", strength_change)
-                } else {
-                    strength_change.to_string()
-                }
+                player_name,
+                final_strength,
+                format_delta(strength_change)
             ),
             true,
         );

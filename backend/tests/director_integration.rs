@@ -9,8 +9,8 @@ mod director_integration_tests {
     };
     use royale_arena_backend::game::GameLogService;
     use royale_arena_backend::game::GameService;
-    use royale_arena_backend::game::models::GameAuthenticationRole;
     use royale_arena_backend::game::global_game_state_manager::GlobalGameStateManager;
+    use royale_arena_backend::game::models::GameAuthenticationRole;
     use royale_arena_backend::routes::AppState;
     use royale_arena_backend::rule_template::service::RuleTemplateService;
     use royale_arena_backend::websocket::global_connection_manager::GlobalConnectionManager;
@@ -226,9 +226,7 @@ mod director_integration_tests {
         );
 
         // 测试4.4: 游戏身份验证 - 演员密码正确（使用刚刚添加的演员密码）
-        let auth_result = game_service
-            .authenticate_game(&game_id, "abc123")
-            .await?;
+        let auth_result = game_service.authenticate_game(&game_id, "abc123").await?;
         assert_eq!(
             auth_result.role,
             GameAuthenticationRole::Actor,

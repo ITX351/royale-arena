@@ -1,6 +1,7 @@
 //! 玩家使用道具行动处理
 
-use crate::websocket::models::{GameState, ActionResult, ActionResults};
+use crate::websocket::actions::utils::format_delta;
+use crate::websocket::models::{ActionResult, ActionResults, GameState};
 
 impl GameState {
     /// 处理使用道具行动
@@ -78,16 +79,23 @@ impl GameState {
                     (life_before, player.life, player.bleed_damage, curing_bleed)
                 };
 
-                let life_delta = (life_after - life_before).max(0);
+                let life_delta = life_after - life_before;
 
+                let strength_before_use = self.players.get(player_id).unwrap().strength;
                 // 消耗体力值
                 self.consume_strength(player_id, use_cost)?;
 
                 let strength_after_use = self.players.get(player_id).unwrap().strength;
+                let strength_delta = strength_after_use - strength_before_use;
 
                 let mut log_message = format!(
-                    "{} 使用了 {}，生命值{}({:+})，体力{}",
-                    player_name, item_name, life_after, life_delta, strength_after_use
+                    "{} 使用了 {}，生命值{} ({})，体力{} ({})",
+                    player_name,
+                    item_name,
+                    life_after,
+                    format_delta(life_delta),
+                    strength_after_use,
+                    format_delta(strength_delta)
                 );
                 if curing_bleed {
                     log_message.push_str("，解除了流血");
@@ -95,8 +103,10 @@ impl GameState {
 
                 let data = serde_json::json!({
                     "life": life_after,
+                    "life_delta": life_delta,
                     "bleed_damage": bleed_damage,
-                    "strength": strength_after_use
+                    "strength": strength_after_use,
+                    "strength_delta": strength_delta
                 });
 
                 let action_result = ActionResult::new_system_message(
@@ -109,7 +119,7 @@ impl GameState {
             }
             "strength" => {
                 // 体力恢复效果
-                let restored_amount = {
+                let (strength_before_use, strength_after_recovery, restored_amount) = {
                     let player = self.players.get_mut(player_id).unwrap();
                     let before = player.strength;
                     player.strength += effect.effect_value;
@@ -117,21 +127,32 @@ impl GameState {
                         player.strength = player.max_strength;
                     }
                     let after = player.strength;
-                    (after - before).max(0)
+                    let restored_amount = (after - before).max(0);
+                    (before, after, restored_amount)
                 };
 
                 // 消耗使用体力（在恢复后扣除）
                 self.consume_strength(player_id, use_cost)?;
 
                 let strength_after_use = self.players.get(player_id).unwrap().strength;
+                let strength_delta = strength_after_use - strength_before_use;
 
-                let log_message = format!(
-                    "{} 使用了 {}，体力{}(+{})",
-                    player_name, item_name, strength_after_use, restored_amount
+                let mut log_message = format!(
+                    "{} 使用了 {}，体力{} ({})",
+                    player_name,
+                    item_name,
+                    strength_after_use,
+                    format_delta(strength_delta)
                 );
+                if restored_amount > 0 {
+                    log_message.push_str(&format!("，本次恢复{}", format_delta(restored_amount)));
+                }
 
                 let data = serde_json::json!({
                     "strength": strength_after_use,
+                    "strength_delta": strength_delta,
+                    "restored_amount": restored_amount,
+                    "strength_after_recovery": strength_after_recovery
                 });
 
                 let action_result = ActionResult::new_system_message(

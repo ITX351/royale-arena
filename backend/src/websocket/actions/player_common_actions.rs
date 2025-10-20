@@ -1,6 +1,8 @@
 //! 玩家普通行动处理
 
-use crate::websocket::models::{GameState, ActionResult, ActionResults, SearchResultType, SearchTarget};
+use crate::websocket::models::{
+    ActionResult, ActionResults, GameState, SearchResultType, SearchTarget,
+};
 
 impl GameState {
     /// 消耗玩家体力值

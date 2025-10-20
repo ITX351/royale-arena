@@ -298,12 +298,9 @@ impl GameService {
             });
         }
 
-        let game = sqlx::query!(
-            "SELECT director_password FROM games WHERE id = ?",
-            game_id
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let game = sqlx::query!("SELECT director_password FROM games WHERE id = ?", game_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         if let Some(game) = game {
             if game.director_password == password {

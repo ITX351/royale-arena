@@ -1,6 +1,6 @@
 //! 玩家攻击行动处理
 
-use crate::websocket::models::{GameState, ActionResult, ActionResults, SearchResultType};
+use crate::websocket::models::{ActionResult, ActionResults, GameState, SearchResultType};
 
 impl GameState {
     /// 处理攻击行动
@@ -303,10 +303,7 @@ impl GameState {
                     applied_bleed,
                 ));
 
-                let mut victim_message = format!(
-                    "你受到溅射攻击，损失 {} 点生命值",
-                    actual_damage
-                );
+                let mut victim_message = format!("你受到溅射攻击，损失 {} 点生命值", actual_damage);
                 if let Some(bleed_value) = applied_bleed {
                     victim_message.push_str(&format!(" 并受到 {} 点流血效果", bleed_value));
                 }
