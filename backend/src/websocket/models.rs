@@ -1,6 +1,6 @@
 //! WebSocket相关模型定义
 
-use crate::game::game_rule_engine::{GameRuleEngine, Item};
+use crate::game::game_rule_engine::{GameRuleEngine, Item, ItemType};
 use crate::game::models::MessageType;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -225,11 +225,41 @@ impl Player {
     }
 
     /// 每日清除玩家状态
-    pub fn daily_reset(&mut self) {
+    pub fn daily_reset(&mut self, rule_engine: &GameRuleEngine) {
         self.rest_mode = true;
         self.rest_moves_used = 0;
         self.last_search_result = None;
         self.is_bound = false;
+
+        self.reset_nightly_uses(rule_engine);
+    }
+
+    fn reset_nightly_uses(&mut self, rule_engine: &GameRuleEngine) {
+        fn restore_uses(item: &mut Item, rule_engine: &GameRuleEngine) {
+            if let ItemType::Utility(ref mut properties) = item.item_type {
+                if properties.uses_night.is_some() {
+                    if let Ok(template) = rule_engine.create_item_from_name(&item.name) {
+                        if let ItemType::Utility(default_properties) = template.item_type {
+                            if let Some(default) = default_properties.uses_night {
+                                properties.uses_night = Some(default);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for item in &mut self.inventory {
+            restore_uses(item, rule_engine);
+        }
+
+        if let Some(weapon) = self.equipped_weapon.as_mut() {
+            restore_uses(weapon, rule_engine);
+        }
+
+        if let Some(armor) = self.equipped_armor.as_mut() {
+            restore_uses(armor, rule_engine);
+        }
     }
 }
 

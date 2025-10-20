@@ -111,12 +111,12 @@
             装备
           </el-button>
           
-          <!-- 使用按钮（仅消耗品） -->
+          <!-- 使用按钮（消耗品与特殊道具） -->
           <el-button 
-            v-if="item.item_type?.type === 'consumable'" 
+            v-if="canUseItem(item)" 
             type="success" 
             size="small" 
-            @click="useItem(item.id)"
+            @click="useItem(item)"
             :loading="loadingItems.includes(item.id)"
           >
             使用
@@ -134,23 +134,50 @@
         </div>
       </div>
     </div>
+
+    <ItemSelectionDialog
+      v-model="itemSelectionVisible"
+      title="选择目标道具"
+      item-label="道具"
+      placeholder="请输入或选择目标道具"
+      width="420px"
+      @confirm="handleItemSelectionConfirm"
+      @cancel="handleItemSelectionCancel"
+    />
+
+    <PlayerSelectionDialog
+      v-model="playerSelectionVisible"
+      :players="playerOptions"
+      :max-selection="playerSelectionLimit"
+      title="选择侦查玩家"
+      player-label="玩家"
+      placeholder="请选择玩家"
+      width="420px"
+      @confirm="handlePlayerSelectionConfirm"
+      @cancel="handlePlayerSelectionCancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { Player, Item } from '@/types/gameStateTypes'
+import type { ActorPlayer, Player, Item } from '@/types/gameStateTypes'
 import { getItemTypeLabel, getItemTypeTagType } from '@/utils/itemType'
 import { getItemDisplayProperties, type ItemDisplayProperty, formatItemProperty } from '@/utils/itemDisplay'
+import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
+import PlayerSelectionDialog from '@/components/common/PlayerSelectionDialog.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   player: Player | null
-}>()
+  players?: ActorPlayer[]
+}>(), {
+  players: () => []
+})
 
 const emit = defineEmits<{
   (e: 'equip-item', itemId: string): void
-  (e: 'use-item', itemId: string): void
+  (e: 'use-item', payload: { itemId: string; params?: Record<string, any> }): void
   (e: 'discard-item', itemId: string): void
   (e: 'unequip-weapon'): void
   (e: 'unequip-armor'): void
@@ -160,6 +187,18 @@ const emit = defineEmits<{
 const loadingItems = ref<string[]>([])
 const unequippingWeapon = ref(false)
 const unequippingArmor = ref(false)
+const itemSelectionVisible = ref(false)
+const playerSelectionVisible = ref(false)
+
+interface UtilityPendingContext {
+  item: Item
+  category: string | null
+  targets?: number | null
+}
+
+const pendingUtilityContext = ref<UtilityPendingContext | null>(null)
+
+const playerOptions = computed(() => props.players || [])
 
 const extractItemProperties = (item?: Item | null): ItemDisplayProperty[] => {
   if (!item) {
@@ -170,6 +209,60 @@ const extractItemProperties = (item?: Item | null): ItemDisplayProperty[] => {
 
 const hasItemProperties = (item?: Item | null) => {
   return extractItemProperties(item).length > 0
+}
+
+const canUseItem = (item: Item) => {
+  const type = item.item_type?.type
+  if (type === 'consumable') return true
+  if (type === 'utility') return true
+  return false
+}
+
+const getUtilityCategory = (item: Item): string | null => {
+  if (item.item_type?.type !== 'utility') return null
+  const properties = item.item_type?.properties as Record<string, any> | undefined
+  const category = properties?.category
+  return typeof category === 'string' ? category : null
+}
+
+const getUtilityTargetLimit = (item: Item): number | null => {
+  const properties = item.item_type?.properties as Record<string, any> | undefined
+  const rawValue = properties?.targets
+  if (typeof rawValue === 'number') {
+    return rawValue
+  }
+  if (typeof rawValue === 'string') {
+    const parsed = Number(rawValue)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+const playerSelectionLimit = computed(() => {
+  const limit = pendingUtilityContext.value?.targets
+  if (typeof limit === 'number' && limit > 0) {
+    return limit
+  }
+  return Math.max(playerOptions.value.length, 1)
+})
+
+const sendUseRequest = (itemId: string, params?: Record<string, any>) => {
+  if (!loadingItems.value.includes(itemId)) {
+    loadingItems.value.push(itemId)
+  }
+
+  try {
+    emit('use-item', {
+      itemId,
+      params
+    })
+  } catch {
+    ElMessage.error('使用物品失败')
+  } finally {
+    setTimeout(() => {
+      loadingItems.value = loadingItems.value.filter(id => id !== itemId)
+    }, 500)
+  }
 }
 
 const equipItem = async (itemId: string) => {
@@ -188,20 +281,46 @@ const equipItem = async (itemId: string) => {
   }
 }
 
-const useItem = async (itemId: string) => {
+const useItem = async (item: Item) => {
   if (!props.player) return
-  
-  loadingItems.value.push(itemId)
-  
-  try {
-    emit('use-item', itemId)
-  } catch {
-    ElMessage.error('使用物品失败')
-  } finally {
-    setTimeout(() => {
-      loadingItems.value = loadingItems.value.filter(id => id !== itemId)
-    }, 500)
+
+  const type = item.item_type?.type
+
+  if (type === 'consumable') {
+    sendUseRequest(item.id)
+    return
   }
+
+  if (type === 'utility') {
+    const category = getUtilityCategory(item)
+
+    if (category === 'utility_locator') {
+      pendingUtilityContext.value = {
+        item,
+        category,
+        targets: null
+      }
+      itemSelectionVisible.value = true
+      return
+    }
+
+    if (category === 'utility_revealer') {
+      pendingUtilityContext.value = {
+        item,
+        category,
+        targets: getUtilityTargetLimit(item)
+      }
+      playerSelectionVisible.value = true
+      return
+    }
+
+    // 其他类别（如控制、陷阱）无需额外参数
+    sendUseRequest(item.id)
+    return
+  }
+
+  // 默认行为：直接请求后端
+  sendUseRequest(item.id)
 }
 
 const discardItem = async (itemId: string) => {
@@ -250,6 +369,50 @@ const unequipArmor = async () => {
       unequippingArmor.value = false
     }, 500)
   }
+}
+
+const handleItemSelectionConfirm = (selectedItemName: string) => {
+  const context = pendingUtilityContext.value
+  if (!context) return
+
+  itemSelectionVisible.value = false
+  pendingUtilityContext.value = null
+
+  if (!selectedItemName) {
+    ElMessage.warning('请选择目标道具')
+    return
+  }
+
+  sendUseRequest(context.item.id, {
+    target_item_name: selectedItemName
+  })
+}
+
+const handleItemSelectionCancel = () => {
+  itemSelectionVisible.value = false
+  pendingUtilityContext.value = null
+}
+
+const handlePlayerSelectionConfirm = (selectedPlayerIds: string[]) => {
+  const context = pendingUtilityContext.value
+  if (!context) return
+
+  playerSelectionVisible.value = false
+  pendingUtilityContext.value = null
+
+  if (!selectedPlayerIds || selectedPlayerIds.length === 0) {
+    ElMessage.warning('请选择至少一名玩家')
+    return
+  }
+
+  sendUseRequest(context.item.id, {
+    target_player_ids: selectedPlayerIds
+  })
+}
+
+const handlePlayerSelectionCancel = () => {
+  playerSelectionVisible.value = false
+  pendingUtilityContext.value = null
 }
 </script>
 

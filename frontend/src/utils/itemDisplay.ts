@@ -25,6 +25,7 @@ const EFFECT_TYPE_LABELS: Record<string, string> = {
 }
 
 const UTILITY_TYPE_LABELS: Record<string, string> = {
+  utility_control: '控制',
   utility_locator: '定位',
   utility_revealer: '侦察',
   utility_seer: '洞察',

@@ -24,6 +24,12 @@ pub struct ActionParams {
     /// 目标玩家ID
     pub target_player_id: Option<String>,
 
+    /// 目标玩家ID列表（部分行动需要）
+    pub target_player_ids: Option<Vec<String>>,
+
+    /// 目标道具名称
+    pub target_item_name: Option<String>,
+
     /// 消息内容
     pub message: Option<String>,
 }
@@ -206,7 +212,7 @@ impl PlayerActionScheduler {
                     .as_ref()
                     .ok_or("Missing item_id parameter")?;
                 game_state.end_rest_mode_for_action(player_id);
-                return game_state.handle_use_action(player_id, item_id);
+                return game_state.handle_use_action(player_id, item_id, &action_params);
             }
             "throw" => {
                 let throw_cost = game_state.rule_engine.action_costs.throw_item;

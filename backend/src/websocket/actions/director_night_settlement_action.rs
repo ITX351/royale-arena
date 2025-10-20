@@ -299,8 +299,11 @@ impl GameState {
         }
 
         // ===== 每日清除与状态重置 =====
-        for player in self.players.values_mut() {
-            player.daily_reset();
+        let player_ids: Vec<String> = self.players.keys().cloned().collect();
+        for player_id in player_ids {
+            if let Some(player) = self.players.get_mut(&player_id) {
+                player.daily_reset(&self.rule_engine);
+            }
         }
         self.next_night_destroyed_places.clear();
 

@@ -81,10 +81,13 @@ impl GameState {
             player.strength = 0;
             player.is_alive = false;
             player.bleed_damage = 0;
-            player.daily_reset();
 
             (items, mem::take(&mut player.location))
         };
+
+        if let Some(player) = self.players.get_mut(target_player_id) {
+            player.daily_reset(&self.rule_engine);
+        }
 
         if !previous_location.is_empty() {
             if let Some(place) = self.places.get_mut(&previous_location) {
@@ -212,24 +215,33 @@ impl GameState {
             return Err("复活生命值必须大于0".to_string());
         }
 
-        let player = self
+        let player_name = self
             .players
-            .get_mut(player_id)
+            .get(player_id)
+            .map(|player| player.name.clone())
             .ok_or_else(|| "Player not found".to_string())?;
-        let player_name = player.name.clone();
 
-        player.life = life;
-        player.strength = player.max_strength;
-        player.is_alive = true;
-        player.bleed_damage = 0;
-        player.daily_reset();
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.life = life;
+            player.strength = player.max_strength;
+            player.is_alive = true;
+            player.bleed_damage = 0;
+        }
+
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.daily_reset(&self.rule_engine);
+        }
+
+        let strength_after_reset = self.players.get(player_id).unwrap().strength;
 
         let data = serde_json::json!({
             "player_id": player_id,
             "player_name": player_name,
             "is_alive": true,
             "life": life,
-            "strength": player.strength,
+            "strength": strength_after_reset,
         });
 
         let action_result = ActionResult::new_system_message(

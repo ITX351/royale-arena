@@ -128,31 +128,16 @@
     </el-collapse-transition>
     
     <!-- 添加物品对话框 -->
-    <el-dialog v-model="addItemDialogVisible" title="添加物品" width="400px">
-      <el-form :model="addItemForm" label-width="80px">
-        <el-form-item label="物品名称">
-          <el-select 
-            v-model="addItemForm.itemName" 
-            placeholder="请选择物品" 
-            filterable
-            clearable
-          >
-            <el-option 
-              v-for="item in allItemOptions" 
-              :key="item" 
-              :label="item" 
-              :value="item"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="addItemDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAddItem">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <ItemSelectionDialog
+      v-model="addItemDialogVisible"
+      title="添加物品"
+      item-label="物品名称"
+      placeholder="请选择物品"
+      width="400px"
+      :initial-selected-item="addItemForm.itemName"
+      @confirm="handleAddItemConfirm"
+      @cancel="handleAddItemCancel"
+    />
     
     <!-- 纯文本显示对话框 -->
     <el-dialog v-model="plainTextDialogVisible" :title="dialogTitle" width="600px">
@@ -183,8 +168,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
-import { createItemParser, extractExistingItemsFromGameState } from '@/utils/itemParser'
-import type { Player, DirectorGameData } from '@/types/gameStateTypes'
+import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
+import type { Player } from '@/types/gameStateTypes'
 
 // 定义组件属性
 const props = defineProps<{
@@ -220,27 +205,6 @@ const playerList = computed<Player[]>(() => {
   return props.players
 })
 
-// 复用AirdropPanel中的物品选项计算逻辑
-const allItemOptions = computed(() => {
-  const rulesJson = store.gameState?.global_state?.rules_config || {}
-  if (!rulesJson.items) return []
-  
-  try {
-    // 获取现有物品
-    const existingItems = extractExistingItemsFromGameState(store.gameData as DirectorGameData)
-    
-    // 创建物品解析器
-    const parser = createItemParser(rulesJson, existingItems)
-    
-    // 解析所有物品
-    const parsedItems = parser.parseAllItems()
-    return parsedItems.allItems
-  } catch (error) {
-    console.error('解析物品列表失败:', error)
-    return []
-  }
-})
-
 // 玩家状态管理方法
 const togglePlayerBinding = (playerId: string) => {
   // 调用store中的方法处理玩家捆绑/松绑
@@ -274,19 +238,21 @@ const showAddItemDialog = (playerId: string) => {
   addItemDialogVisible.value = true
 }
 
-// 确认添加物品
-const confirmAddItem = () => {
-  if (!addItemForm.value.itemName) {
+// 处理添加物品确认
+const handleAddItemConfirm = (itemName: string) => {
+  if (!itemName) {
     ElMessage.error('请选择物品')
     return
   }
   
   // 调用store方法添加物品（使用物品名称而不是完整对象）
-  store.addPlayerItem(addItemForm.value.playerId, addItemForm.value.itemName)
+  store.addPlayerItem(addItemForm.value.playerId, itemName)
   ElMessage.success('物品已添加')
-  
-  // 关闭对话框
-  addItemDialogVisible.value = false
+}
+
+// 处理添加物品取消
+const handleAddItemCancel = () => {
+  // 保持对话框关闭状态，无需额外操作
 }
 
 // 移除物品

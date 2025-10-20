@@ -33,6 +33,7 @@
         </div>
         <InventoryPanel
           :player="player"
+          :players="actorPlayerList"
           @equip-item="handleEquipItem"
           @use-item="handleUseItem"
           @discard-item="handleDiscardItem"
@@ -100,8 +101,12 @@ const handleEquipItem = (itemId: string) => {
   handlePlayerAction('equip', { item_id: itemId })
 }
 
-const handleUseItem = (itemId: string) => {
-  handlePlayerAction('use', { item_id: itemId })
+const handleUseItem = (payload: { itemId: string; params?: Record<string, any> }) => {
+  const { itemId, params } = payload
+  handlePlayerAction('use', {
+    item_id: itemId,
+    ...(params || {})
+  })
 }
 
 const handleDiscardItem = (itemId: string) => {

@@ -150,7 +150,7 @@
         {
           "name": "[控]电击棒",
           "properties": {
-            "category": "utility_locator",
+            "category": "utility_control",
             "votes": 3,
             "uses_night": 1
           }
@@ -184,7 +184,7 @@
         {
           "name": "[炸]遥控地雷",
           "properties": {
-            "category": "trap",
+            "category": "utility_trap",
             "damage": 30,
             "uses": 1,
             "votes": 0

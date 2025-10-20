@@ -39,8 +39,8 @@
         <div class="items-grid">
           <!-- 其他道具 -->
           <div class="item-category">
-            <h5>其他道具</h5>
-            <div v-for="item in parsedItems?.otherItems || []" :key="item" class="item-option">
+            <h5>功能道具</h5>
+            <div v-for="item in parsedItems?.utilities || []" :key="item" class="item-option">
               <el-form-item :label="item">
                 <el-input-number
                   v-model="specificSelections[item]"
@@ -191,7 +191,6 @@ const confirming = ref(false)
 
 // 计算属性
 const itemParser = computed(() => {
-  if (!props.rulesJson.items) return null
   return createItemParser(props.rulesJson, props.existingItems)
 })
 
@@ -252,7 +251,7 @@ const initializeSelections = () => {
   
   // 初始化具体物品选择
   if (parsedItems.value) {
-    [...parsedItems.value.otherItems, ...parsedItems.value.consumables, ...parsedItems.value.upgraders]
+  [...parsedItems.value.utilities, ...parsedItems.value.consumables, ...parsedItems.value.upgraders]
       .forEach(item => {
         specificSelections[item] = 0
       })

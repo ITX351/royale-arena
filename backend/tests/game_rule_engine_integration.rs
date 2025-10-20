@@ -117,6 +117,14 @@ const TEST_RULES_JSON: &str = r#"{
       ],
       "utilities": [
         {
+          "name": "[控]电击棒5",
+          "properties": {
+            "category": "utility_control",
+            "votes": 3,
+            "uses_night": 1
+          }
+        },
+        {
           "name": "[GPS]心跳探测仪1",
           "properties": {
             "category": "utility_locator",
@@ -145,7 +153,7 @@ const TEST_RULES_JSON: &str = r#"{
         {
           "name": "[炸]遥控地雷4",
           "properties": {
-            "category": "trap",
+            "category": "utility_trap",
             "damage": 30,
             "uses": 1,
             "votes": 0
@@ -348,7 +356,7 @@ fn test_items_config_parsing() {
     assert_eq!(common_armor.properties.votes, 2);
 
     // 验证通用物品配置
-    assert_eq!(items.utilities.len(), 4);
+    assert_eq!(items.utilities.len(), 5);
     let heartbeat_locator = &items.utilities[0];
     assert_eq!(heartbeat_locator.name, "[GPS]心跳探测仪1");
     assert_eq!(heartbeat_locator.properties.targets, Some(1));

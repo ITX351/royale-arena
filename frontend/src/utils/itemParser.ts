@@ -13,7 +13,7 @@ export interface WeaponConfig {
   internal_name: string
   display_names: string[]
   rarity: string
-  properties: Record<string, any>
+  properties?: Record<string, any>
 }
 
 // 防具配置接口
@@ -21,22 +21,23 @@ export interface ArmorConfig {
   internal_name: string
   display_names: string[]
   rarity: string
-  properties: Record<string, any>
+  properties?: Record<string, any>
 }
 
-// 其他道具配置接口
-export interface OtherItemConfig {
+// 功能道具配置接口（utilities）
+export interface UtilityConfig {
   name: string
-  category: string
-  properties: Record<string, any>
+  category?: string
+  properties?: Record<string, any>
 }
 
 // 消耗品配置接口
 export interface ConsumableConfig {
   name: string
-  effect_type: string
-  effect_value: number
+  effect_type?: string
+  effect_value?: number
   cure_bleed?: number
+  properties?: Record<string, any>
 }
 
 // 升级器配置接口
@@ -51,9 +52,45 @@ export interface ItemConfig {
   rarity_levels: RarityLevel[]
   weapons: WeaponConfig[]
   armors: ArmorConfig[]
-  other_items: OtherItemConfig[]
+  utilities: UtilityConfig[]
   consumables: ConsumableConfig[]
   upgraders: UpgraderConfig[]
+}
+
+function ensureArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : []
+}
+
+function normalizeItemConfig(rulesJson: any): ItemConfig {
+  const itemsConfigRoot = rulesJson?.items_config
+  if (!itemsConfigRoot) {
+    throw new Error('规则JSON缺少 items_config 配置')
+  }
+
+  const itemsSection = itemsConfigRoot.items
+  if (!itemsSection) {
+    throw new Error('规则JSON缺少 items_config.items 配置')
+  }
+
+  const rarityLevels = ensureArray<RarityLevel>(itemsConfigRoot.rarity_levels)
+  const weapons = ensureArray<WeaponConfig>(itemsSection.weapons)
+  const armors = ensureArray<ArmorConfig>(itemsSection.armors)
+  const utilities = ensureArray<UtilityConfig>(itemsSection.utilities)
+  const consumables = ensureArray<ConsumableConfig>(itemsSection.consumables)
+  const upgraders = ensureArray<UpgraderConfig>(itemsSection.upgraders)
+
+  if (rarityLevels.length === 0 && weapons.length === 0 && armors.length === 0 && utilities.length === 0 && consumables.length === 0 && upgraders.length === 0) {
+    throw new Error('无法从规则JSON中解析物品配置，请检查 items_config.items 字段内容是否正确')
+  }
+
+  return {
+    rarity_levels: rarityLevels,
+    weapons,
+    armors,
+    utilities,
+    consumables,
+    upgraders
+  }
 }
 
 // 解析后的物品信息接口
@@ -66,7 +103,7 @@ export interface ParsedItemInfo {
     armors: Record<string, string[]>   // 稀有度 -> 防具名称列表
   }
   // 其他物品类型
-  otherItems: string[]
+  utilities: string[]
   consumables: string[]
   upgraders: string[]
   // 稀有度配置
@@ -90,7 +127,7 @@ export class ItemParser {
   private existingItems: Set<string> // 场上已存在的物品名称
 
   constructor(rulesJson: any, existingItems: string[] = []) {
-    this.itemConfig = rulesJson.items
+    this.itemConfig = normalizeItemConfig(rulesJson)
     this.existingItems = new Set(existingItems)
     
     // 验证规则JSON中是否有重复物品名称
@@ -126,12 +163,12 @@ export class ItemParser {
       }
     }
     
-    // 检查其他道具名称
-    for (const otherItem of this.itemConfig.other_items) {
-      if (allItemNames.has(otherItem.name)) {
-        duplicateNames.push(otherItem.name)
+    // 检查功能道具名称
+    for (const utility of this.itemConfig.utilities) {
+      if (allItemNames.has(utility.name)) {
+        duplicateNames.push(utility.name)
       } else {
-        allItemNames.add(otherItem.name)
+        allItemNames.add(utility.name)
       }
     }
     
@@ -189,9 +226,9 @@ export class ItemParser {
       allItems.push(...armor.display_names)
     }
 
-    // 其他道具
-    const otherItems = this.itemConfig.other_items.map(item => item.name)
-    allItems.push(...otherItems)
+  // 功能道具
+  const utilities = this.itemConfig.utilities.map(item => item.name)
+  allItems.push(...utilities)
 
     // 消耗品
     const consumables = this.itemConfig.consumables.map(item => item.name)
@@ -207,7 +244,7 @@ export class ItemParser {
         weapons: weaponsByRarity,
         armors: armorsByRarity
       },
-      otherItems,
+  utilities,
       consumables,
       upgraders,
       rarityLevels: this.itemConfig.rarity_levels
