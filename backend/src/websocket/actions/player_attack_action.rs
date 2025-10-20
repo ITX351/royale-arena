@@ -29,6 +29,19 @@ impl GameState {
             (player.location.clone(), target_player_id)
         };
 
+        // 阻止在安全区内发动攻击
+        if self.rule_engine.is_safe_place(&player_location) {
+            let action_result = ActionResult::new_info_message(
+                serde_json::json!({
+                    "place": player_location.clone(),
+                }),
+                vec![player_id.to_string()],
+                "当前地点为安全区，无法发动攻击".to_string(),
+                false,
+            );
+            return Ok(action_result.as_results());
+        }
+
         // 获取目标玩家信息
         let (target_player_location, target_player_alive, target_player_name) = {
             let target_player = self

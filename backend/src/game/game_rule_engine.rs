@@ -56,6 +56,7 @@ impl Item {
     }
 
     /// 获取消耗品效果
+    #[allow(dead_code)]
     pub fn as_consumable(&self) -> Option<&ConsumableProperties> {
         if let ItemType::Consumable(properties) = &self.item_type {
             Some(properties)
@@ -65,6 +66,7 @@ impl Item {
     }
 
     /// 获取工具/陷阱属性
+    #[allow(dead_code)]
     pub fn as_utility(&self) -> Option<&UtilityProperties> {
         if let ItemType::Utility(properties) = &self.item_type {
             Some(properties)
@@ -74,6 +76,7 @@ impl Item {
     }
 
     /// 是否为升级器
+    #[allow(dead_code)]
     pub fn is_upgrader(&self) -> bool {
         matches!(self.item_type, ItemType::Upgrader)
     }

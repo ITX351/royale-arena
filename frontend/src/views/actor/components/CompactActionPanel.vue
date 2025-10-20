@@ -39,11 +39,10 @@
             style="width: 160px;"
           >
             <el-option
-              v-for="place in places"
+              v-for="place in places.filter(p => !p.is_destroyed)"
               :key="place.name"
               :label="place.name"
               :value="place.name"
-              :disabled="place.is_destroyed"
             />
           </el-select>
           <el-button 
@@ -63,11 +62,10 @@
             style="width: 160px;"
           >
             <el-option
-              v-for="place in places"
+              v-for="place in places.filter(p => !p.is_destroyed && p.name !== player.location)"
               :key="place.name"
               :label="place.name"
               :value="place.name"
-              :disabled="place.is_destroyed || place.name === player.location"
             />
           </el-select>
           <el-button 
@@ -116,11 +114,16 @@
 
     <div class="timing-hints">
       <span class="timing-text timing-search">
-        <template v-if="canSearchNow">
-          <span class="search-ready">当前可以搜索</span>
+        <template v-if="player.is_bound">
+          <span class="bound-warning">当前被捆绑，无法行动</span>
         </template>
         <template v-else>
-          <span class="search-pending">距离下一次搜索还有 {{ searchCooldownRemaining }} 秒</span>
+          <template v-if="canSearchNow">
+            <span class="search-ready">当前可以搜索</span>
+          </template>
+          <template v-else>
+            <span class="search-pending">距离下一次搜索还有 {{ searchCooldownRemaining }} 秒</span>
+          </template>
         </template>
       </span>
       <span class="timing-text timing-night">{{ nightCountdownMessage }}</span>
@@ -268,7 +271,7 @@ const nightActionActive = computed(() => {
 })
 
 const actionsDisabled = computed(() => {
-  return !nightActionActive.value
+  return !nightActionActive.value || props.player.is_bound
 })
 
 const nightCountdownMessage = computed(() => {
@@ -585,6 +588,14 @@ function formatDuration(durationMs: number) {
 
 .search-pending {
   color: #f56c6c;
+}
+
+.bound-warning {
+  color: #e6a23c;
+  background-color: #fdf6ec;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 .search-result-brief {

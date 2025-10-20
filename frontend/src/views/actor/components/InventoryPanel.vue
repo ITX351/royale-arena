@@ -117,6 +117,7 @@
             type="success" 
             size="small" 
             @click="useItem(item)"
+            :disabled="isUseDisabled(item)"
             :loading="loadingItems.includes(item.id)"
           >
             使用
@@ -236,6 +237,32 @@ const getUtilityTargetLimit = (item: Item): number | null => {
     return Number.isFinite(parsed) ? parsed : null
   }
   return null
+}
+
+const getItemUsesNight = (item: Item): number | null => {
+  const properties = item.item_type?.properties as Record<string, any> | undefined
+  const rawValue = properties?.uses_night
+  if (typeof rawValue === 'number') {
+    return rawValue
+  }
+  if (typeof rawValue === 'string') {
+    const parsed = Number(rawValue)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+const isUseDisabled = (item: Item): boolean => {
+  if (getUtilityCategory(item) === 'utility_seer') {
+    return true
+  }
+
+  const usesNight = getItemUsesNight(item)
+  if (usesNight === 0) {
+    return true
+  }
+
+  return false
 }
 
 const playerSelectionLimit = computed(() => {

@@ -11,7 +11,6 @@
           v-model="selectedPlayers"
           multiple
           filterable
-          collapse-tags
           :placeholder="placeholder"
           :style="{ width: '100%' }"
           :multiple-limit="maxSelection > 0 ? maxSelection : 0"
@@ -59,7 +58,7 @@ const props = withDefaults(defineProps<{
   initialSelected?: string[]
 }>(), {
   players: () => [],
-  maxSelection: 1,
+  maxSelection: 2,
   minSelection: 1,
   title: '选择玩家',
   playerLabel: '玩家',

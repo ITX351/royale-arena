@@ -297,8 +297,6 @@ pub struct SearchResult {
     pub target_id: String,
     /// 目标名称
     pub target_name: String,
-    /// 是否可见（受天气影响）
-    pub is_visible: bool,
 }
 
 /// 搜索结果类型枚举

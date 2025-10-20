@@ -4,6 +4,7 @@ use crate::game::game_rule_engine::{ConsumableProperties, Item, ItemType, Utilit
 use crate::websocket::actions::player_action_scheduler::ActionParams;
 use crate::websocket::actions::utils::{UseMode, UseOutcome, decrement_uses, format_delta};
 use crate::websocket::models::{ActionResult, ActionResults, GameState};
+use rand::seq::SliceRandom;
 use serde_json::json;
 
 /// 统一的道具使用结果描述
@@ -350,7 +351,7 @@ impl GameState {
                 "player_name": target_name,
             }));
 
-            let victim_message = format!("你被 {} 使用的电击棒击中，暂时无法行动", player_name);
+            let victim_message = "你被电击棒击中，暂时无法行动".to_string();
             let victim_data = json!({
                 "is_bound": true,
                 "message": victim_message,
@@ -543,34 +544,48 @@ impl GameState {
         }
 
         let mut summaries: Vec<serde_json::Value> = Vec::new();
-        let mut target_names: Vec<String> = Vec::new();
+        let mut log_segments: Vec<String> = Vec::new();
+        let mut rng = rand::rng();
         for target_id in &unique_targets {
             let target_player = self
                 .players
                 .get(target_id)
                 .ok_or_else(|| format!("目标玩家不存在：{}", target_id))?;
 
-            let inventory_names: Vec<String> = target_player
+            let mut inventory_names: Vec<String> = target_player
                 .inventory
                 .iter()
                 .map(|item| item.name.clone())
                 .collect();
 
+            if let Some(weapon) = &target_player.equipped_weapon {
+                inventory_names.push(weapon.name.clone());
+            }
+            if let Some(armor) = &target_player.equipped_armor {
+                inventory_names.push(armor.name.clone());
+            }
+
+            inventory_names.shuffle(&mut rng);
+
+            let inventory_snapshot = inventory_names.clone();
+            let inventory_display = if inventory_names.is_empty() {
+                "无可见物品".to_string()
+            } else {
+                inventory_names.join("、")
+            };
+
+            if inventory_snapshot.is_empty() {
+                log_segments.push(format!("{} 未携带可见物品", target_player.name));
+            } else {
+                log_segments.push(format!("{} 携带 {}", target_player.name, inventory_display));
+            }
+
             summaries.push(json!({
                 "player_id": target_id,
                 "player_name": target_player.name,
                 "location": target_player.location,
-                "inventory_names": inventory_names,
-                "equipped_weapon_name": target_player
-                    .equipped_weapon
-                    .as_ref()
-                    .map(|item| item.name.clone()),
-                "equipped_armor_name": target_player
-                    .equipped_armor
-                    .as_ref()
-                    .map(|item| item.name.clone()),
+                "inventory_names": inventory_snapshot,
             }));
-            target_names.push(target_player.name.clone());
         }
 
         let use_outcome = decrement_uses(properties, UseMode::Night)?;
@@ -578,12 +593,13 @@ impl GameState {
         let strength_after = self.predict_strength_after_use(player_id, use_cost);
         let strength_delta = strength_after - strength_before;
 
-        let mut log_message = format!(
-            "{} 使用了 {}，侦查了 {}",
-            player_name,
-            item_display_name,
-            target_names.join("、")
-        );
+        let mut log_message = format!("{} 使用了 {}", player_name, item_display_name);
+        if log_segments.is_empty() {
+            log_message.push_str("，未侦查到目标玩家的携带物品");
+        } else {
+            log_message.push_str("，侦查结果 ");
+            log_message.push_str(&log_segments.join("；"));
+        }
         if let Some(remaining) = use_outcome.remaining_night {
             log_message.push_str(&format!("（本晚剩余 {} 次）", remaining));
         }
@@ -680,10 +696,7 @@ impl GameState {
                 is_alive_after,
             ));
 
-            let mut victim_message = format!(
-                "你被 {} 引爆的遥控地雷炸伤，损失 {} 点生命值",
-                player_name, actual_damage
-            );
+            let mut victim_message = format!("你被遥控地雷炸伤，损失 {} 点生命值", actual_damage);
             if !is_alive_after {
                 victim_message.push_str(" 并阵亡");
             }
@@ -716,7 +729,7 @@ impl GameState {
                 }
                 segments.push(segment);
             }
-            log_message.push_str("，影响了 ");
+            //log_message.push_str("，影响了 ");
             log_message.push_str(&segments.join("，"));
         }
         if let Some(remaining) = use_outcome.remaining_total {

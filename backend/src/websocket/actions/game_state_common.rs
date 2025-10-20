@@ -384,7 +384,7 @@ impl GameState {
         &mut self,
         player_id: &str,
         target_player_id: &str,
-        is_visible: bool,
+        reveal_target_name: bool,
     ) -> Result<ActionResults, String> {
         let target_player_name = {
             if let Some(target_player) = self.players.get(target_player_id) {
@@ -401,7 +401,6 @@ impl GameState {
                 target_type: SearchResultType::Player,
                 target_id: target_player_id.to_string(),
                 target_name: target_player_name.clone(),
-                is_visible,
             });
         }
 
@@ -410,27 +409,37 @@ impl GameState {
             (player.strength, player.last_search_time)
         };
 
+        let display_target_name = if reveal_target_name {
+            target_player_name.clone()
+        } else {
+            "未知玩家".to_string()
+        };
+
         let data = serde_json::json!({
             "last_search_result": {
                 "target_type": "player",
                 "target_id": target_player_id,
-                "target_name": target_player_name,
-                "is_visible": is_visible
+                "target_name": display_target_name
             },
             "strength": player_strength,
             "last_search_time": player_last_search_time
         });
 
-        let action_result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
+        let log_message = if reveal_target_name {
             format!(
                 "{} 搜索发现了 {}",
                 self.players.get(player_id).unwrap().name,
                 target_player_name
-            ),
-            true,
-        );
+            )
+        } else {
+            format!(
+                "{} 搜索时察觉到了附近的动静",
+                self.players.get(player_id).unwrap().name
+            )
+        };
+
+        let action_result =
+            ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
 
         Ok(action_result.as_results())
     }
@@ -440,7 +449,6 @@ impl GameState {
         &mut self,
         player_id: &str,
         item_id: &str,
-        is_visible: bool,
     ) -> Result<ActionResults, String> {
         let item_name = {
             let player = self.players.get(player_id).unwrap();
@@ -464,7 +472,6 @@ impl GameState {
                 target_type: SearchResultType::Item,
                 target_id: item_id.to_string(),
                 target_name: item_name.clone(),
-                is_visible,
             });
         }
 
@@ -477,8 +484,7 @@ impl GameState {
             "last_search_result": {
                 "target_type": "item",
                 "target_id": item_id,
-                "target_name": item_name,
-                "is_visible": is_visible
+                "target_name": item_name
             },
             "strength": player_strength,
             "last_search_time": player_last_search_time

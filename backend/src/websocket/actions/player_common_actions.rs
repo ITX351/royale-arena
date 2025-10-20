@@ -169,19 +169,16 @@ impl GameState {
         // 等概率随机选择一个目标
         let selected_target = self.select_random_target(&search_targets);
 
-        // 根据天气条件确定结果可见性
-        use rand::Rng;
-        let mut rng = rand::rng();
-        let is_visible = rng.random_bool(self.weather);
-
         // 处理搜索结果
         match selected_target {
             SearchTarget::Player(target_player_id) => {
-                self.handle_player_search_result(player_id, &target_player_id, is_visible)
+                use rand::Rng;
+                let mut rng = rand::rng();
+                let reveal_roll: f64 = rng.random_range(0.0..1.0);
+                let reveal_name = reveal_roll <= self.weather;
+                self.handle_player_search_result(player_id, &target_player_id, reveal_name)
             }
-            SearchTarget::Item(item_id) => {
-                self.handle_item_search_result(player_id, &item_id, is_visible)
-            }
+            SearchTarget::Item(item_id) => self.handle_item_search_result(player_id, &item_id),
         }
     }
 

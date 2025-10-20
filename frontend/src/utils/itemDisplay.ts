@@ -121,6 +121,10 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
     entries.push({ label: '次数', value: properties.uses })
   }
 
+  if (properties.uses_night != null) {
+    entries.push({ label: '今夜剩余', value: properties.uses_night })
+  }
+
   if (properties.votes != null) {
     entries.push({ label: '票数', value: properties.votes })
   }
