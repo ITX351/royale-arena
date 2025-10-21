@@ -117,13 +117,20 @@ impl WebSocketService {
             .await
             .map_err(|_| "Game not found".to_string())?;
 
-        // 检查游戏是否接受连接（只在游戏处于"进行时"或"暂停时"接受客户端连接）
+        // 检查游戏是否接受连接（仅在游戏处于"进行中"时接受客户端连接）
         if !crate::game::global_game_state_manager::GlobalGameStateManager::is_status_accepting_connections(&game.status).await {
             // 检查游戏状态是否为等待中或已结束
             match game.status {
-                GameStatus::Waiting => return Err("Game is waiting for start".to_string()),
-                GameStatus::Ended => return Err("Game has ended".to_string()),
-                _ => return Err("Game is not accepting connections".to_string()),
+                GameStatus::Waiting => {
+                    return Err("游戏正在等待开始，暂时无法连接".to_string())
+                }
+                GameStatus::Paused => {
+                    return Err("游戏已暂停，暂时无法连接".to_string())
+                }
+                GameStatus::Ended => {
+                    return Err("游戏已结束，无法继续连接".to_string())
+                }
+                _ => return Err("当前游戏状态不支持连接".to_string()),
             }
         }
 
@@ -138,10 +145,10 @@ impl WebSocketService {
                 )
                 .fetch_optional(&self.app_state.director_service.pool)
                 .await
-                .map_err(|_| "Database error".to_string())?;
+                .map_err(|_| "数据库错误".to_string())?;
 
                 if actor.is_none() {
-                    return Err("Invalid player password".to_string());
+                    return Err("玩家密码错误".to_string());
                 }
 
                 Ok(ConnectionType::Actor)
@@ -155,10 +162,10 @@ impl WebSocketService {
                 )
                 .fetch_optional(&self.app_state.director_service.pool)
                 .await
-                .map_err(|_| "Database error".to_string())?;
+                .map_err(|_| "数据库错误".to_string())?;
 
                 if game_record.is_none() {
-                    return Err("Invalid director password".to_string());
+                    return Err("导演密码错误".to_string());
                 }
 
                 Ok(ConnectionType::Director)

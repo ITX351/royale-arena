@@ -179,10 +179,16 @@ impl GameConnectionManager {
 
     /// 断开所有连接并向客户端发送断开消息
     pub async fn disconnect_all_connections(&self) {
+        self.disconnect_all_connections_with_message("游戏已结束，连接已被服务器关闭。")
+            .await;
+    }
+
+    /// 使用自定义消息断开所有连接
+    pub async fn disconnect_all_connections_with_message(&self, message: &str) {
         let disconnect_message = json!({
             "type": "system_message",
             "data": {
-                "message": "Game has ended. Connection closed."
+                "message": message
             }
         });
 

@@ -202,6 +202,17 @@ export class WebSocketService {
         });
         break;
         
+      case 'error': {
+        const message = data?.data?.message ?? '连接发生错误，请稍后重试';
+        // ElMessage.error(message);
+        this.emitEvent({
+          type: 'error',
+          data: { message, raw: data.data },
+          timestamp: new Date()
+        });
+        break;
+      }
+
       case 'game_state': {
         // 游戏状态更新消息
         const gameState: DirectorGameState = {

@@ -47,6 +47,17 @@ impl GlobalConnectionManager {
         }
     }
 
+    /// 断开指定游戏的所有连接，但保留连接管理器
+    pub async fn disconnect_game_connections(&self, game_id: &str, message: &str) {
+        if let Some(manager_entry) = self.managers.get(game_id) {
+            let manager = manager_entry.value().clone();
+            drop(manager_entry);
+            manager
+                .disconnect_all_connections_with_message(message)
+                .await;
+        }
+    }
+
     // 获取所有游戏连接管理器
     // pub fn get_all_managers(&self) -> Vec<Arc<GameConnectionManager>> {
     //     self.managers

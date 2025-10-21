@@ -15,6 +15,16 @@ import type {
 } from '@/types/gameStateTypes'
 import { webSocketService, type WebSocketEvent } from '@/services/webSocketService'
 
+function isDirectorState(state: DirectorGameState | ActorGameState | null): state is DirectorGameState {
+  const data = (state as DirectorGameState | ActorGameState | null)?.game_data as Record<string, unknown> | undefined
+  return Boolean(state && data && typeof data === 'object' && 'players' in data)
+}
+
+function isActorState(state: DirectorGameState | ActorGameState | null): state is ActorGameState {
+  const data = (state as DirectorGameState | ActorGameState | null)?.game_data as Record<string, unknown> | undefined
+  return Boolean(state && data && typeof data === 'object' && 'player' in data)
+}
+
 export const useGameStateStore = defineStore('gameState', () => {
   // 状态
   const gameState = ref<DirectorGameState | ActorGameState | null>(null)
@@ -35,28 +45,28 @@ export const useGameStateStore = defineStore('gameState', () => {
 
   // 导演视角的计算属性
   const directorPlayers = computed<Record<string, Player>>(() => {
-    if (!gameState.value || !('players' in gameState.value.game_data)) return {}
+    if (!isDirectorState(gameState.value)) return {}
     return gameState.value.game_data.players || {}
   })
 
   const directorPlaces = computed<Record<string, DirectorPlace>>(() => {
-    if (!gameState.value || !('players' in gameState.value.game_data)) return {}
+    if (!isDirectorState(gameState.value)) return {}
     return gameState.value.game_data.places || {}
   })
 
   // 玩家视角的计算属性
   const actorPlayer = computed<Player | null>(() => {
-    if (!gameState.value || !('player' in gameState.value.game_data)) return null
+    if (!isActorState(gameState.value)) return null
     return gameState.value.game_data.player || null
   })
 
   const actorPlayers = computed<Record<string, ActorPlayer>>(() => {
-    if (!gameState.value || !('player' in gameState.value.game_data)) return {}
+    if (!isActorState(gameState.value)) return {}
     return gameState.value.game_data.actor_players || {}
   })
 
   const actorPlaces = computed<Record<string, ActorPlace>>(() => {
-    if (!gameState.value || !('player' in gameState.value.game_data)) return {}
+    if (!isActorState(gameState.value)) return {}
     return gameState.value.game_data.actor_places || {}
   })
 
@@ -96,6 +106,8 @@ export const useGameStateStore = defineStore('gameState', () => {
       console.error('连接WebSocket失败:', err)
       error.value = err instanceof Error ? err.message : '连接失败'
       connected.value = false
+      gameState.value = null
+      webSocketService.removeEventListener(handleWebSocketEvent)
     } finally {
       connecting.value = false
     }
@@ -106,9 +118,15 @@ export const useGameStateStore = defineStore('gameState', () => {
     webSocketService.disconnect()
     connected.value = false
     connecting.value = false
+    gameState.value = null
   }
 
   const updateGameState = (newState: DirectorGameState | ActorGameState) => {
+    if (!newState || !newState.game_data) {
+      console.warn('忽略无效的游戏状态更新', newState)
+      return
+    }
+
     gameState.value = newState
     
     // 如果有动作结果，只有非Info类型的消息才添加到日志消息中
@@ -283,6 +301,7 @@ export const useGameStateStore = defineStore('gameState', () => {
       case 'error':
         error.value = event.data.message || 'WebSocket错误'
         console.error('WebSocket错误:', event.data)
+        disconnect()
         break
     }
   }

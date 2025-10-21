@@ -225,9 +225,6 @@ impl GlobalGameStateManager {
 
     /// 检查游戏是否接受连接
     pub async fn is_status_accepting_connections(status: &GameStatus) -> bool {
-        match status {
-            GameStatus::Running | GameStatus::Paused => true,
-            _ => false,
-        }
+        matches!(status, GameStatus::Running)
     }
 }

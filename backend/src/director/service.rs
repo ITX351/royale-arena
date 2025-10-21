@@ -387,6 +387,12 @@ impl DirectorService {
             return Err(DirectorError::GameNotFound);
         }
 
+        // 断开所有WebSocket连接
+        app_state
+            .global_connection_manager
+            .disconnect_game_connections(game_id, "游戏已暂停，连接已被服务器关闭。")
+            .await;
+
         // 将当前游戏状态序列化并保存到磁盘文件
         let save_file_name = app_state
             .game_state_manager

@@ -249,7 +249,7 @@ const pauseGame = () => {
     await updateGameStatus(GameStatus.PAUSED)
     // 发送暂停游戏指令
     // 注意：这里我们不直接断开WebSocket连接，而是在DirectorMain中监听状态变化
-    ElMessage.success('游戏已暂停')
+    // ElMessage.success('游戏已暂停')
   }).catch(() => {
     // 用户取消操作
   })

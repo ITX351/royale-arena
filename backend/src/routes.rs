@@ -20,7 +20,9 @@ use crate::game::{
     delete_game_kill_records, delete_game_logs, get_director_kill_records, get_director_messages,
     get_game_with_rules, get_games, get_player_kill_records, get_player_messages, update_game,
 };
-use crate::rule_template::{RuleTemplateService, create_template, delete_template, get_templates, update_template};
+use crate::rule_template::{
+    RuleTemplateService, create_template, delete_template, get_templates, update_template,
+};
 use crate::websocket::global_connection_manager::GlobalConnectionManager;
 use crate::websocket::service::WebSocketService;
 
