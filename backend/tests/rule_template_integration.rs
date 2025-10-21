@@ -362,10 +362,36 @@ async fn test_rule_template_complete_flow(
     );
 
     let second_template_final = rule_template_service
-        .get_templates(Some(template_id2), None, None)
+        .get_templates(Some(template_id2.clone()), None, None)
         .await?;
     assert_eq!(second_template_final.len(), 1);
     assert_eq!(second_template_final[0].template_name, "集成测试快速模版");
+
+    // 测试 11: 删除规则模版
+    rule_template_service
+        .delete_template(template_id2.clone())
+        .await?;
+
+    let after_delete_templates = rule_template_service
+        .get_templates(None, None, None)
+        .await?;
+    let after_delete_test_templates: Vec<_> = after_delete_templates
+        .iter()
+        .filter(|t| t.template_name.contains("集成测试"))
+        .collect();
+    assert_eq!(after_delete_test_templates.len(), 1);
+
+    // 删除后的模版不应再能查询到
+    let deleted_template = rule_template_service
+        .get_templates(Some(template_id2.clone()), None, None)
+        .await?;
+    assert!(deleted_template.is_empty());
+
+    // 删除不存在的模版应返回错误
+    let delete_nonexistent_result = rule_template_service
+        .delete_template(template_id2.clone())
+        .await;
+    assert!(delete_nonexistent_result.is_err());
 
     println!("✅ 规则模版集成测试全部通过！");
 
@@ -401,6 +427,7 @@ async fn test_rule_template_complete_flow(
         Some("这是一个服务层测试模版".to_string())
     );
     assert!(service_created.is_active);
+    let service_template_id = service_created.id.clone();
 
     // 测试更新服务
     let service_update_request = UpdateRuleTemplateRequest {
@@ -448,6 +475,21 @@ async fn test_rule_template_complete_flow(
         .update_template("non-existent-id".to_string(), nonexistent_update)
         .await;
     assert!(nonexistent_result.is_err());
+
+    // 测试删除服务层模版
+    rule_template_service
+        .delete_template(service_template_id.clone())
+        .await?;
+
+    let deleted_service_template = rule_template_service
+        .get_templates(Some(service_template_id.clone()), None, None)
+        .await?;
+    assert!(deleted_service_template.is_empty());
+
+    let delete_service_again = rule_template_service
+        .delete_template(service_template_id)
+        .await;
+    assert!(delete_service_again.is_err());
 
     println!("✅ 服务层测试全部通过！");
     Ok(())

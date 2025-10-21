@@ -87,6 +87,7 @@ export interface RuleTemplate {
 export interface CreateRuleTemplateRequest {
   template_name: string
   description?: string
+  is_active?: boolean
   rules_config: Record<string, any>
 }
 

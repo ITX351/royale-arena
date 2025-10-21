@@ -144,6 +144,20 @@ impl RuleTemplateService {
         Ok(template.into())
     }
 
+    /// 删除规则模版
+    pub async fn delete_template(&self, template_id: String) -> Result<(), RuleTemplateError> {
+        let result = sqlx::query("DELETE FROM rule_templates WHERE id = ?")
+            .bind(&template_id)
+            .execute(&self.pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(RuleTemplateError::TemplateNotFound);
+        }
+
+        Ok(())
+    }
+
     /// 获取规则模版列表（统一接口）
     pub async fn get_templates(
         &self,

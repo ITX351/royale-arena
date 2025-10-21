@@ -31,6 +31,25 @@ pub async fn create_template(
     Ok((StatusCode::CREATED, response))
 }
 
+/// 删除游戏规则模版
+/// DELETE /api/admin/rule-templates/{template_id}
+pub async fn delete_template(
+    State(app_state): State<AppState>,
+    Path(template_id): Path<String>,
+) -> Result<impl IntoResponse, RuleTemplateError> {
+    app_state
+        .rule_template_service
+        .delete_template(template_id)
+        .await?;
+
+    let response = Json(json!({
+        "success": true,
+        "message": "规则模版已删除"
+    }));
+
+    Ok((StatusCode::OK, response))
+}
+
 /// 更新游戏规则模版
 /// PUT /api/admin/rule-templates/{template_id}
 pub async fn update_template(

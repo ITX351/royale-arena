@@ -425,6 +425,12 @@ onMounted(() => {
   gap: 8px;
 }
 
+.admin-users-page :deep(.el-table__header-wrapper table),
+.admin-users-page :deep(.el-table__body-wrapper table) {
+  margin: 0 auto;
+  display: inline-table;
+}
+
 @media (max-width: 767px) {
   .page-header {
     flex-direction: column;
