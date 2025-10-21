@@ -2,7 +2,17 @@
   <el-card class="log-message">
     <template #header>
       <div class="card-header">
-        <h3>实时日志消息</h3>
+        <div class="header-left">
+          <h3>实时日志消息</h3>
+          <el-button
+            type="primary"
+            link
+            @click="toggleFilters"
+            :icon="showFilters ? ArrowUp : ArrowDown"
+            class="toggle-filters-btn"
+            aria-label="切换筛选面板"
+          />
+        </div>
         <el-button 
           type="primary" 
           size="small" 
@@ -14,19 +24,20 @@
       </div>
     </template>
 
-    <!-- 添加禁止复制提示 -->
-    <div class="copy-warning">
-      <el-alert
-        title="禁止复制记录到发言帖贴证"
-        type="warning"
-        :closable="false"
-        show-icon
-      />
-    </div>
-
     <div class="log-content">
+      <div class="filter-wrapper" v-show="showFilters">
+        <!-- 添加禁止复制提示 -->
+        <div class="copy-warning">
+          <el-alert
+            title="禁止复制记录到发言帖贴证"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+        </div>
+
       <!-- 筛选面板 -->
-      <div class="filter-panel">
+        <div class="filter-panel">
         <el-form 
           :model="filterForm"
           layout="inline"
@@ -77,6 +88,7 @@
             </div>
           </el-form-item>
         </el-form>
+        </div>
       </div>
 
       <!-- 日志消息列表 -->
@@ -140,6 +152,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { ActionResult } from '@/types/gameStateTypes'
 import { formatTimestamp } from '@/utils/gameUtils'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 
 // 定义组件属性
 const props = defineProps<{
@@ -167,6 +180,7 @@ const showAll = ref(false)
 const logListRef = ref<HTMLElement | null>(null)
 const newMessages = ref<Set<string>>(new Set())
 const previousMessageTimestamps = ref<Set<string>>(new Set())
+const showFilters = ref(false)
 
 // 计算属性
 const playerOptions = computed(() => {
@@ -258,6 +272,10 @@ const hideExtraMessages = () => {
   showAll.value = false
 }
 
+const toggleFilters = () => {
+  showFilters.value = !showFilters.value
+}
+
 // 新增方法：检查消息是否为新消息
 const isNewMessage = (timestamp: string) => {
   const result = newMessages.value.has(timestamp);
@@ -345,6 +363,16 @@ watch(filterForm, () => {
   align-items: center;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-filters-btn {
+  padding: 0;
+}
+
 .kill-records-btn {
   margin-left: auto;
 }
@@ -367,6 +395,12 @@ watch(filterForm, () => {
   gap: 20px;
   flex: 1;
   overflow: hidden;
+}
+
+.filter-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .filter-panel {
@@ -420,9 +454,9 @@ watch(filterForm, () => {
   flex: 1;
   max-height: none; /* 移除固定最大高度 */
   overflow-y: auto;
-  border: 1px solid #e4e7ed;
+  border: 0px solid #e4e7ed;
   border-radius: 4px;
-  padding: 10px;
+  padding: 0px;
 }
 
 .log-item {

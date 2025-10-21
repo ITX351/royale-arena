@@ -20,31 +20,41 @@
               size="small"
               style="width: 120px"
             />
-            <el-button type="primary" size="small" @click="applyWeather">更新天气</el-button>
+            <div class="setting-actions">
+              <el-button type="primary" size="small" @click="applyWeather">
+                更新天气
+              </el-button>
+            </div>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-label">夜晚时间</div>
-            <el-date-picker
-              v-model="nightTimeForm.startTime"
-              type="datetime"
-              placeholder="开始时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DDTHH:mm:ssZ"
-              clearable
-              size="small"
-            />
-            <el-date-picker
-              v-model="nightTimeForm.endTime"
-              type="datetime"
-              placeholder="结束时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DDTHH:mm:ssZ"
-              clearable
-              size="small"
-            />
-            <el-button type="primary" size="small" @click="setNightTime">设置</el-button>
-            <el-button size="small" @click="clearNightTime">清空</el-button>
+          <div class="setting-row setting-row--night">
+            <div class="setting-row-header">
+              <div class="setting-label">夜晚时间</div>
+              <div class="setting-actions">
+                <el-button type="primary" size="small" @click="setNightTime">设置</el-button>
+                <el-button size="small" @click="clearNightTime">清空</el-button>
+              </div>
+            </div>
+            <div class="setting-night-inputs">
+              <el-date-picker
+                v-model="nightTimeForm.startTime"
+                type="datetime"
+                placeholder="开始时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DDTHH:mm:ssZ"
+                clearable
+                size="small"
+              />
+              <el-date-picker
+                v-model="nightTimeForm.endTime"
+                type="datetime"
+                placeholder="结束时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DDTHH:mm:ssZ"
+                clearable
+                size="small"
+              />
+            </div>
           </div>
 
           <div class="setting-row">
@@ -63,7 +73,9 @@
                 :value="place.name"
               />
             </el-select>
-            <el-button type="primary" size="small" @click="setDestroyPlaces">设置</el-button>
+            <div class="setting-actions">
+              <el-button type="primary" size="small" @click="setDestroyPlaces">设置</el-button>
+            </div>
           </div>
         </div>
 
@@ -337,6 +349,7 @@ function clampWeather(value: number) {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .setting-label {
@@ -346,25 +359,84 @@ function clampWeather(value: number) {
   flex-shrink: 0;
 }
 
+.setting-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.setting-row--night {
+  align-items: center;
+}
+
+.setting-row--night .setting-row-header {
+  display: contents;
+}
+
+.setting-row--night .setting-label {
+  order: 1;
+}
+
+.setting-night-inputs {
+  display: flex;
+  gap: 12px;
+  padding-left: 0;
+}
+
+.setting-row--night .setting-night-inputs {
+  order: 2;
+}
+
+.setting-night-inputs :deep(.el-date-editor) {
+  flex: 1;
+  min-width: 180px;
+}
+
+.setting-row--night .setting-actions {
+  order: 3;
+}
+
 @media (max-width: 768px) {
   .in-game-management {
     padding: 12px 0;
     gap: 12px;
   }
 
-  .setting-row {
+  .setting-row--night {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
 
-  .setting-label {
+  .setting-row--night .setting-row-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .setting-row--night .setting-night-inputs {
+    order: 0;
     width: 100%;
+    flex-wrap: wrap;
+    padding-left: 0;
   }
 }
 
 @media (max-width: 600px) {
   .in-game-management {
     padding: 8px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .setting-row--night .setting-night-inputs {
+    padding-left: 0;
+    flex-direction: column;
+  }
+
+  .setting-row--night .setting-night-inputs :deep(.el-date-editor) {
+    width: 100%;
   }
 }
 

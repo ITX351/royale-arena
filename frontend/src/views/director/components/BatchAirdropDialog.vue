@@ -119,7 +119,24 @@
         <!-- 结果表格 -->
         <el-table :data="generatedAirdrops" style="width: 100%" max-height="300">
           <el-table-column prop="item_name" label="物品名称" />
-          <el-table-column prop="place_name" label="投放地点" />
+          <el-table-column label="投放地点" min-width="180">
+            <template #default="{ row }">
+              <el-select
+                v-model="row.place_name"
+                placeholder="选择地点"
+                filterable
+                :disabled="props.availablePlaces.length === 0"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="place in props.availablePlaces"
+                  :key="place"
+                  :label="place"
+                  :value="place"
+                />
+              </el-select>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="80">
             <template #default="{ $index }">
               <el-button 

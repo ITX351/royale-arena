@@ -6,7 +6,7 @@
     </div>
     <div class="status-item">
       <span class="status-label">生命:</span>
-      <span class="status-value life">{{ player.life }}</span>
+      <span :class="['status-value', 'life', lifeAnimationClass]">{{ player.life }}</span>
     </div>
     <div class="status-item">
       <span class="status-label">体力:</span>
@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 
@@ -213,6 +213,8 @@ const deliverMessage = ref('')
 const directorMessage = ref('')
 const now = ref(Date.now())
 let timer: number | null = null
+const lifeAnimation = ref<'damage' | 'heal' | ''>('')
+let lifeAnimationTimer: number | null = null
 
 // 计算属性
 const hasValidTarget = computed(() => {
@@ -345,6 +347,13 @@ const searchResultText = computed(() => {
   return `最近发现${typeLabel}: ${result.target_name}`
 })
 
+const lifeAnimationClass = computed(() => {
+  if (!lifeAnimation.value) {
+    return ''
+  }
+  return lifeAnimation.value === 'damage' ? 'life-damage' : 'life-heal'
+})
+
 onMounted(() => {
   timer = window.setInterval(() => {
     now.value = Date.now()
@@ -356,7 +365,44 @@ onUnmounted(() => {
     window.clearInterval(timer)
     timer = null
   }
+  if (lifeAnimationTimer !== null) {
+    window.clearTimeout(lifeAnimationTimer)
+    lifeAnimationTimer = null
+  }
 })
+
+// Resetting the class allows repeated life changes to retrigger the CSS animation.
+const triggerLifeAnimation = (type: 'damage' | 'heal') => {
+  if (lifeAnimationTimer !== null) {
+    window.clearTimeout(lifeAnimationTimer)
+    lifeAnimationTimer = null
+  }
+
+  lifeAnimation.value = ''
+
+  window.requestAnimationFrame(() => {
+    lifeAnimation.value = type
+    lifeAnimationTimer = window.setTimeout(() => {
+      lifeAnimation.value = ''
+      lifeAnimationTimer = null
+    }, 700)
+  })
+}
+
+watch(
+  () => props.player.life,
+  (newLife, oldLife) => {
+    if (typeof oldLife !== 'number') {
+      return
+    }
+
+    if (newLife < oldLife) {
+      triggerLifeAnimation('damage')
+    } else if (newLife > oldLife) {
+      triggerLifeAnimation('heal')
+    }
+  }
+)
 
 // 事件处理
 const handleBorn = () => {
@@ -460,6 +506,16 @@ function formatDuration(durationMs: number) {
   color: #f56c6c;
 }
 
+.status-value.life.life-damage {
+  animation: lifeShake 0.6s ease;
+}
+
+.status-value.life.life-heal {
+  color: #409f4e;
+  text-shadow: 0 0 6px rgba(103, 194, 58, 0.7);
+  animation: lifeHeal 0.8s ease;
+}
+
 .status-value.strength {
   color: #67c23a;
 }
@@ -513,6 +569,46 @@ function formatDuration(durationMs: number) {
 
 .rest-status-chip.rest-active .rest-status-text {
   color: #67c23a;
+}
+
+@keyframes lifeShake {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes lifeHeal {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.12);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .section-title {

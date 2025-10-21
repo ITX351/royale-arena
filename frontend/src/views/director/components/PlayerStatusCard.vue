@@ -26,8 +26,14 @@
     </template>
     <el-collapse-transition>
       <div v-show="!isCollapsed" class="player-status-content">
-        <el-table :data="playerList" style="width: 100%" size="small" max-height="400">
-          <el-table-column label="玩家" min-width="160">
+        <el-table
+          :data="playerList"
+          style="width: 100%"
+          size="small"
+          max-height="400"
+          :fit="false"
+        >
+          <el-table-column label="玩家" min-width="120">
             <template #default="scope">
               <div class="player-name-cell">
                 <el-tooltip
@@ -48,7 +54,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="生命值" width="150">
+          <el-table-column label="生命值" min-width="110">
             <template #default="scope">
               <div class="status-value">
                 <el-input 
@@ -59,7 +65,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="体力值" width="150">
+          <el-table-column label="体力值" min-width="110">
             <template #default="scope">
               <div class="status-value">
                 <el-input 
@@ -70,9 +76,17 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="物品" min-width="200">
+          <el-table-column label="物品" min-width="260">
             <template #default="scope">
               <div class="items-container">
+                <el-button 
+                  type="success" 
+                  size="small"
+                  circle
+                  :icon="Plus"
+                  aria-label="添加物品"
+                  @click="showAddItemDialog(scope.row.id)"
+                />
                 <el-tag
                   v-if="scope.row.equipped_weapon"
                   effect="dark"
@@ -105,17 +119,10 @@
                 >
                   {{ item.name }}
                 </el-tag>
-                <el-button 
-                  type="success" 
-                  size="small" 
-                  @click="showAddItemDialog(scope.row.id)"
-                >
-                  添加物品
-                </el-button>
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120">
+          <el-table-column label="操作">
             <template #default="scope">
               <el-button 
                 size="small" 
@@ -169,7 +176,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import { ArrowUp, ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
 import type { Player } from '@/types/gameStateTypes'
