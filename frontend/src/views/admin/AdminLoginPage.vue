@@ -238,23 +238,14 @@ const goToHome = () => {
 /* 右侧按钮区域固定宽度 */
 .login-form :deep(.el-input__suffix) {
   /* 固定宽度，不管有没有按钮都占用相同空间 */
-  width: 40px;
-  display: flex;
+  width: 18px;
   justify-content: center;
-  align-items: center;
   flex-shrink: 0;
 }
 
 .login-form :deep(.el-input__suffix-inner) {
   display: flex;
   align-items: center;
-}
-
-/* 确保按钮区域在空状态时也保持相同宽度 */
-.login-form :deep(.el-input__clear),
-.login-form :deep(.el-input__password) {
-  width: 16px;
-  height: 16px;
 }
 
 .form-options {

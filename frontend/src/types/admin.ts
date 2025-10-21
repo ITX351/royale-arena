@@ -3,8 +3,8 @@ export interface AdminUser {
   id: string
   username: string
   is_super_admin: boolean
-  created_at: string
-  updated_at: string
+  created_at?: string
+  updated_at?: string
 }
 
 // 登录凭据
@@ -45,6 +45,31 @@ export interface ResetPasswordResponse {
   success: boolean
   message: string
   user: AdminUser
+}
+
+// 管理员列表响应
+export interface AdminListResponse {
+  users: AdminUser[]
+}
+
+// 创建管理员响应
+export interface CreateAdminResponse {
+  success: boolean
+  message: string
+  user: AdminUser
+}
+
+// 更新管理员响应
+export interface UpdateAdminResponse {
+  success: boolean
+  message: string
+  user: AdminUser
+}
+
+// 删除管理员响应
+export interface DeleteAdminResponse {
+  success: boolean
+  message: string
 }
 
 // 规则模版

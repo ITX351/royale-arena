@@ -45,6 +45,7 @@
               placeholder="输入密码快速加入"
               size="small"
               show-password
+              class="login-password-input"
               @keyup.enter="handleQuickLogin"
             >
               <template #append>
@@ -182,4 +183,10 @@ const getGameStatusClass = (status: string) => {
   color: #909399;
   line-height: 1.2;
 }
+
+.login-password-input :deep(.el-input__suffix) {
+  width: 18px;
+  justify-content: center;
+}
+
 </style>

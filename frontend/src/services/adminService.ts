@@ -12,7 +12,10 @@ import type {
   UpdateRuleTemplateRequest,
   ApiResponse,
   ResetPasswordRequest,
-  ResetPasswordResponse
+  ResetPasswordResponse,
+  CreateAdminResponse,
+  UpdateAdminResponse,
+  DeleteAdminResponse
 } from '@/types/admin'
 
 export const adminService = {
@@ -23,26 +26,26 @@ export const adminService = {
   },
 
   // 获取管理员列表
-  async getAdmins(): Promise<ApiResponse<AdminUser[]>> {
-    const response = await adminClient.get(API_ENDPOINTS.ADMIN_USERS)
-    return response.data
+  async getAdmins(): Promise<AdminUser[]> {
+    const response = await adminClient.get<{ users: AdminUser[] }>(API_ENDPOINTS.ADMIN_USERS)
+    return response.data.users || []
   },
 
   // 创建管理员
-  async createAdmin(data: CreateAdminRequest): Promise<ApiResponse<AdminUser>> {
-    const response = await adminClient.post(API_ENDPOINTS.ADMIN_USERS, data)
+  async createAdmin(data: CreateAdminRequest): Promise<CreateAdminResponse> {
+    const response = await adminClient.post<CreateAdminResponse>(API_ENDPOINTS.ADMIN_USERS, data)
     return response.data
   },
 
   // 更新管理员
-  async updateAdmin(id: string, data: UpdateAdminRequest): Promise<ApiResponse<AdminUser>> {
-    const response = await adminClient.put(`${API_ENDPOINTS.ADMIN_USERS}/${id}`, data)
+  async updateAdmin(id: string, data: UpdateAdminRequest): Promise<UpdateAdminResponse> {
+    const response = await adminClient.put<UpdateAdminResponse>(`${API_ENDPOINTS.ADMIN_USERS}/${id}`, data)
     return response.data
   },
 
   // 删除管理员
-  async deleteAdmin(id: string): Promise<ApiResponse<void>> {
-    const response = await adminClient.delete(`${API_ENDPOINTS.ADMIN_USERS}/${id}`)
+  async deleteAdmin(id: string): Promise<DeleteAdminResponse> {
+    const response = await adminClient.delete<DeleteAdminResponse>(`${API_ENDPOINTS.ADMIN_USERS}/${id}`)
     return response.data
   },
 
