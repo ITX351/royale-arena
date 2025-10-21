@@ -1,5 +1,8 @@
 <template>
-  <el-card class="broadcast-message">
+  <el-card
+    class="broadcast-message collapsible-card"
+    :class="{ 'collapsible-card--collapsed': isCollapsed }"
+  >
     <template #header>
       <div class="card-header">
         <h3>广播消息</h3>

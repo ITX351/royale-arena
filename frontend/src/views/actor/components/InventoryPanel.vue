@@ -19,6 +19,7 @@
             </span>
           </div>
           <el-button 
+            class="unequip-button"
             type="warning" 
             size="small" 
             @click="unequipWeapon"
@@ -50,6 +51,7 @@
             </span>
           </div>
           <el-button 
+            class="unequip-button"
             type="warning" 
             size="small" 
             @click="unequipArmor"
@@ -614,6 +616,10 @@ const handlePlayerSelectionCancel = () => {
 .item-actions {
   display: flex;
   gap: 5px;
+}
+
+.unequip-button {
+  margin-left: auto;
 }
 
 @media (max-width: 768px) {

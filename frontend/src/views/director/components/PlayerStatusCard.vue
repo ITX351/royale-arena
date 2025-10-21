@@ -1,5 +1,8 @@
 <template>
-  <el-card class="player-status-card">
+  <el-card
+    class="player-status-card collapsible-card"
+    :class="{ 'collapsible-card--collapsed': isCollapsed }"
+  >
     <template #header>
       <div class="card-header">
         <h3>玩家状态管理</h3>

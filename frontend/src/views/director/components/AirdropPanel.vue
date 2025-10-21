@@ -1,5 +1,8 @@
 <template>
-  <el-card class="airdrop-panel">
+  <el-card
+    class="airdrop-panel collapsible-card"
+    :class="{ 'collapsible-card--collapsed': isCollapsed }"
+  >
     <template #header>
       <div class="card-header">
         <h3>空投设置</h3>
@@ -16,9 +19,24 @@
     <el-collapse-transition>
       <div v-show="!isCollapsed" class="airdrop-content">
         <!-- 单次空投区域 -->
-        <div class="single-airdrop-section">
-          <h4>单次空投</h4>
-          <el-form :model="singleAirdropForm" ref="singleAirdropFormRef">
+        <section class="airdrop-single">
+          <div class="airdrop-single-header">
+            <h4>单次空投</h4>
+            <el-button 
+              type="primary"
+              @click="executeSingleAirdrop"
+              :disabled="!singleAirdropForm.selectedItem || !singleAirdropForm.selectedPlace"
+              :loading="executing"
+            >
+              确认空投
+            </el-button>
+          </div>
+
+          <el-form 
+            class="airdrop-single-form"
+            :model="singleAirdropForm" 
+            ref="singleAirdropFormRef"
+          >
             <el-form-item label="选择物品">
               <el-select 
                 v-model="singleAirdropForm.selectedItem" 
@@ -48,23 +66,11 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item>
-              <el-button 
-                type="primary" 
-                @click="executeSingleAirdrop"
-                :disabled="!singleAirdropForm.selectedItem || !singleAirdropForm.selectedPlace"
-                :loading="executing"
-              >
-                确认空投
-              </el-button>
-            </el-form-item>
           </el-form>
-        </div>
-
-        <el-divider />
+        </section>
 
         <!-- 批量空投区域 -->
-        <div class="batch-airdrop-section">
+        <section class="batch-airdrop">
           <h4>批量空投</h4>
           <el-button 
             type="success" 
@@ -72,7 +78,7 @@
           >
             打开批量空投界面
           </el-button>
-        </div>
+        </section>
       </div>
     </el-collapse-transition>
 
@@ -215,38 +221,61 @@ const handleBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: str
 }
 
 .airdrop-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  gap: 16px;
 }
 
-.single-airdrop-section h4,
-.batch-airdrop-section h4 {
-  margin: 0 0 15px 0;
+.airdrop-single {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.airdrop-single-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.airdrop-single-header h4,
+.batch-airdrop h4 {
+  margin: 0;
   color: #606266;
   font-size: 16px;
   font-weight: 600;
 }
 
-.single-airdrop-section {
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #e1e6f0;
+.airdrop-single-header h4 {
+  flex: none;
 }
 
-.batch-airdrop-section {
-  text-align: center;
-  padding: 20px;
+.airdrop-single-header .el-button {
+  margin-left: auto;
+}
+
+.airdrop-single-form {
+  max-width: 100%;
+}
+
+.batch-airdrop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
 }
 
 @media (max-width: 768px) {
   .airdrop-content {
-    gap: 15px;
+    gap: 14px;
   }
-  
-  .single-airdrop-section {
-    padding: 10px;
+}
+
+@media (min-width: 1024px) {
+  .airdrop-content {
+    grid-template-columns: 7fr 5fr;
+    align-items: start;
+    column-gap: 40px;
+    row-gap: 18px;
   }
 }
 </style>

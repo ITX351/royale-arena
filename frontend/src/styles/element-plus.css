@@ -31,3 +31,10 @@
   justify-content: center;
   margin-top: 24px;
 }
+
+/* 可折叠卡片在折叠时移除内容区上下内边距 */
+.collapsible-card.collapsible-card--collapsed > .el-card__body {
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}

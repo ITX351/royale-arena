@@ -27,16 +27,21 @@
     <div class="log-content">
       <!-- 筛选面板 -->
       <div class="filter-panel">
-        <el-form :model="filterForm" layout="inline" class="filter-form">
+        <el-form 
+          :model="filterForm"
+          layout="inline"
+          class="filter-form"
+          label-width="80px"
+          label-position="left"
+        >
           <el-form-item label="日期筛选">
             <el-date-picker
-              v-model="filterForm.dateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              v-model="filterForm.selectedDate"
+              type="date"
+              placeholder="选择日期"
               value-format="YYYY-MM-DD"
-              class="date-range-picker"
+              class="date-picker"
+              clearable
             />
           </el-form-item>
           
@@ -65,13 +70,11 @@
             />
           </el-form-item>
           
-          <el-form-item>
-            <el-checkbox v-model="filterForm.showOnlyUserMessages" label="只显示用户消息" />
-          </el-form-item>
-          
-          <el-form-item>
-            <el-button type="primary" @click="applyFilter">应用筛选</el-button>
-            <el-button @click="resetFilter">重置</el-button>
+          <el-form-item class="checkbox-actions">
+            <div class="checkbox-actions__inner">
+              <el-checkbox v-model="filterForm.showOnlyUserMessages" label="只显示用户消息" />
+              <el-button @click="resetFilter">重置</el-button>
+            </div>
           </el-form-item>
         </el-form>
       </div>
@@ -153,7 +156,7 @@ const emit = defineEmits<{
 
 // 响应式状态
 const filterForm = ref({
-  dateRange: [] as string[],
+  selectedDate: '',
   showOnlyUserMessages: false,
   selectedPlayer: '',
   keyword: ''
@@ -173,15 +176,25 @@ const playerOptions = computed(() => {
   }))
 })
 
+// 工具方法：转换时间戳为本地日期字符串（YYYY-MM-DD）
+const getLocalDateString = (timestamp: string) => {
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return offsetDate.toISOString().split('T')[0]
+}
+
 const filteredMessages = computed(() => {
   let result = [...props.messages]
   
   // 日期筛选
-  if (filterForm.value.dateRange.length === 2) {
-    const [startDate, endDate] = filterForm.value.dateRange
+  if (filterForm.value.selectedDate) {
+    const selectedDate = filterForm.value.selectedDate
     result = result.filter(message => {
-      const messageDate = message.timestamp.split('T')[0]
-      return messageDate >= startDate && messageDate <= endDate
+      const messageDate = getLocalDateString(message.timestamp)
+      return messageDate === selectedDate
     })
   }
   
@@ -227,14 +240,8 @@ const getMessageTypeLabel = (type: string) => {
   return typeMap[type] || type
 }
 
-const applyFilter = () => {
-  ElMessage.success('筛选条件已应用')
-  // 重置显示状态
-  showAll.value = false
-}
-
 const resetFilter = () => {
-  filterForm.value.dateRange = []
+  filterForm.value.selectedDate = ''
   filterForm.value.showOnlyUserMessages = false
   filterForm.value.selectedPlayer = ''
   filterForm.value.keyword = ''
@@ -324,6 +331,11 @@ onMounted(() => {
 onUnmounted(() => {
   // 清理操作（如果需要）
 });
+
+// 自动应用筛选条件
+watch(filterForm, () => {
+  showAll.value = false
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -368,16 +380,40 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 15px;
   align-items: end;
+  --filter-input-width: 200px;
 }
 
 .filter-form :deep(.el-form-item) {
   margin-bottom: 0;
 }
 
-.date-range-picker,
+.date-picker,
 .player-select,
 .keyword-input {
-  width: 200px;
+  width: var(--filter-input-width);
+}
+
+.filter-form :deep(.el-date-editor) {
+  --el-date-editor-width: var(--filter-input-width);
+}
+
+.checkbox-actions__inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.checkbox-actions {
+  margin-left: auto;
+}
+
+.checkbox-actions :deep(.el-form-item__content) {
+  width: 100%;
+}
+
+.checkbox-actions__inner .el-button {
+  margin-left: auto;
 }
 
 .log-list {
@@ -531,7 +567,7 @@ onUnmounted(() => {
     align-items: stretch;
   }
   
-  .date-range-picker,
+  .date-picker,
   .player-select,
   .keyword-input {
     width: 100%;

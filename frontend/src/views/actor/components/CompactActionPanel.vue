@@ -573,6 +573,9 @@ function formatDuration(durationMs: number) {
 .timing-search {
   flex: 1;
   min-width: 180px;
+  display: flex;
+  justify-content: center;
+  text-align: center;
 }
 
 .timing-night {

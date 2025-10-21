@@ -1,5 +1,8 @@
 <template>
-  <el-card class="place-status-card">
+  <el-card
+    class="place-status-card collapsible-card"
+    :class="{ 'collapsible-card--collapsed': isCollapsed }"
+  >
     <template #header>
       <div class="card-header">
         <h3>地点状态管理</h3>
