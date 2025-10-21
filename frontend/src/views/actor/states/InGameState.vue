@@ -135,11 +135,10 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px;
+  padding: 16px 0;
   height: 100%;
   overflow-y: auto;
-  max-width: 100%;
-  margin: 0 auto;
+  width: 100%;
   align-items: stretch;
 }
 
@@ -175,7 +174,7 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
 
 @media (max-width: 768px) {
   .in-game-state {
-    padding: 12px;
+    padding: 12px 0;
     gap: 12px;
   }
 
@@ -193,19 +192,19 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
 
 @media (max-width: 600px) {
   .in-game-state {
-    padding: 8px;
+    padding: 8px 0;
   }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .in-game-state {
-    max-width: 600px;
+    gap: 12px;
   }
 }
 
 @media (min-width: 1025px) {
   .in-game-state {
-    max-width: 720px;
+    gap: 16px;
   }
 }
 </style>

@@ -3,7 +3,7 @@
 /* 主页面容器 */
 .shared-main {
   min-height: 100vh;
-  padding: 24px;
+  padding: 24px 0;
   background-color: #f5f7fa;
 }
 
@@ -42,12 +42,14 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0; /* 允许内容在弹性布局中收缩 */
 }
 
 .shared-right-content {
   flex: 3; /* 占30%宽度 */
   display: flex;
   flex-direction: column;
+  min-width: 0; /* 防止右侧内容被挤压时布局失衡 */
 }
 
 /* 日志消息组件 */
@@ -61,7 +63,7 @@
 /* 响应式设计 */
 @media (max-width: 768px) {
   .shared-main {
-    padding: 16px;
+    padding: 0;
   }
   
   /* 移动端采用上下布局 */

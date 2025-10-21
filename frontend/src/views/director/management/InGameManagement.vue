@@ -277,6 +277,15 @@ function clampWeather(value: number) {
 </script>
 
 <style scoped>
+.in-game-management {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+  width: 100%;
+  height: 100%;
+}
+
 .management-card {
   margin-bottom: 24px;
 }
@@ -338,6 +347,11 @@ function clampWeather(value: number) {
 }
 
 @media (max-width: 768px) {
+  .in-game-management {
+    padding: 12px 0;
+    gap: 12px;
+  }
+
   .setting-row {
     flex-direction: column;
     align-items: stretch;
@@ -345,6 +359,12 @@ function clampWeather(value: number) {
 
   .setting-label {
     width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .in-game-management {
+    padding: 8px 0;
   }
 }
 
