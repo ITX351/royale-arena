@@ -167,8 +167,8 @@ impl CreatePlayerRequest {
         }
 
         // 验证密码格式
-        if self.password.len() < 6 || self.password.len() > 8 {
-            return Err("密码长度必须为6-8位字符".to_string());
+        if self.password.is_empty() || self.password.len() > 40 {
+            return Err("密码长度必须在1-40位字符之间".to_string());
         }
 
         // 验证密码只包含字母和数字
@@ -288,10 +288,10 @@ mod tests {
         };
         assert!(long_name_request.validate().is_err());
 
-        // 测试密码过短
+        // 测试密码为空
         let short_password_request = CreatePlayerRequest {
             player_name: "测试玩家".to_string(),
-            password: "abc".to_string(),
+            password: "".to_string(),
             team_id: None,
         };
         assert!(short_password_request.validate().is_err());
@@ -299,7 +299,7 @@ mod tests {
         // 测试密码过长
         let long_password_request = CreatePlayerRequest {
             player_name: "测试玩家".to_string(),
-            password: "abcdefghi".to_string(),
+            password: "a".repeat(41),
             team_id: None,
         };
         assert!(long_password_request.validate().is_err());

@@ -315,8 +315,8 @@ impl CreateGameRequest {
             return Err("游戏名称不能超过100个字符".to_string());
         }
 
-        if self.director_password.len() < 6 || self.director_password.len() > 50 {
-            return Err("导演密码长度必须在6-50字符之间".to_string());
+        if self.director_password.is_empty() || self.director_password.len() > 40 {
+            return Err("导演密码长度必须在1-40字符之间".to_string());
         }
 
         if self.max_players < 1 || self.max_players > 1000 {
@@ -344,8 +344,8 @@ impl UpdateGameRequest {
         }
 
         if let Some(ref password) = self.director_password {
-            if password.len() < 6 || password.len() > 50 {
-                return Err("导演密码长度必须在6-50字符之间".to_string());
+            if password.is_empty() || password.len() > 40 {
+                return Err("导演密码长度必须在1-40字符之间".to_string());
             }
         }
 
@@ -366,8 +366,8 @@ impl GetPlayerMessagesRequest {
             return Err("玩家密码不能为空".to_string());
         }
 
-        if self.password.len() < 6 || self.password.len() > 50 {
-            return Err("玩家密码长度必须在6-50字符之间".to_string());
+        if self.password.is_empty() || self.password.len() > 40 {
+            return Err("玩家密码长度必须在1-40字符之间".to_string());
         }
 
         Ok(())
@@ -443,15 +443,25 @@ mod tests {
         };
         assert!(invalid_name.validate().is_err());
 
-        // 测试密码过短
+        // 测试密码为空
         let invalid_password = CreateGameRequest {
             name: "测试游戏".to_string(),
             description: None,
-            director_password: "123".to_string(),
+            director_password: "".to_string(),
             max_players: 10,
             rule_template_id: "template-id".to_string(), // 修改：现在是必需的
         };
         assert!(invalid_password.validate().is_err());
+
+        // 测试密码过长
+        let overly_long_password = CreateGameRequest {
+            name: "测试游戏".to_string(),
+            description: None,
+            director_password: "a".repeat(41),
+            max_players: 10,
+            rule_template_id: "template-id".to_string(),
+        };
+        assert!(overly_long_password.validate().is_err());
 
         // 测试玩家数超限
         let invalid_players = CreateGameRequest {
@@ -505,5 +515,15 @@ mod tests {
             rules_config: None,
         };
         assert!(invalid_name.validate().is_err());
+
+        // 测试无效导演密码
+        let invalid_password = UpdateGameRequest {
+            name: None,
+            description: None,
+            director_password: Some("".to_string()),
+            max_players: None,
+            rules_config: None,
+        };
+        assert!(invalid_password.validate().is_err());
     }
 }

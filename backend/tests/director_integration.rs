@@ -335,7 +335,12 @@ mod director_integration_tests {
                 },
                 CreatePlayerRequest {
                     player_name: "测试玩家5".to_string(),
-                    password: "abc".to_string(), // 密码过短
+                    password: "a".repeat(41), // 密码过长
+                    team_id: Some(1),
+                },
+                CreatePlayerRequest {
+                    player_name: "测试玩家6".to_string(),
+                    password: "abc123".to_string(),
                     team_id: Some(-1),           // 负数队伍ID
                 },
             ],
@@ -345,8 +350,8 @@ mod director_integration_tests {
             .batch_add_players(&game_id, director_password, invalid_request)
             .await?;
 
-        assert_eq!(result.success.len(), 0, "所有添加操作都应该失败");
-        assert_eq!(result.failed.len(), 3, "应该有3个失败的操作");
+    assert_eq!(result.success.len(), 0, "所有添加操作都应该失败");
+    assert_eq!(result.failed.len(), 4, "应该有4个失败的操作");
 
         // 测试7.2: 验证错误原因
         assert!(
@@ -360,7 +365,7 @@ mod director_integration_tests {
             result
                 .failed
                 .iter()
-                .any(|f| f.reason.contains("长度必须为6-8位") || f.reason.contains("不能为负数"))
+                .any(|f| f.reason.contains("长度必须在1-40位") || f.reason.contains("不能为负数"))
         );
 
         // ========== 测试8: 导演编辑游戏功能 ==========

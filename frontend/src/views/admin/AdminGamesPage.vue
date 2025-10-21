@@ -270,7 +270,7 @@ const gameFormRules: FormRules = {
   ],
   director_password: [
     { required: true, message: '请输入导演密码', trigger: 'blur' },
-    { min: 6, max: 50, message: '导演密码长度在 6 到 50 个字符', trigger: 'blur' }
+    { min: 1, max: 40, message: '导演密码长度在 1 到 40 个字符', trigger: 'blur' }
   ],
   max_players: [
     { required: true, message: '请输入最大玩家数', trigger: 'blur' },

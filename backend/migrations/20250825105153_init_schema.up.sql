@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS games (
     id VARCHAR(36) PRIMARY KEY COMMENT '游戏唯一标识符(UUID)',
     name VARCHAR(100) NOT NULL COMMENT '游戏名称',
     description TEXT COMMENT '游戏描述',
-    director_password VARCHAR(50) NOT NULL COMMENT '导演密码',
+    director_password VARCHAR(50) NOT NULL COMMENT '导演密码(1-40字符)',
     max_players INT NOT NULL DEFAULT 100 COMMENT '最大玩家数量',
     status ENUM('waiting', 'running', 'paused', 'ended') NOT NULL DEFAULT 'waiting' COMMENT '游戏状态',
     -- 关联规则模板
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS actors (
     id VARCHAR(36) PRIMARY KEY COMMENT '演员唯一标识符(UUID)',
     game_id VARCHAR(36) NOT NULL COMMENT '所属游戏ID',
     name VARCHAR(50) NOT NULL COMMENT '演员名称',
-    password VARCHAR(50) NOT NULL COMMENT '演员密码(6-8位字母数字)',
+    password VARCHAR(50) NOT NULL COMMENT '演员密码(1-40位字母数字)',
     team_id INT NOT NULL DEFAULT 0 COMMENT '队伍ID，用于标识玩家所属队伍，0表示无队伍',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

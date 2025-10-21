@@ -334,8 +334,8 @@ export class DirectorService {
       return { isValid: false, message: '密码不能为空' }
     }
     
-    if (password.length < 6 || password.length > 8) {
-      return { isValid: false, message: '密码长度必须为6-8位' }
+    if (password.length === 0 || password.length > 40) {
+      return { isValid: false, message: '密码长度必须在1-40位之间' }
     }
     
     if (!/^[a-zA-Z0-9]+$/.test(password)) {

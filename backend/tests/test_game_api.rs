@@ -226,17 +226,6 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
     let result = service.create_game(long_name_request).await;
     assert!(result.is_err());
 
-    // 密码过短
-    let short_password_request = CreateGameRequest {
-        name: "valid_name".to_string(),
-        description: None,
-        director_password: "123".to_string(),
-        max_players: 10,
-        rule_template_id: template_id.clone(), // 修改：现在是必需的
-    };
-    let result = service.create_game(short_password_request).await;
-    assert!(result.is_err());
-
     // 密码过长
     let long_password_request = CreateGameRequest {
         name: "valid_name".to_string(),

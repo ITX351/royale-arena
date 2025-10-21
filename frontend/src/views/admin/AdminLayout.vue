@@ -225,9 +225,9 @@ const passwordRules: FormRules = {
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
     {
-      min: 6,
-      max: 64,
-      message: '新密码长度需在 6-64 个字符之间',
+      min: 1,
+      max: 40,
+      message: '新密码长度需在 1-40 个字符之间',
       trigger: 'blur'
     }
   ],
