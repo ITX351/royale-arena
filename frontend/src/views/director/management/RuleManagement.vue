@@ -14,6 +14,9 @@
             </el-button>
           </div>
           <div class="header-actions">
+            <el-button @click="templateDialogVisible = true" :disabled="rulesCollapsed">
+              加载规则模版
+            </el-button>
             <el-button
               type="primary"
               @click="saveRules"
@@ -338,6 +341,11 @@
         </div>
       </el-collapse-transition>
     </el-card>
+
+    <RuleTemplateDialog
+      v-model="templateDialogVisible"
+      @select="applyTemplate"
+    />
   </div>
 </template>
 
@@ -353,8 +361,10 @@ import 'prismjs/themes/prism-tomorrow.css'
 import MarkdownIt from 'markdown-it'
 
 import type { GameWithRules } from '@/types/game'
+import type { RuleTemplate } from '@/types/ruleTemplate'
 import { directorService } from '@/services/directorService'
 import { GameRuleParser, type ParsedGameRules } from '@/utils/gameRuleParser'
+import RuleTemplateDialog from '@/views/director/components/RuleTemplateDialog.vue'
 
 // Props
 const props = defineProps<{
@@ -372,6 +382,7 @@ const editableRules = ref('')
 const originalRules = ref('')
 const saving = ref(false)
 const rulesCollapsed = ref(false)
+const templateDialogVisible = ref(false)
 const activeTab = ref('editor')
 const activeParserPanels = ref(['basic', 'items'])
 const activeItemTab = ref('rarity')
@@ -477,6 +488,26 @@ const saveRules = async () => {
 
 const resetRules = () => {
   editableRules.value = originalRules.value
+}
+
+const applyTemplate = (template: RuleTemplate) => {
+  try {
+    const templateConfig =
+      template.rules_config && typeof template.rules_config === 'object'
+        ? template.rules_config
+        : {}
+    const formattedRules = JSON.stringify(templateConfig, null, 2)
+
+    editableRules.value = formattedRules
+    activeTab.value = 'editor'
+    if (rulesCollapsed.value) {
+      rulesCollapsed.value = false
+    }
+    ElMessage.success(`已加载规则模版：${template.template_name}`)
+  } catch (error) {
+    console.error('应用规则模版失败:', error)
+    ElMessage.error('应用规则模版失败')
+  }
 }
 
 const getDispositionDisplayText = (value: string) => {
