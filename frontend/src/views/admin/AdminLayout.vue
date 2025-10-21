@@ -7,6 +7,7 @@
         <h2 class="mobile-title">{{ currentPageTitle }}</h2>
         <div class="mobile-header-right">
           <span class="mobile-username">{{ adminStore.userInfo?.username }}</span>
+          <el-button @click="openPasswordDialog" :icon="Lock" circle size="small" />
           <el-button @click="goToHome" :icon="House" circle size="small" />
           <el-button @click="handleLogout" :icon="SwitchButton" circle size="small" type="danger" />
         </div>
@@ -73,6 +74,13 @@
         
         <div class="sidebar-actions">
           <el-button 
+            @click="openPasswordDialog"
+            :icon="Lock"
+            circle
+            size="small"
+            title="重置密码"
+          />
+          <el-button 
             @click="goToHome"
             :icon="House" 
             circle 
@@ -109,6 +117,9 @@
               {{ adminStore.isSuperAdmin ? '超级管理员' : '管理员' }}
             </el-tag>
           </div>
+          <el-button @click="openPasswordDialog" :icon="Lock" text>
+            重置密码
+          </el-button>
           <el-button @click="goToHome" :icon="House" text>
             返回首页
           </el-button>
@@ -124,6 +135,49 @@
       </div>
     </main>
 
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="重置密码"
+      width="420px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      @close="closePasswordDialog"
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="90px"
+      >
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            autocomplete="new-password"
+            show-password
+            placeholder="请输入新密码"
+          />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            show-password
+            placeholder="请再次输入新密码"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="closePasswordDialog">取消</el-button>
+          <el-button type="primary" :loading="resettingPassword" @click="submitPasswordReset">
+            确认重置
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 移动端侧边栏遮罩 -->
     <div 
       v-if="isMobile && !sidebarCollapsed" 
@@ -134,19 +188,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { 
   Menu, 
   User, 
   UserFilled, 
   SwitchButton, 
-  Monitor, 
-  Expand, 
+  Monitor,
+  Expand,
   Fold,
   DocumentChecked,
-  House
+  House,
+  Lock
 } from '@element-plus/icons-vue'
 import { useAdminStore } from '@/stores/admin'
 
@@ -157,6 +213,38 @@ const adminStore = useAdminStore()
 // 响应式状态
 const sidebarCollapsed = ref(false)
 const isMobile = ref(false)
+const passwordDialogVisible = ref(false)
+const resettingPassword = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const passwordForm = reactive({
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const passwordRules: FormRules = {
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    {
+      min: 6,
+      max: 64,
+      message: '新密码长度需在 6-64 个字符之间',
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 
 // 计算属性
 const currentPageTitle = computed(() => {
@@ -185,6 +273,50 @@ const closeSidebar = () => {
   if (isMobile.value) {
     sidebarCollapsed.value = true
   }
+}
+
+const resetPasswordFormState = () => {
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordFormRef.value?.clearValidate()
+}
+
+const openPasswordDialog = () => {
+  resetPasswordFormState()
+  passwordDialogVisible.value = true
+}
+
+const closePasswordDialog = () => {
+  passwordDialogVisible.value = false
+  resetPasswordFormState()
+}
+
+const submitPasswordReset = () => {
+  if (!passwordFormRef.value) {
+    return
+  }
+
+  passwordFormRef.value.validate(async (valid) => {
+    if (!valid) {
+      return
+    }
+
+    resettingPassword.value = true
+    try {
+      const result = await adminStore.resetPassword(passwordForm.newPassword)
+      if (result.success) {
+        ElMessage.success(result.message || '密码重置成功')
+        closePasswordDialog()
+      } else {
+        ElMessage.error(result.message || '密码重置失败')
+      }
+    } catch (error) {
+      console.error('重置密码请求失败:', error)
+      ElMessage.error('密码重置失败，请稍后重试')
+    } finally {
+      resettingPassword.value = false
+    }
+  })
 }
 
 // 下拉菜单处理（移动端使用） - 已移除，直接使用按钮
@@ -451,6 +583,12 @@ onUnmounted(() => {
   flex: 1;
   padding: 24px;
   overflow-y: visible;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* 移动端遮罩 */

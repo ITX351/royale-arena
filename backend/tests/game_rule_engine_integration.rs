@@ -357,17 +357,23 @@ fn test_items_config_parsing() {
 
     // 验证通用物品配置
     assert_eq!(items.utilities.len(), 5);
-    let heartbeat_locator = &items.utilities[0];
-    assert_eq!(heartbeat_locator.name, "[GPS]心跳探测仪1");
-    assert_eq!(heartbeat_locator.properties.targets, Some(1));
-    assert_eq!(heartbeat_locator.properties.uses_night, Some(1));
-    assert_eq!(heartbeat_locator.properties.category, "utility_locator");
+    let electric_baton = &items.utilities[0];
+    assert_eq!(electric_baton.name, "[控]电击棒5");
+    assert_eq!(electric_baton.properties.category, "utility_control");
+    assert_eq!(electric_baton.properties.targets, None);
+    assert_eq!(electric_baton.properties.uses_night, Some(1));
 
-    let handheld_radar = &items.utilities[1];
+    let heartbeat_detector = &items.utilities[1];
+    assert_eq!(heartbeat_detector.name, "[GPS]心跳探测仪1");
+    assert_eq!(heartbeat_detector.properties.category, "utility_locator");
+    assert_eq!(heartbeat_detector.properties.targets, Some(1));
+    assert_eq!(heartbeat_detector.properties.uses_night, Some(1));
+
+    let handheld_radar = &items.utilities[2];
     assert_eq!(handheld_radar.name, "[侦]手持式雷达2");
+    assert_eq!(handheld_radar.properties.category, "utility_revealer");
     assert_eq!(handheld_radar.properties.targets, Some(2));
     assert_eq!(handheld_radar.properties.uses_night, Some(1));
-    assert_eq!(handheld_radar.properties.category, "utility_revealer");
 
     // 验证消耗品配置
     assert_eq!(items.consumables.len(), 6);

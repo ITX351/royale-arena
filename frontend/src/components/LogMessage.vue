@@ -14,6 +14,16 @@
       </div>
     </template>
 
+    <!-- 添加禁止复制提示 -->
+    <div class="copy-warning">
+      <el-alert
+        title="禁止复制记录到发言帖贴证"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+    </div>
+
     <div class="log-content">
       <!-- 筛选面板 -->
       <div class="filter-panel">

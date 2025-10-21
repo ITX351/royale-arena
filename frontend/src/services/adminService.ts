@@ -1,16 +1,18 @@
 import adminClient from './adminClient'
 import apiClient from './client'
 import { API_ENDPOINTS } from './config'
-import type { 
-  LoginCredentials, 
-  LoginResponse, 
-  AdminUser, 
-  CreateAdminRequest, 
+import type {
+  LoginCredentials,
+  LoginResponse,
+  AdminUser,
+  CreateAdminRequest,
   UpdateAdminRequest,
   RuleTemplate,
   CreateRuleTemplateRequest,
   UpdateRuleTemplateRequest,
-  ApiResponse 
+  ApiResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse
 } from '@/types/admin'
 
 export const adminService = {
@@ -41,6 +43,12 @@ export const adminService = {
   // 删除管理员
   async deleteAdmin(id: string): Promise<ApiResponse<void>> {
     const response = await adminClient.delete(`${API_ENDPOINTS.ADMIN_USERS}/${id}`)
+    return response.data
+  },
+
+  // 自助重置密码
+  async resetOwnPassword(data: ResetPasswordRequest): Promise<ResetPasswordResponse> {
+    const response = await adminClient.put(API_ENDPOINTS.ADMIN_RESET_PASSWORD, data)
     return response.data
   },
 

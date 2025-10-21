@@ -35,6 +35,18 @@ export interface UpdateAdminRequest {
   is_super_admin?: boolean
 }
 
+// 重置密码请求
+export interface ResetPasswordRequest {
+  new_password: string
+}
+
+// 重置密码响应
+export interface ResetPasswordResponse {
+  success: boolean
+  message: string
+  user: AdminUser
+}
+
 // 规则模版
 export interface RuleTemplate {
   id: string

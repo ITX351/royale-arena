@@ -6,4 +6,4 @@ pub use handlers::*;
 pub use service::AdminService;
 
 #[allow(unused_imports)]
-pub use models::{CreateAdminRequest, LoginRequest, UpdateAdminRequest};
+pub use models::{CreateAdminRequest, LoginRequest, ResetPasswordRequest, UpdateAdminRequest};

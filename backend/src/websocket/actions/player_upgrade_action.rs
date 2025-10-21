@@ -40,7 +40,11 @@ impl GameState {
 
         let upgrader_index = {
             let player = self.players.get(player_id).unwrap();
-            match player.inventory.iter().position(|item| item.id == upgrader_item_id) {
+            match player
+                .inventory
+                .iter()
+                .position(|item| item.id == upgrader_item_id)
+            {
                 Some(index) => index,
                 None => return info_result("背包中没有该升级器"),
             }
@@ -93,10 +97,12 @@ impl GameState {
             None => return info_result("升级器没有可用配方"),
         };
 
-        let recipe = match recipes
-            .iter()
-            .find(|recipe| recipe.ingredients.iter().any(|ingredient| ingredient == &equipped_internal))
-        {
+        let recipe = match recipes.iter().find(|recipe| {
+            recipe
+                .ingredients
+                .iter()
+                .any(|ingredient| ingredient == &equipped_internal)
+        }) {
             Some(recipe) => recipe,
             None => return info_result("未找到匹配的合成配方"),
         };
@@ -142,7 +148,13 @@ impl GameState {
             .map_err(|err| format!("Failed to create upgraded item: {}", err))?;
 
         let mut pending_item = Some(new_item);
-        let (player_name, upgrader_name, inventory_snapshot, equipped_weapon_snapshot, equipped_armor_snapshot) = {
+        let (
+            player_name,
+            upgrader_name,
+            inventory_snapshot,
+            equipped_weapon_snapshot,
+            equipped_armor_snapshot,
+        ) = {
             let player = self.players.get_mut(player_id).unwrap();
             let removed_upgrader = player.inventory.remove(upgrader_index);
             let upgrader_name = removed_upgrader.name.clone();
@@ -209,12 +221,8 @@ impl GameState {
             ),
         };
 
-        let action_result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
-            log_message,
-            true,
-        );
+        let action_result =
+            ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
 
         Ok(action_result.as_results())
     }

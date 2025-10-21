@@ -1,4 +1,6 @@
-use crate::admin::models::{AdminUser, AdminUserResponse, CreateAdminRequest, UpdateAdminRequest};
+use crate::admin::models::{
+    AdminUser, AdminUserResponse, CreateAdminRequest, ResetPasswordRequest, UpdateAdminRequest,
+};
 use crate::database::DatabasePool;
 use crate::errors::ServiceError;
 use uuid::Uuid;
@@ -118,6 +120,41 @@ impl AdminService {
             id: id.to_string(),
             username: username.to_string(),
             is_super_admin,
+        })
+    }
+
+    pub async fn reset_password(
+        &self,
+        user_id: &str,
+        request: ResetPasswordRequest,
+    ) -> Result<AdminUserResponse, ServiceError> {
+        if request.new_password.trim().is_empty() {
+            return Err(ServiceError::Validation("新密码不能为空".to_string()));
+        }
+
+        let existing_user = self
+            .find_by_id(user_id)
+            .await?
+            .ok_or(ServiceError::UserNotFound)?;
+
+        let hashed_password = bcrypt::hash(&request.new_password, self.bcrypt_cost)?;
+
+        sqlx::query(
+            r#"
+            UPDATE admin_users
+            SET password = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            "#,
+        )
+        .bind(&hashed_password)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(AdminUserResponse {
+            id: existing_user.id,
+            username: existing_user.username,
+            is_super_admin: existing_user.is_super_admin,
         })
     }
 

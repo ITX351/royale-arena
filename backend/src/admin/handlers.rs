@@ -5,7 +5,8 @@ use axum::{
 
 use crate::admin::models::{
     AdminListResponse, CreateAdminRequest, CreateAdminResponse, DeleteAdminResponse, JwtClaims,
-    LoginRequest, LoginResponse, UpdateAdminRequest, UpdateAdminResponse,
+    LoginRequest, LoginResponse, ResetPasswordRequest, ResetPasswordResponse, UpdateAdminRequest,
+    UpdateAdminResponse,
 };
 use crate::errors::ServiceError;
 use crate::routes::AppState;
@@ -56,6 +57,24 @@ pub async fn update_admin(
     Ok(Json(UpdateAdminResponse {
         success: true,
         message: "Admin user updated successfully".to_string(),
+        user,
+    }))
+}
+
+/// 管理员重置自身密码
+pub async fn reset_admin_password(
+    State(app_state): State<AppState>,
+    Extension(claims): Extension<JwtClaims>,
+    Json(request): Json<ResetPasswordRequest>,
+) -> Result<Json<ResetPasswordResponse>, ServiceError> {
+    let user = app_state
+        .admin_service
+        .reset_password(&claims.sub, request)
+        .await?;
+
+    Ok(Json(ResetPasswordResponse {
+        success: true,
+        message: "Password reset successfully".to_string(),
         user,
     }))
 }

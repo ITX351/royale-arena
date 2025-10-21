@@ -142,6 +142,32 @@ export const useAdminStore = defineStore('admin', () => {
     error.value = null
   }
 
+  // 重置当前管理员密码
+  const resetPassword = async (newPassword: string) => {
+    if (!userInfo.value) {
+      return { success: false, message: '未找到管理员信息，请重新登录后再试' }
+    }
+
+    try {
+      const response = await adminService.resetOwnPassword({ new_password: newPassword })
+
+      if (response.success) {
+        userInfo.value = { ...userInfo.value, ...response.user }
+        localStorage.setItem('admin_user', JSON.stringify(response.user))
+        return { success: true, message: response.message }
+      }
+
+      return {
+        success: false,
+        message: response.message || '密码重置失败，请稍后重试'
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.error?.message || err.message || '密码重置失败，请稍后重试'
+      console.error('管理员密码重置失败:', err)
+      return { success: false, message }
+    }
+  }
+
   return {
     // 状态
     isLoggedIn,
@@ -155,6 +181,7 @@ export const useAdminStore = defineStore('admin', () => {
     initAuth,
     login,
     logout,
-    clearError
+    clearError,
+    resetPassword
   }
 })

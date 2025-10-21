@@ -6,7 +6,9 @@ use axum::{
 };
 
 use crate::admin::service::AdminService;
-use crate::admin::{admin_login, create_admin, delete_admin, list_admins, update_admin};
+use crate::admin::{
+    admin_login, create_admin, delete_admin, list_admins, reset_admin_password, update_admin,
+};
 use crate::auth::{AuthService, jwt_auth_middleware, super_admin_middleware};
 use crate::director::{
     DirectorService, batch_add_players, batch_delete_players, edit_game, get_players,
@@ -96,6 +98,15 @@ pub fn create_routes(
         ))
         .with_state(app_state.clone());
 
+    // 管理员自助操作路由
+    let admin_self_routes = Router::new()
+        .route("/users/me/password", put(reset_admin_password))
+        .layer(middleware::from_fn_with_state(
+            auth_service.clone(),
+            jwt_auth_middleware,
+        ))
+        .with_state(app_state.clone());
+
     // 需要管理员权限的游戏管理路由
     let game_admin_routes = Router::new()
         .route("/", get(get_games))
@@ -171,6 +182,7 @@ pub fn create_routes(
     // 组装 API 路由
     let api_routes = Router::new()
         .nest("/admin", admin_routes)
+        .nest("/admin", admin_self_routes)
         .nest("/admin/games", game_admin_routes)
         .nest("/admin/rule-templates", rule_template_admin_routes)
         .merge(public_routes)

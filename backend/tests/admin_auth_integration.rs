@@ -1,5 +1,7 @@
 use royale_arena_backend::{
-    admin::{AdminService, CreateAdminRequest, LoginRequest, UpdateAdminRequest},
+    admin::{
+        AdminService, CreateAdminRequest, LoginRequest, ResetPasswordRequest, UpdateAdminRequest,
+    },
     auth::{AuthService, JwtManager},
     config::AppConfig,
 };
@@ -52,19 +54,40 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
         password: super_admin_password.to_string(),
     };
 
-    let login_response = auth_service.login(login_request).await?;
-    assert!(login_response.success);
-    assert!(!login_response.token.is_empty());
-    assert_eq!(login_response.expires_in, 24 * 3600);
+    let login_response_initial = auth_service.login(login_request).await?;
+    assert!(login_response_initial.success);
+    assert!(!login_response_initial.token.is_empty());
+    assert_eq!(login_response_initial.expires_in, 24 * 3600);
 
-    let super_admin_token = login_response.token;
+    let super_admin_token = login_response_initial.token;
 
     // 测试 3: 验证 JWT Token
     let claims = auth_service.validate_token(&super_admin_token).await?;
     assert_eq!(claims.username, "superadmin");
     assert!(claims.is_super_admin);
 
-    // 测试 4: 创建普通管理员
+    // 测试 4: 重置超级管理员密码
+    let reset_request = ResetPasswordRequest {
+        new_password: "superadmin_reset_456".to_string(),
+    };
+
+    let reset_response = admin_service
+        .reset_password(&super_admin_id, reset_request)
+        .await?;
+    assert_eq!(reset_response.username, "superadmin");
+    assert!(reset_response.is_super_admin);
+
+    // 测试 5: 使用新密码登录
+    let login_request_after_reset = LoginRequest {
+        username: "superadmin".to_string(),
+        password: "superadmin_reset_456".to_string(),
+    };
+
+    let login_response_after_reset = auth_service.login(login_request_after_reset).await?;
+    assert!(login_response_after_reset.success);
+    assert!(!login_response_after_reset.token.is_empty());
+
+    // 测试 6: 创建普通管理员
     let create_request = CreateAdminRequest {
         username: "admin1".to_string(),
         password: "admin123".to_string(),
@@ -77,7 +100,7 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
 
     let admin1_id = created_admin.id.clone();
 
-    // 测试 5: 获取管理员列表
+    // 测试 7: 获取管理员列表
     let admin_list = admin_service.list_admins().await?;
     assert_eq!(admin_list.len(), 2); // 超级管理员 + 普通管理员
 
@@ -86,7 +109,7 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
     assert!(usernames.contains(&"superadmin"));
     assert!(usernames.contains(&"admin1"));
 
-    // 测试 6: 更新管理员信息
+    // 测试 8: 更新管理员信息
     let update_request = UpdateAdminRequest {
         username: Some("admin1_updated".to_string()),
         password: Some("newpassword123".to_string()),
@@ -99,16 +122,16 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
     assert_eq!(updated_admin.username, "admin1_updated");
     assert!(!updated_admin.is_super_admin);
 
-    // 测试 7: 验证密码更新后的登录
-    let login_request = LoginRequest {
+    // 测试 9: 验证密码更新后的登录
+    let login_request_after_update = LoginRequest {
         username: "admin1_updated".to_string(),
         password: "newpassword123".to_string(),
     };
 
-    let login_response = auth_service.login(login_request).await?;
-    assert!(login_response.success);
+    let login_response_after_update = auth_service.login(login_request_after_update).await?;
+    assert!(login_response_after_update.success);
 
-    // 测试 8: 删除管理员
+    // 测试 10: 删除管理员
     admin_service.delete_admin(&admin1_id).await?;
 
     // 验证删除后列表只有1个用户
@@ -116,11 +139,11 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
     assert_eq!(admin_list.len(), 1);
     assert_eq!(admin_list[0].username, "superadmin");
 
-    // 测试 9: 尝试删除不存在的用户（应该失败）
+    // 测试 11: 尝试删除不存在的用户（应该失败）
     let delete_result = admin_service.delete_admin("non-existent-id").await;
     assert!(delete_result.is_err());
 
-    // 测试 10: 尝试创建重复用户名（应该失败）
+    // 测试 12: 尝试创建重复用户名（应该失败）
     let duplicate_request = CreateAdminRequest {
         username: "superadmin".to_string(), // 重复的用户名
         password: "password123".to_string(),
@@ -130,7 +153,7 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
     let duplicate_result = admin_service.create_admin(duplicate_request).await;
     assert!(duplicate_result.is_err());
 
-    // 测试 11: 错误凭据登录（应该失败）
+    // 测试 13: 错误凭据登录（应该失败）
     let invalid_login = LoginRequest {
         username: "superadmin".to_string(),
         password: "wrongpassword".to_string(),
@@ -139,7 +162,7 @@ async fn test_admin_auth_complete_flow(pool: MySqlPool) -> Result<(), Box<dyn st
     let invalid_result = auth_service.login(invalid_login).await;
     assert!(invalid_result.is_err());
 
-    // 测试 12: 无效 Token 验证（应该失败）
+    // 测试 14: 无效 Token 验证（应该失败）
     let invalid_token_result = auth_service.validate_token("invalid.token.here").await;
     assert!(invalid_token_result.is_err());
 

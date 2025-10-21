@@ -64,6 +64,12 @@ pub struct UpdateAdminRequest {
     pub is_super_admin: Option<bool>,
 }
 
+/// 重置密码请求
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub new_password: String,
+}
+
 /// 管理员列表响应
 #[derive(Debug, Serialize)]
 pub struct AdminListResponse {
@@ -91,6 +97,14 @@ pub struct UpdateAdminResponse {
 pub struct DeleteAdminResponse {
     pub success: bool,
     pub message: String,
+}
+
+/// 重置密码响应
+#[derive(Debug, Serialize)]
+pub struct ResetPasswordResponse {
+    pub success: bool,
+    pub message: String,
+    pub user: AdminUserResponse,
 }
 
 /// JWT Claims 结构

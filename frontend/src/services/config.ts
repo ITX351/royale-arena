@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   ADMIN_GAMES: '/admin/games',
   ADMIN_RULES: '/admin/rule-templates',
   ADMIN_USERS: '/admin/users',
+  ADMIN_RESET_PASSWORD: '/admin/users/me/password',
   
   // 导演控制台相关
   DIRECTOR_PLAYERS: (gameId: string) => `/game/${gameId}/players`,
