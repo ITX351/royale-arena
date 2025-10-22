@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM kill_records WHERE game_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "5de72308c507437ce1cd62d86385f97702a41a0a92829d7443e5b7e02e2f10ad"
+}

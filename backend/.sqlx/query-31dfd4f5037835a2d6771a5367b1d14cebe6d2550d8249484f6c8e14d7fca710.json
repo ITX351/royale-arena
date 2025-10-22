@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            INSERT INTO game_logs (id, game_id, type, message, player_id, timestamp, visible_to_all_players, visible_to_director)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "31dfd4f5037835a2d6771a5367b1d14cebe6d2550d8249484f6c8e14d7fca710"
+}

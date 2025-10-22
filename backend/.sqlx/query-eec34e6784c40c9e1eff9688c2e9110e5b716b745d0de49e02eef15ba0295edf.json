@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM game_logs WHERE game_id = ? AND timestamp > ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "eec34e6784c40c9e1eff9688c2e9110e5b716b745d0de49e02eef15ba0295edf"
+}

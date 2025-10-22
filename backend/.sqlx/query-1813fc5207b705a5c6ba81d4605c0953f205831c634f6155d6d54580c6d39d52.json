@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM kill_records WHERE game_id = ? AND kill_time > ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "1813fc5207b705a5c6ba81d4605c0953f205831c634f6155d6d54580c6d39d52"
+}
