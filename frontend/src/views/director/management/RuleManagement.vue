@@ -45,19 +45,6 @@
             />
             
             <div v-else class="rules-editor">
-              <el-alert
-                title="规则配置说明"
-                type="info"
-                show-icon
-                :closable="false"
-                class="rules-info"
-              >
-                <template #default>
-                  <p>您可以在此编辑游戏规则的JSON配置。修改后请点击"保存规则"按钮应用更改。</p>
-                  <p>注意：不正确的规则配置可能导致游戏无法正常运行。</p>
-                </template>
-              </el-alert>
-              
               <el-tabs v-model="activeTab" class="rules-tabs">
                 <el-tab-pane label="JSON编辑器" name="editor">
                   <el-row :gutter="24">
@@ -614,19 +601,6 @@ watch(activeDocTab, (newTab) => {
 
 .rules-content {
   min-height: 300px;
-  margin-top: 16px;
-}
-
-.no-rules-alert {
-  margin-bottom: 20px;
-}
-
-.rules-info {
-  margin-bottom: 20px;
-}
-
-.rules-tabs {
-  margin-top: 20px;
 }
 
 .editor-container {
@@ -662,10 +636,6 @@ watch(activeDocTab, (newTab) => {
   line-height: 1.5;
 }
 
-.rules-parser {
-  padding: 20px 0;
-}
-
 .parser-section {
   padding: 16px;
 }
@@ -688,7 +658,6 @@ watch(activeDocTab, (newTab) => {
 }
 
 .rules-documentation {
-  padding: 20px 0;
   max-width: 100%;
   overflow-x: hidden;
   width: 100%;
@@ -749,7 +718,6 @@ watch(activeDocTab, (newTab) => {
   padding: 16px;
   border-radius: 4px;
   overflow-x: auto;
-  margin: 16px 0;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -764,7 +732,6 @@ watch(activeDocTab, (newTab) => {
 /* Mermaid图表样式 */
 .mermaid {
   text-align: center;
-  margin: 16px 0;
   background: white;
   padding: 16px;
   border-radius: 4px;
@@ -773,7 +740,6 @@ watch(activeDocTab, (newTab) => {
 
 .documentation-content blockquote {
   border-left: 4px solid #409eff;
-  padding: 0 16px;
   margin: 16px 0;
   color: #606266;
 }

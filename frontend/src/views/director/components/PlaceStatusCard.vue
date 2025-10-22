@@ -146,7 +146,12 @@ const dialogTitle = ref('')
 
 // 计算属性
 const placeList = computed<Place[]>(() => {
-  return props.places
+  return [...props.places].sort((a, b) => {
+    if (a.is_destroyed === b.is_destroyed) {
+      return a.name.localeCompare(b.name)
+    }
+    return a.is_destroyed ? 1 : -1
+  })
 })
 
 const hasAnyItems = computed(() => {

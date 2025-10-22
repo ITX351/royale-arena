@@ -59,7 +59,7 @@
               </template>
             </el-table-column>
             
-            <el-table-column prop="name" label="演员名称" min-width="120">
+            <el-table-column prop="name" label="演员名称" width="120">
               <template #default="{ row }">
                 <el-text class="player-name">{{ row.name }}</el-text>
               </template>
@@ -540,7 +540,6 @@ const handleBatchDelete = async () => {
 <style scoped>
 .players-card {
   margin-bottom: 24px;
-  min-width: 900px; /* 设置最小宽度以保持布局稳定 */
 }
 
 /* 卡片头部 */

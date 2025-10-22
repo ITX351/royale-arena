@@ -36,6 +36,16 @@
   margin-top: 20px;
 }
 
+.shared-main-layout--single-column {
+  justify-content: center;
+}
+
+.shared-main-layout--single-column .shared-left-content {
+  flex: none;
+  width: 100%;
+  max-width: 840px;
+}
+
 /* 左右内容区域 */
 .shared-left-content {
   flex: 7; /* 占70%宽度 */
@@ -74,6 +84,10 @@
   .shared-left-content,
   .shared-right-content {
     flex: 1; /* 在移动端均分宽度 */
+  }
+
+  .shared-main-layout--single-column .shared-left-content {
+    max-width: 100%;
   }
   
   .shared-log-message {
