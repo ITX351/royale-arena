@@ -42,8 +42,10 @@ async fn main() {
         .await
         .expect("Failed to create database pool");
 
+    let admin_service = AdminService::new(pool.clone(), config.bcrypt_cost);
+
     // 系统初始化
-    if let Err(e) = SystemInitializer::initialize_game_states(&pool).await {
+    if let Err(e) = SystemInitializer::initialize_system(&pool, &admin_service).await {
         eprintln!("系统初始化错误: {}", e);
     }
 
@@ -52,7 +54,6 @@ async fn main() {
 
     // 创建服务实例
     let auth_service = AuthService::new(pool.clone(), jwt_manager);
-    let admin_service = AdminService::new(pool.clone(), config.bcrypt_cost);
     let director_service = DirectorService::new(pool.clone());
     let game_service = GameService::new(pool.clone());
     let game_state_manager = GlobalGameStateManager::new(pool.clone());

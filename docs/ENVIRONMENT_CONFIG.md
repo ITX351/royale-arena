@@ -129,10 +129,7 @@ vi .env
 # 3. 构建生产版本
 cargo build --release
 
-# 4. 运行数据库迁移
-cargo run --bin init_admin_users
-
-# 5. 启动服务
+# 4. 启动服务
 ./target/release/royale-arena-backend
 ```
 
@@ -140,7 +137,7 @@ cargo run --bin init_admin_users
 
 ```bash
 # 1. 构建生产版本
-npm run build
+pnpm build
 
 # 2. 部署到Web服务器
 cp -r dist/* /var/www/royale-arena/frontend/

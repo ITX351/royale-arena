@@ -3,7 +3,7 @@ export const API_CONFIG = {
   BASE_URL: import.meta.env.PROD 
     ? '/royale-arena/api'   // 生产环境API路径
     : '/royale-arena/api',   // 开发环境API路径
-  TIMEOUT: 3000000
+  TIMEOUT: 3000
 }
 
 // API endpoints

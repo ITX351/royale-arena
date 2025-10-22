@@ -10,12 +10,14 @@ export default defineConfig({
       '@': path.resolve(process.cwd(), 'src')
     }
   },
+  base: '/royale-arena/',
   server: {
     proxy: {
       '/royale-arena/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
-        ws: true // 启用WebSocket代理
+        ws: true,
+        rewrite: (path) => path.replace(/^\/royale-arena\/api/, '')
       }
     }
   }

@@ -12,6 +12,8 @@ const AdminGamesPage = () => import('@/views/admin/AdminGamesPage.vue')
 const AdminRulesPage = () => import('@/views/admin/AdminRulesPage.vue')
 const AdminUsersPage = () => import('@/views/admin/AdminUsersPage.vue')
 
+const TITLE_PREFIX = '雾雨小镇大逃杀 - '
+
 const routes = [
   // 公共路由
   {
@@ -19,7 +21,7 @@ const routes = [
     name: 'Home',
     component: HomePage,
     meta: {
-      title: '雾雨小镇大逃杀 - 首页'
+      title: '首页'
     }
   },
   {
@@ -51,7 +53,7 @@ const routes = [
     name: 'ActorMain',
     component: ActorMain,
     meta: {
-      title: '演员界面'
+      title: '演员'
     }
   },
   {
@@ -59,7 +61,7 @@ const routes = [
     name: 'ActorMainWithPassword',
     component: ActorMain,
     meta: {
-      title: '演员界面'
+      title: '夜晚行动'
     }
   },
   
@@ -119,7 +121,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/royale-arena/'),
   routes
 })
 
@@ -136,9 +138,10 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
   
-  // 设置页面标题
+  // 设置页面标题（统一添加公共前缀）
   if (to.meta.title) {
-    document.title = to.meta.title as string
+    const rawTitle = to.meta.title as string
+    document.title = `${TITLE_PREFIX}${rawTitle}`
   }
   
   // 检查是否需要管理员认证

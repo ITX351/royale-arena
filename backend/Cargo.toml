@@ -8,10 +8,6 @@ default-run = "royale-arena-backend"
 name = "royale_arena_backend"
 path = "src/lib.rs"
 
-[[bin]]
-name = "init_admin_users"
-path = "src/bin/init_admin_users.rs"
-
 [dependencies]
 # Web框架 - 替换actix-web
 axum = { version = "0.8.4", features = ["ws"] }

@@ -194,7 +194,11 @@ pub fn create_routes(
         .merge(auth_routes);
 
     // 最终应用路由
-    Router::new().nest(api_prefix, api_routes)
+    if api_prefix.is_empty() || api_prefix == "/" {
+        api_routes
+    } else {
+        Router::new().nest(api_prefix, api_routes)
+    }
 }
 
 // 健康检查端点

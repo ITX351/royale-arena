@@ -97,6 +97,21 @@
         </div>
       </div>
     </main>
+    <footer class="footer">
+      <div class="container">
+        <nav class="footer-links">
+          <a href="https://www.mistytown.cn/forum.php" target="_blank" rel="noopener noreferrer">
+            雾雨小镇
+          </a>
+          <a href="https://space.bilibili.com/522021" target="_blank" rel="noopener noreferrer">
+            ITX351
+          </a>
+          <a href="https://github.com/ITX351/royale-arena" target="_blank" rel="noopener noreferrer">
+            RoyaleArena工程
+          </a>
+        </nav>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -175,6 +190,8 @@ onMounted(async () => {
 .home-page {
   min-height: 100vh;
   background-color: #f5f7fa;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -183,6 +200,7 @@ onMounted(async () => {
   position: sticky;
   top: 0;
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .header-content {
@@ -191,6 +209,29 @@ onMounted(async () => {
   justify-content: space-between;
   height: 64px;
   gap: 16px;
+}
+
+.footer {
+  padding: 16px 0;
+  background: white;
+  border-top: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.footer-links a {
+  color: #606266;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: #409eff;
 }
 
 .logo-section .logo {
@@ -223,6 +264,7 @@ onMounted(async () => {
 
 .main-content {
   padding: 24px 0;
+  flex: 1;
 }
 
 .error-alert {
