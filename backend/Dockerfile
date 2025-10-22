@@ -35,17 +35,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # 非 root 运行
-RUN useradd -m -u 10001 -s /usr/sbin/nologin appuser
+RUN useradd -m -u 1001 -s /usr/sbin/nologin appuser
 
+# 使用 /srv/app 作为工作目录，确保存在并且属于 appuser
+RUN mkdir -p /srv/app && chown appuser:appuser /srv/app
 WORKDIR /srv/app
 
-# 拷贝二进制
-COPY --from=builder /app/target/release/royale-arena-backend /usr/local/bin/royale-arena-backend
+# 拷贝二进制到 /srv/app（以便 current_exe 的 parent 在 /srv/app）
+COPY --from=builder /app/target/release/royale-arena-backend /srv/app/royale-arena-backend
+RUN chown appuser:appuser /srv/app/royale-arena-backend
 
 USER appuser
 
 ENV RUST_LOG=info
-EXPOSE 8080
+EXPOSE 3000
 
-# 如果你的程序有子命令，请按需调整
-CMD ["royale-arena-backend"]
+CMD ["./royale-arena-backend"]
