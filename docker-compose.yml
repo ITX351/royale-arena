@@ -2,7 +2,9 @@ services:
   mysql:
     image: mysql:5.7
     container_name: discuz_mysql
-    network_mode: "host"  # 添加这一行
+    # network_mode: "host"
+    ports:
+      - "3306:3306"
     environment:
       TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -17,7 +19,9 @@ services:
   adminer:
     image: adminer
     container_name: discuz_adminer
-    network_mode: "host"  # 添加这一行
+    # network_mode: "host"
+    ports:
+      - "8080:8080"
     environment:
       TZ: Asia/Shanghai
     depends_on:
