@@ -6,6 +6,7 @@
       :places="placeList"
       :players="actorPlayerList"
       :global-state="globalState"
+      :communication-visible="showInventoryDetails"
       @action="handlePlayerAction"
     />
 
@@ -26,12 +27,22 @@
     />
 
     <div class="main-content" v-if="player">
-      <div class="inventory-section">
+      <div class="inventory-section" :class="{ collapsed: !showInventoryDetails }">
         <div class="section-header">
           <h3>背包管理</h3>
-          <el-tag v-if="player" type="info">总物品数: {{ totalItemCount }}</el-tag>
+          <el-button
+            type="primary"
+            link
+            class="toggle-button"
+            :icon="showInventoryDetails ? ArrowUp : ArrowDown"
+            @click="toggleInventorySection"
+          />
+          <div class="section-controls">
+            <el-tag v-if="player" type="info">总物品数: {{ totalItemCount }}</el-tag>
+          </div>
         </div>
         <InventoryPanel
+          v-if="showInventoryDetails"
           :player="player"
           :players="actorPlayerList"
           @equip-item="handleEquipItem"
@@ -47,10 +58,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
 import type { Player, GlobalState, ActorPlayer, ActorPlace } from '@/types/gameStateTypes'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 
 import CompactActionPanel from '@/views/actor/components/CompactActionPanel.vue'
 import InventoryPanel from '@/views/actor/components/InventoryPanel.vue'
@@ -61,6 +73,8 @@ defineProps<{
 
 // 使用游戏状态存储
 const gameStateStore = useGameStateStore()
+
+const showInventoryDetails = ref(true)
 
 // 计算属性
 const player = computed<Player | null>(() => {
@@ -91,6 +105,10 @@ const totalItemCount = computed(() => {
   if (current.equipped_armor) count++
   return count
 })
+
+const toggleInventorySection = () => {
+  showInventoryDetails.value = !showInventoryDetails.value
+}
 
 // 方法
 const handlePlayerAction = (action: string, params: Record<string, any> = {}) => {
@@ -176,6 +194,22 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
 
 .section-header :deep(.el-tag) {
   white-space: nowrap;
+}
+
+.section-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.toggle-button {
+  padding: 0;
+}
+
+.inventory-section.collapsed {
+  min-height: auto;
+  padding-bottom: 12px;
 }
 
 @media (max-width: 768px) {

@@ -233,6 +233,12 @@ onMounted(async () => {
   display: grid;
   gap: 20px;
   margin-bottom: 24px;
+  justify-items: center;
+}
+
+.games-grid :deep(.game-card) {
+  width: 100%;
+  max-width: 330px;
 }
 
 .empty-state {

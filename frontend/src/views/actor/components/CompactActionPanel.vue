@@ -135,7 +135,7 @@
   </div>
 
   <!-- 通信快捷区 -->
-  <div class="communication-actions">
+  <div class="communication-actions" v-if="props.communicationVisible">
     <div class="comm-row">
       <!-- 传音 -->
       <div class="deliver-group">
@@ -196,16 +196,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, withDefaults } from 'vue'
 import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   player: Player
   places: ActorPlace[]
   players: ActorPlayer[]
   globalState: GlobalState | null
-}>()
+  communicationVisible?: boolean
+}>(), {
+  communicationVisible: true
+})
 
 const emit = defineEmits<{
   action: [action: string, params: Record<string, any>]

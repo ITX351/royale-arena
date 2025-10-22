@@ -25,7 +25,10 @@
     <!-- 主内容 -->
     <div v-else-if="game" class="shared-content">
       <!-- 左右分栏布局 -->
-      <div class="shared-main-layout">
+      <div
+        class="shared-main-layout"
+        :class="{ 'shared-main-layout--single-column': !shouldShowLogMessage }"
+      >
         <!-- 左侧内容区域 -->
         <div class="shared-left-content">
           <!-- 题头组件 -->
@@ -62,9 +65,8 @@
         </div>
 
         <!-- 右侧日志消息区域 -->
-        <div class="shared-right-content">
+        <div class="shared-right-content" v-if="shouldShowLogMessage">
           <LogMessage 
-            v-if="shouldShowLogMessage"
             :messages="logMessages"
             :players="actorPlayerList"
             class="shared-log-message"
