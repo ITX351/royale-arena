@@ -14,7 +14,7 @@
     </div>
     <div class="status-item">
       <span class="status-label">位置:</span>
-      <span class="status-value location">{{ player.location || '未出生' }}</span>
+      <span class="status-value location">{{ locationDisplay }}</span>
     </div>
     <div v-if="playerBleedDamage > 0" class="status-item bleed">
       <span class="status-label">流血:</span>
@@ -106,7 +106,7 @@
             捡拾
           </el-button>
         </div>
-        <div class="rest-status-chip" :class="restStatusClass">
+        <div class="rest-status-chip rest-desktop" :class="restStatusClass">
           <span class="rest-status-text">{{ restStatusLabel }}</span>
         </div>
       </div>
@@ -185,6 +185,12 @@
           发送
         </el-button>
       </div>
+      <div
+        class="rest-status-chip rest-mobile"
+        :class="restStatusClass"
+      >
+        <span class="rest-status-text">{{ restStatusLabel }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -248,6 +254,13 @@ const restStatusClass = computed(() => {
 
 const playerVoteCount = computed(() => {
   return calculatePlayerVotes(props.player)
+})
+
+const locationDisplay = computed(() => {
+  if (!props.player.is_alive) {
+    return '已死亡'
+  }
+  return props.player.location || '未出生'
 })
 
 const nightStartMs = computed(() => {
@@ -555,6 +568,11 @@ function formatDuration(durationMs: number) {
   align-items: center;
 }
 
+.rest-status-chip.rest-mobile {
+  display: none;
+  white-space: nowrap;
+}
+
 .rest-status-chip.rest-active {
   background: #f0f9eb;
 }
@@ -703,11 +721,13 @@ function formatDuration(durationMs: number) {
   border: 1px dashed #dcdfe6;
   border-radius: 6px;
   background: #ffffff;
+  text-align: center;
 }
 
 .search-result-text {
   font-size: 13px;
   color: #303133;
+  display: inline-block;
 }
 
 .quick-item-row {
@@ -762,30 +782,54 @@ function formatDuration(durationMs: number) {
   align-items: center;
 }
 
+@media (min-width: 769px) {
+  .comm-row {
+    width: 100%;
+  }
+
+  .director-message-group {
+    margin-left: auto;
+  }
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .player-status-bar {
-    flex-direction: column;
-    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: left;
+    gap: 12px;
+  }
+
+  .status-item {
+    flex: 0 1 auto;
   }
 
   .status-item.votes {
     margin-left: 0;
-    align-self: flex-end;
   }
 
   .rest-status-chip {
     margin-left: 0;
   }
 
+  .rest-status-chip.rest-desktop {
+    display: none;
+  }
+
+  .rest-status-chip.rest-mobile {
+    display: flex;
+    margin-left: auto;
+  }
+
   .primary-actions {
     justify-content: center;
-    width: 100%;
+    width: auto;
   }
   
   .action-row {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: left;
+    align-items: left;
   }
   
   .action-group {
@@ -798,31 +842,48 @@ function formatDuration(durationMs: number) {
   }
 
   .timing-hints {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: left;
+    align-items: left;
     gap: 8px;
   }
 
   .timing-search,
   .timing-night {
     text-align: left;
-    min-width: auto;
+    min-width: 150px;
   }
   
   .quick-item-row, .comm-row {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: left;
   }
 }
 
 @media (max-width: 600px) {
   .deliver-group, .director-message-group {
-    flex-direction: column;
-    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+    justify-content: left;
   }
   
-  .el-select, .el-input {
-    width: 100% !important;
+  .deliver-group .el-select,
+  .deliver-group .el-input,
+  .director-message-group .el-input {
+    flex: 1 1 150px;
+    width: auto !important;
+  }
+
+  .deliver-group .el-button,
+  .director-message-group .el-button {
+    flex: 0 0 auto;
+  }
+
+  .rest-status-chip.rest-mobile {
+    flex: 0 0 auto;
   }
 }
 </style>

@@ -27,7 +27,7 @@
     <div class="log-content">
       <div class="filter-wrapper" v-show="showFilters">
         <!-- 添加禁止复制提示 -->
-        <div class="copy-warning">
+        <div class="copy-warning" v-if="!isDirectorView">
           <el-alert
             title="禁止复制记录到发言帖贴证"
             type="warning"
@@ -56,7 +56,7 @@
             />
           </el-form-item>
           
-          <el-form-item label="演员筛选">
+          <el-form-item label="演员筛选" v-if="isDirectorView">
             <el-select 
               v-model="filterForm.selectedPlayer" 
               placeholder="选择演员"
@@ -190,6 +190,8 @@ const playerOptions = computed(() => {
   }))
 })
 
+const isDirectorView = computed(() => props.isDirector === true)
+
 // 工具方法：转换时间戳为本地日期字符串（YYYY-MM-DD）
 const getLocalDateString = (timestamp: string) => {
   const date = new Date(timestamp)
@@ -219,8 +221,12 @@ const filteredMessages = computed(() => {
   
   // 演员筛选
   if (filterForm.value.selectedPlayer) {
-    // 这里需要根据实际的消息结构来筛选，暂时假设消息中包含player_id字段
-    // 由于当前设计中没有明确的player_id字段，此筛选逻辑可能需要调整
+    const targetPlayer = props.players.find(player => player.id === filterForm.value.selectedPlayer)
+    if (targetPlayer?.name) {
+      result = result.filter(message => message.log_message.includes(targetPlayer.name))
+    } else {
+      result = []
+    }
   }
   
   // 关键词筛选
@@ -342,6 +348,12 @@ onMounted(() => {
   if (props.messages && props.messages.length > 0) {
     const initialTimestamps = new Set(props.messages.map(msg => msg.timestamp));
     previousMessageTimestamps.value = initialTimestamps;
+  }
+});
+
+watch(isDirectorView, (isDirector) => {
+  if (!isDirector) {
+    filterForm.value.selectedPlayer = ''
   }
 });
 

@@ -87,7 +87,13 @@ const goHome = () => {
 .header-actions {
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex-shrink: 0;
+  overflow-x: auto;
+  align-items: center;
+}
+
+.header-actions :deep(.el-button) {
+  white-space: nowrap;
 }
 </style>

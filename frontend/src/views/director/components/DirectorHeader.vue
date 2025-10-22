@@ -352,5 +352,30 @@ const goHome = () => {
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
+  overflow: visible;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+}
+
+.header-actions :deep(.el-button) {
+  white-space: nowrap;
+}
+
+.card-header {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

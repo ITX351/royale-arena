@@ -163,6 +163,7 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid #f0f2f5;
+  flex-wrap: nowrap;
 }
 
 .section-header h3 {
@@ -170,6 +171,11 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
   font-size: 16px;
   font-weight: 600;
   color: #303133;
+  white-space: nowrap;
+}
+
+.section-header :deep(.el-tag) {
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
@@ -184,9 +190,7 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
   }
 
   .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    gap: 8px;
   }
 }
 

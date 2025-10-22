@@ -14,7 +14,7 @@
               @click="handleClearAllItems"
               :disabled="!hasAnyItems"
             >
-              清空全场物品
+              清空物品
             </el-button>
             <el-button 
               type="primary" 

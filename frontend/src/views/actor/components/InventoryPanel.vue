@@ -551,6 +551,7 @@ const handlePlayerSelectionCancel = () => {
   gap: 10px;
   font-size: 12px;
   color: #909399;
+  flex-wrap: wrap;
 }
 
 .slot-item-name {
@@ -635,8 +636,8 @@ const handlePlayerSelectionCancel = () => {
   }
   
   .slot-empty-text {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 6px;
   }
   
@@ -661,6 +662,14 @@ const handlePlayerSelectionCancel = () => {
   
   .item-actions {
     align-self: flex-end;
+  }
+
+  :deep(.el-empty__image) {
+    display: none;
+  }
+
+  :deep(.el-empty__description) {
+    margin-top: 0;
   }
 }
 </style>
