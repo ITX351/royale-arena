@@ -192,8 +192,7 @@
         <el-form-item v-if="!editingGame" label="规则模版" prop="rule_template_id">
           <el-select 
             v-model="gameForm.rule_template_id" 
-            placeholder="请选择规则模版（可选）"
-            clearable
+            placeholder="请选择规则模版"
           >
             <el-option 
               v-for="template in ruleTemplates"
@@ -220,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { 
@@ -275,6 +274,22 @@ const gameFormRules: FormRules = {
   max_players: [
     { required: true, message: '请输入最大玩家数', trigger: 'blur' },
     { type: 'number', min: 1, max: 1000, message: '最大玩家数在 1 到 1000 之间', trigger: 'blur' }
+  ],
+  rule_template_id: [
+    {
+      validator: (_rule, value, callback) => {
+        if (editingGame.value) {
+          callback()
+          return
+        }
+        if (!value) {
+          callback(new Error('请选择规则模版'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
   ]
 }
 
@@ -343,14 +358,19 @@ const editGame = (game: GameListItem) => {
   gameForm.description = game.description || ''
   gameForm.director_password = game.director_password || '' // 显示现有密码
   gameForm.max_players = game.max_players
+  gameForm.rule_template_id = ''
   // 注意：编辑时不再显示规则模板选择
   
   showCreateDialog.value = true
+  nextTick(() => gameFormRef.value?.clearValidate())
 }
 
 const createGame = () => {
-  editingGame.value = null;
+  editingGame.value = null
+  gameFormRef.value?.resetFields()
+  gameForm.rule_template_id = ''
   showCreateDialog.value = true
+  nextTick(() => gameFormRef.value?.clearValidate())
 }
 
 const viewGame = (game: GameListItem) => {
@@ -472,16 +492,7 @@ const saveGame = async () => {
 
 const cancelEdit = () => {
   showCreateDialog.value = false
-  //editingGame.value = null
-  
-  // // 重置表单
-  // gameForm.name = ''
-  // gameForm.description = ''
-  // gameForm.director_password = ''
-  // gameForm.max_players = 10
-  // gameForm.rule_template_id = ''
-  
-  //gameFormRef.value?.resetFields()
+  gameFormRef.value?.resetFields()
 }
 
 // 生命周期

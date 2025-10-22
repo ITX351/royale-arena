@@ -8,9 +8,28 @@
 {
   "map": {
     "places": [
-      "码头", "工厂", "贫民窟", "旅馆", "教堂", "市政厅", "消防局", "池塘",
-      "住宅区", "灯塔", "小巷", "学校", "隧道", "山道", "寺庙", "靶场",
-      "医院", "森林", "海滩", "墓园", "井", "研究中心"
+      "码头",
+      "工厂",
+      "贫民窟",
+      "旅馆",
+      "教堂",
+      "市政厅",
+      "消防局",
+      "池塘",
+      "住宅区",
+      "灯塔",
+      "小巷",
+      "学校",
+      "隧道",
+      "山道",
+      "寺庙",
+      "靶场",
+      "医院",
+      "森林",
+      "海滩",
+      "墓园",
+      "井",
+      "研究中心"
     ],
     "safe_places": ["研究中心"]
   },
@@ -55,21 +74,50 @@
     "action_use": "使用",
     "action_throw": "丢弃",
     "action_deliver": "传音",
-    "rest_life_recovery": "生命恢复",
-    "rest_max_moves": "最大移动次数"
+    "rest_life_recovery": "静养生命恢复",
+    "rest_max_moves": "静养允许移动次数"
   },
   "items_config": {
     "rarity_levels": [
-      {"internal_name": "common", "display_name": "普通", "prefix": "[绿]", "is_airdropped": true},
-      {"internal_name": "rare", "display_name": "稀有", "prefix": "[蓝]", "is_airdropped": true},
-      {"internal_name": "epic", "display_name": "史诗", "prefix": "[紫]", "is_airdropped": false},
-      {"internal_name": "legendary", "display_name": "传说", "prefix": "[橙]", "is_airdropped": false}
+      {
+        "internal_name": "common",
+        "display_name": "普通",
+        "prefix": "[绿]",
+        "is_airdropped": true
+      },
+      {
+        "internal_name": "rare",
+        "display_name": "稀有",
+        "prefix": "[蓝]",
+        "is_airdropped": true
+      },
+      {
+        "internal_name": "epic",
+        "display_name": "史诗",
+        "prefix": "[紫]",
+        "is_airdropped": false
+      },
+      {
+        "internal_name": "legendary",
+        "display_name": "传说",
+        "prefix": "[橙]",
+        "is_airdropped": false
+      }
     ],
     "items": {
       "weapons": [
         {
           "internal_name": "common_weapon",
-          "display_names": ["[绿]佩剑", "[绿]战斧", "[绿]长矛", "[绿]皮鞭", "[绿]回力镖", "[绿]IM-10", "[绿]复合弓", "[绿]铁爪"],
+          "display_names": [
+            "[绿]佩剑",
+            "[绿]战斧",
+            "[绿]长矛",
+            "[绿]皮鞭",
+            "[绿]回力镖",
+            "[绿]IM-10",
+            "[绿]复合弓",
+            "[绿]铁爪"
+          ],
           "rarity": "common",
           "properties": {
             "damage": 10,
@@ -78,7 +126,29 @@
         },
         {
           "internal_name": "rare_weapon",
-          "display_names": ["[蓝]大太刀", "[蓝]死神镰刀", "[蓝]斩马刀"],
+          "display_names": [
+            "[蓝]大太刀",
+            "[蓝]死神镰刀",
+            "[蓝]斩马刀",
+            "[蓝]三叉戟",
+            "[蓝]带电短刀",
+            "[蓝]西洋剑",
+            "[蓝]双节棍",
+            "[蓝]荆棘之鞭",
+            "[蓝]白羽扇",
+            "[蓝]燃烧弹",
+            "[蓝]复古扑克",
+            "[蓝]强力回力镖",
+            "[蓝]轻机枪",
+            "[蓝]斯太尔AUG",
+            "[蓝]AK-47",
+            "[蓝]十字弩",
+            "[蓝]诸葛连弩",
+            "[蓝]火矢弓",
+            "[蓝]铁砂掌",
+            "[蓝]羽翼指虎",
+            "[蓝]恶魔之爪"
+          ],
           "rarity": "rare",
           "properties": {
             "damage": 20,
@@ -87,7 +157,20 @@
         },
         {
           "internal_name": "epic_weapon",
-          "display_names": ["[紫]青龙偃月刀", "[紫]盘古斧"],
+          "display_names": [
+            "[紫]青龙偃月刀",
+            "[紫]盘古斧",
+            "[紫]宇宙双叉戟",
+            "[紫]芭蕉扇",
+            "[紫]风魔手里剑",
+            "[紫]蔚蓝匕首",
+            "[紫]北极星",
+            "[紫]魔弹射手",
+            "[紫]丘比特之弓",
+            "[紫]费尔努特",
+            "[紫]血翼指虎",
+            "[紫]裁决之光"
+          ],
           "rarity": "epic",
           "properties": {
             "damage": 35,
@@ -96,7 +179,17 @@
         },
         {
           "internal_name": "legendary_weapon",
-          "display_names": ["[橙]自然之力.晓", "[橙]自然之力.夜"],
+          "display_names": [
+            "[橙]自然之力.晓",
+            "[橙]自然之力.午",
+            "[橙]自然之力.夜",
+            "[橙]自然之力.日",
+            "[橙]自然之力.月",
+            "[橙]自然之力.星",
+            "[橙]自然之力.水",
+            "[橙]自然之力.火",
+            "[橙]自然之力.风"
+          ],
           "rarity": "legendary",
           "properties": {
             "damage": 50,
@@ -110,7 +203,14 @@
       "armors": [
         {
           "internal_name": "common_armor",
-          "display_names": ["[绿]皮甲", "[绿]布衣", "[绿]轻甲"],
+          "display_names": [
+            "[绿]皮甲",
+            "[绿]布衣",
+            "[绿]轻甲",
+            "[绿]热情短裙",
+            "[绿]管家服",
+            "[绿]麻布围裙"
+          ],
           "rarity": "common",
           "properties": {
             "defense": 5,
@@ -119,7 +219,13 @@
         },
         {
           "internal_name": "rare_armor",
-          "display_names": ["[蓝]锁子甲", "[蓝]鳞甲"],
+          "display_names": [
+            "[蓝]神职法衣",
+            "[蓝]御史衣",
+            "[蓝]锁子甲",
+            "[蓝]巡逻骑兵甲",
+            "[蓝]银边祭司法袍"
+          ],
           "rarity": "rare",
           "properties": {
             "defense": 10,
@@ -128,7 +234,13 @@
         },
         {
           "internal_name": "epic_armor",
-          "display_names": ["[紫]板甲", "[紫]重甲"],
+          "display_names": [
+            "[紫]十字军重甲",
+            "[紫]光学迷彩服",
+            "[紫]龙鳞轻铠",
+            "[紫]星象师秘仪袍",
+            "[紫]圣殿骑士板甲"
+          ],
           "rarity": "epic",
           "properties": {
             "defense": 15,
@@ -137,11 +249,17 @@
         },
         {
           "internal_name": "legendary_armor",
-          "display_names": ["[橙]神佑之铠", "[橙]不朽战甲"],
+          "display_names": [
+            "[橙]神佑之铠",
+            "[橙]虚空织影",
+            "[橙]时之守护",
+            "[橙]永恒晨曦",
+            "[橙]余晖之铠"
+          ],
           "rarity": "legendary",
           "properties": {
             "defense": 25,
-            "uses": 3,
+            "uses": 2,
             "votes": 0
           }
         }

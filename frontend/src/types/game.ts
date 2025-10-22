@@ -61,7 +61,7 @@ export interface CreateGameRequest {
   description?: string
   director_password: string
   max_players: number
-  rule_template_id?: string // 保持不变：继续接受 rule_template_id 参数
+  rule_template_id: string
 }
 
 // 更新游戏请求

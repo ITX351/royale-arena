@@ -4,7 +4,7 @@ target/
 
 # Cargo.lock is included in version control for binary projects
 # but not for libraries
-Cargo.lock
+# Cargo.lock
 
 # IDE files
 *.swp

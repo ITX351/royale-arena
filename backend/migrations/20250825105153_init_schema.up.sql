@@ -34,13 +34,10 @@ CREATE TABLE IF NOT EXISTS games (
     description TEXT COMMENT '游戏描述',
     director_password VARCHAR(50) NOT NULL COMMENT '导演密码(1-40字符)',
     max_players INT NOT NULL DEFAULT 100 COMMENT '最大玩家数量',
-    status ENUM('waiting', 'running', 'paused', 'ended') NOT NULL DEFAULT 'waiting' COMMENT '游戏状态',
-    -- 关联规则模板
-    rule_template_id VARCHAR(36) NULL COMMENT '关联的规则模板ID',
+    rules_config JSON NOT NULL COMMENT '游戏规则配置(JSON格式)',
+    status ENUM('waiting', 'running', 'paused', 'ended','hidden','deleted') NOT NULL DEFAULT 'waiting' COMMENT '游戏状态',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    FOREIGN KEY (rule_template_id) REFERENCES rule_templates(id) ON DELETE SET NULL,
-    
     INDEX idx_games_status (status)
 ) COMMENT '游戏实例表';
 
@@ -65,14 +62,19 @@ CREATE TABLE IF NOT EXISTS game_logs (
     `game_id` varchar(36) NOT NULL COMMENT '所属游戏ID',
     `type` enum('SystemNotice','UserDirected') NOT NULL COMMENT '日志级别',
     `message` text NOT NULL COMMENT '日志消息',
-    `player_id` varchar(36) NOT NULL COMMENT '相关玩家ID',
+    `player_id` varchar(36) NULL COMMENT '相关玩家ID',
     `timestamp` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '日志时间戳',
+    `visible_to_all_players` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否对所有玩家可见',
+    `visible_to_director` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否对导演可见',
     FOREIGN KEY (`game_id`) REFERENCES games(id) ON DELETE CASCADE,
     FOREIGN KEY (`player_id`) REFERENCES actors(id) ON DELETE CASCADE,
     
     INDEX idx_game_logs_game_id (game_id),
     INDEX idx_game_logs_type (type),
-    INDEX idx_game_logs_timestamp (timestamp)
+    INDEX idx_game_logs_timestamp (timestamp),
+    INDEX idx_game_logs_player_id (player_id),
+    INDEX idx_game_logs_visible_to_all_players (visible_to_all_players),
+    INDEX idx_game_logs_visible_to_director (visible_to_director)
 ) COMMENT '游戏日志表';
 
 -- 6. 击杀记录表

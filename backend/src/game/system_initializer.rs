@@ -9,6 +9,15 @@ use tracing::info;
 pub struct SystemInitializer;
 
 impl SystemInitializer {
+    /// 执行数据库迁移，确保数据库结构与最新迁移保持一致
+    pub async fn run_migrations(
+        pool: &DatabasePool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        sqlx::migrate!("./migrations").run(pool).await?;
+        info!("系统初始化：数据库迁移执行完成");
+        Ok(())
+    }
+
     /// 确保至少存在一个管理员账户
     /// 当没有管理员账户时，创建一个默认的超级管理员账户
     pub async fn ensure_default_admin(
@@ -68,6 +77,7 @@ impl SystemInitializer {
         pool: &DatabasePool,
         admin_service: &AdminService,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        Self::run_migrations(pool).await?;
         Self::initialize_game_states(pool).await?;
         Self::ensure_default_admin(admin_service).await?;
 

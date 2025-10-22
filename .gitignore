@@ -2,7 +2,7 @@
 /target/
 **/*.rs.bk
 *.pdb
-Cargo.lock
+# Cargo.lock
 
 # Node.js / Vue3 Frontend
 node_modules/
