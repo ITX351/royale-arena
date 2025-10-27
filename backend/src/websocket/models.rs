@@ -190,8 +190,13 @@ impl Player {
         count
     }
     /// 设置持续伤害效果
-    pub fn set_bleed_effect(&mut self, damage: i32) {
-        self.bleed_damage = damage;
+    pub fn update_bleed_effect(&mut self, damage: i32) -> bool {
+        if damage > self.bleed_damage {
+            self.bleed_damage = damage;
+            true
+        } else {
+            false
+        }
     }
 
     /// 清除持续伤害效果

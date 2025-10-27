@@ -104,8 +104,8 @@ impl GameState {
 
         // 消耗体力值
         self.consume_strength(player_id, move_cost)?;
-
         self.record_move_for_rest_mode(player_id);
+        self.clear_player_search_result(player_id);
 
         // 向该玩家发送位置更新结果
         let data = serde_json::json!({
@@ -252,8 +252,8 @@ impl GameState {
                     let player = self.players.get_mut(player_id).unwrap();
                     player.inventory.push(item);
                     // 清除捡拾者的上一次搜索结果，防止连续捡拾同一物品
-                    player.last_search_result = None;
                 }
+                self.clear_player_search_result(player_id);
 
                 // 消耗体力值
                 self.consume_strength(player_id, pick_cost)?;

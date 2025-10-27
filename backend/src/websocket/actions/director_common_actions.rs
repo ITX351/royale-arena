@@ -267,7 +267,7 @@ impl GameState {
             );
         }
 
-        if current_life == 0 && !is_alive && life > 0 {
+        if current_life <= 0 && !is_alive && life > 0 {
             return self.revive_player(player_id, life);
         }
 

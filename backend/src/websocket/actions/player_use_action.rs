@@ -672,7 +672,7 @@ impl GameState {
                 if dealt == 0 {
                     continue;
                 }
-                if target.life == 0 && target.is_alive {
+                if target.life <= 0 && target.is_alive {
                     requires_kill = true;
                 }
                 dealt

@@ -351,10 +351,7 @@ impl GameState {
 
     /// 处理空搜索结果
     pub fn handle_empty_search_result(&mut self, player_id: &str) -> Result<ActionResults, String> {
-        {
-            let player = self.players.get_mut(player_id).unwrap();
-            player.last_search_result = None;
-        }
+        self.clear_player_search_result(player_id);
 
         let (player_strength, player_last_search_time) = {
             let player = self.players.get(player_id).unwrap();
@@ -409,6 +406,12 @@ impl GameState {
             (player.strength, player.last_search_time)
         };
 
+        let display_target_id = if reveal_target_name {
+            target_player_id.to_string()
+        } else {
+            "unknown".to_string()
+        };
+
         let display_target_name = if reveal_target_name {
             target_player_name.clone()
         } else {
@@ -418,7 +421,7 @@ impl GameState {
         let data = serde_json::json!({
             "last_search_result": {
                 "target_type": "player",
-                "target_id": target_player_id,
+                "target_id": display_target_id,
                 "target_name": display_target_name
             },
             "strength": player_strength,
@@ -502,5 +505,11 @@ impl GameState {
         );
 
         Ok(action_result.as_results())
+    }
+
+    pub fn clear_player_search_result(&mut self, player_id: &str) {
+        if let Some(player) = self.players.get_mut(player_id) {
+            player.last_search_result = None;
+        }
     }
 }
