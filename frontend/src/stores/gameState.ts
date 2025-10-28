@@ -131,7 +131,11 @@ export const useGameStateStore = defineStore('gameState', () => {
     
     // 如果有动作结果，只有非Info类型的消息才添加到日志消息中
     if (newState.action_result && newState.action_result.message_type !== 'Info') {
-      addLogMessage(newState.action_result)
+      // 如果消息没有ID，为WebSocket消息添加UUID
+      const resultWithId = newState.action_result.id 
+        ? newState.action_result 
+        : { ...newState.action_result, id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(36).substr(2, 9) };
+      addLogMessage(resultWithId)
     }
   }
 

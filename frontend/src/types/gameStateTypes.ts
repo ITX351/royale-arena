@@ -99,6 +99,7 @@ export type MessageType = 'SystemNotice' | 'UserDirected' | 'Info';
 
 // 动作结果接口
 export interface ActionResult {
+  id?: string; // 后端API返回的ID或前端为WebSocket消息添加的UUID
   data?: Record<string, any>;
   log_message: string;
   message_type: MessageType;

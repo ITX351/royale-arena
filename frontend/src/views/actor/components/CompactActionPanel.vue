@@ -196,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, withDefaults } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 
@@ -448,12 +448,7 @@ const handleAttack = () => {
   if (actionsDisabled.value) {
     return
   }
-  const target = props.player.last_search_result
-  if (target?.target_type === 'player') {
-    emit('action', 'attack', { target_player_id: target.target_id })
-  } else {
-    emit('action', 'attack', {})
-  }
+  emit('action', 'attack', {})
 }
 
 const handlePick = () => {

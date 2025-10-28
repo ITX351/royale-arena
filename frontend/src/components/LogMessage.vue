@@ -95,7 +95,7 @@
       <div class="log-list" ref="logListRef">
         <div 
           v-for="message in displayedMessages" 
-          :key="message.timestamp"
+          :key="message.id"
           :class="['log-item', message.message_type, isNewMessage(message.timestamp) ? 'fade-effect' : '']"
           :data-timestamp="message.timestamp"
         >
