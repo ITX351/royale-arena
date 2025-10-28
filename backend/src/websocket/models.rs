@@ -86,7 +86,7 @@ pub struct GameState {
     /// 投票记录，键为投票者ID，值为被投票者ID
     pub votes: HashMap<String, String>,
     /// 游戏规则配置（原始JSON）
-    pub rules_config: serde_json::Value,
+    pub rules_config: JsonValue,
     /// 解析后的规则引擎（用于运行时规则查询）
     #[serde(skip)]
     pub rule_engine: GameRuleEngine,
@@ -302,6 +302,8 @@ pub struct SearchResult {
     pub target_id: String,
     /// 目标名称
     pub target_name: String,
+    /// 搜索结果是否可见
+    pub is_visible: bool,
 }
 
 /// 搜索结果类型枚举
@@ -329,7 +331,7 @@ pub struct ActionResults {
 #[derive(Debug, Clone)]
 pub struct ActionResult {
     /// 动作处理结果数据
-    pub data: serde_json::Value,
+    pub data: JsonValue,
     /// 需要广播消息的玩家ID列表（包括发起者本人）
     pub broadcast_players: Vec<String>,
     /// 日志消息（必须提供）
@@ -347,7 +349,7 @@ pub struct ActionResult {
 impl ActionResult {
     /// 创建新的动作处理结果
     fn new(
-        data: serde_json::Value,
+        data: JsonValue,
         broadcast_players: Vec<String>,
         log_message: String,
         log_type: MessageType,
@@ -366,7 +368,7 @@ impl ActionResult {
 
     /// 创建新的动作处理结果（带系统日志消息）
     pub fn new_system_message(
-        data: serde_json::Value,
+        data: JsonValue,
         broadcast_players: Vec<String>,
         log_message: String,
         broadcast_to_director: bool,
@@ -382,7 +384,7 @@ impl ActionResult {
 
     /// 创建新的动作处理结果（带用户定向日志消息）
     pub fn new_user_message(
-        data: serde_json::Value,
+        data: JsonValue,
         broadcast_players: Vec<String>,
         log_message: String,
         broadcast_to_director: bool,
@@ -398,7 +400,7 @@ impl ActionResult {
 
     /// 创建新的动作处理结果（带Info类型提示消息）
     pub fn new_info_message(
-        data: serde_json::Value,
+        data: JsonValue,
         broadcast_players: Vec<String>,
         log_message: String,
         broadcast_to_director: bool,
@@ -418,21 +420,11 @@ impl ActionResult {
             results: vec![self],
         }
     }
-
-    /// 创建用于返回给前端的数据结构，排除`broadcast_players`字段
-    pub fn to_client_response(&self) -> serde_json::Value {
-        serde_json::json!({
-            "data": self.data,
-            "log_message": self.log_message,
-            "message_type": self.message_type,
-            "timestamp": self.timestamp
-        })
-    }
 }
 
 impl GameState {
     /// 创建新的游戏状态
-    pub fn new(game_id: String, rules_config: serde_json::Value) -> Self {
+    pub fn new(game_id: String, rules_config: JsonValue) -> Self {
         // 解析JSON规则为结构化的规则引擎
         let rules_json =
             serde_json::to_string(&rules_config).expect("Failed to serialize rules config");
@@ -453,25 +445,6 @@ impl GameState {
             save_time: None,
         }
     }
-
-    /// 从已有游戏状态反序列化时重新创建规则引擎
-    // pub fn rebuild_rule_engine(&mut self) {
-    //     let rules_json =
-    //         serde_json::to_string(&self.rules_config).expect("Failed to serialize rules config");
-    //     self.rule_engine =
-    //         GameRuleEngine::from_json(&rules_json).expect("Failed to parse game rules");
-    // }
-
-    /// 生成全局状态信息
-    pub fn generate_global_state_info(&self) -> serde_json::Value {
-        serde_json::json!({
-            "weather": self.weather,
-            "night_start_time": self.night_start_time,
-            "night_end_time": self.night_end_time,
-            "next_night_destroyed_places": self.next_night_destroyed_places,
-            "rules_config": self.rules_config,
-        })
-    }
 }
 
 // 为GameState实现自定义反序列化
@@ -488,7 +461,7 @@ impl<'de> Deserialize<'de> for GameState {
             places: HashMap<String, Place>,
             weather: f64,
             votes: HashMap<String, String>,
-            rules_config: serde_json::Value,
+            rules_config: JsonValue,
             night_start_time: Option<DateTime<Utc>>,
             night_end_time: Option<DateTime<Utc>>,
             next_night_destroyed_places: Vec<String>,

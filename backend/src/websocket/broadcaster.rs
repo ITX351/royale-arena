@@ -2,8 +2,8 @@
 //! 负责向玩家和导演广播游戏状态更新消息，提供隐私保护机制
 
 use crate::websocket::game_connection_manager::GameConnectionManager;
-use crate::websocket::models::ActionResult;
-use crate::websocket::models::{GameState, Player};
+use crate::websocket::models::SearchResultType;
+use crate::websocket::models::{ActionResult, GameState, Place, Player};
 use serde_json::{Value as JsonValue, json};
 
 /// 消息广播器
@@ -25,7 +25,7 @@ impl MessageBroadcaster {
         action_result: Option<&ActionResult>,
     ) -> JsonValue {
         json!({
-            "global_state": game_state.generate_global_state_info(),
+            "global_state": game_state.to_director_client_json(),
             "game_data": {
                 "players": game_state.players,
                 "places": game_state.places,
@@ -44,32 +44,20 @@ impl MessageBroadcaster {
         let actor_places: Vec<JsonValue> = game_state
             .places
             .values()
-            .map(|place| {
-                json!({
-                    "name": place.name,
-                    "is_destroyed": place.is_destroyed
-                    // 注意：不包含players和items字段以保护玩家隐私
-                })
-            })
+            .map(|place| place.to_player_client_json())
             .collect();
 
         // 构建玩家视角的玩家列表信息（不包括玩家id和名字以外的任何信息）
         let actor_players: Vec<JsonValue> = game_state
             .players
             .values()
-            .map(|p| {
-                json!({
-                    "id": p.id,
-                    "name": p.name
-                    // 注意：不包含生命值、体力值、位置等敏感信息
-                })
-            })
+            .map(|p| p.to_player_client_json_for_other_players())
             .collect();
 
         json!({
-            "global_state": game_state.generate_global_state_info(),
+            "global_state": game_state.to_player_client_json(),
             "game_data": {
-                "player": player,
+                "player": player.to_player_client_clone_for_self(), // 使用处理过的Player实例，last_search_result被设置为None
                 "actor_players": actor_players,
                 "actor_places": actor_places,
             },
@@ -111,5 +99,81 @@ impl MessageBroadcaster {
             }
         }
         Ok(())
+    }
+}
+
+// 广播相关的JSON转换函数
+impl Player {
+    /// 生成用于玩家客户端的Player副本（对last_search_result进行隐私处理）
+    pub fn to_player_client_clone_for_self(&self) -> Self {
+        let mut player = self.clone();
+        // 如果搜索结果不可见，则脱敏处理（移除目标名称和ID，无论目标是玩家还是物品）
+        if let Some(ref mut search_result) = player.last_search_result {
+            if !search_result.is_visible {
+                match search_result.target_type {
+                    SearchResultType::Player => {
+                        search_result.target_name = String::from("未知玩家");
+                        search_result.target_id = String::from("");
+                    }
+                    SearchResultType::Item => {
+                        search_result.target_name = String::from("未知物品");
+                        search_result.target_id = String::from("");
+                    }
+                }
+            }
+        }
+        player
+    }
+
+    pub fn to_player_client_json_for_other_players(&self) -> JsonValue {
+        json!({
+            "id": self.id,
+            "name": self.name,
+        })
+    }
+}
+
+impl Place {
+    pub fn to_player_client_json(&self) -> JsonValue {
+        json!({
+            "name": self.name,
+            "is_destroyed": self.is_destroyed,
+        })
+    }
+}
+
+impl GameState {
+    /// 生成导演视角的全局状态信息
+    pub fn to_director_client_json(&self) -> JsonValue {
+        json!({
+            "weather": self.weather,
+            "night_start_time": self.night_start_time,
+            "night_end_time": self.night_end_time,
+            "next_night_destroyed_places": self.next_night_destroyed_places,
+            "rules_config": self.rules_config,
+        })
+    }
+
+    /// 生成玩家视角的全局状态信息
+    pub fn to_player_client_json(&self) -> JsonValue {
+        json!({
+            // "weather": self.weather,
+            "night_start_time": self.night_start_time,
+            "night_end_time": self.night_end_time,
+            // "next_night_destroyed_places": self.next_night_destroyed_places,
+            "rules_config": self.rules_config,
+        })
+    }
+}
+
+impl ActionResult {
+    /// 创建用于返回给前端的数据结构，排除`broadcast_players`字段
+    pub fn to_client_response(&self) -> JsonValue {
+        json!({
+            "data": self.data,
+            "log_message": self.log_message,
+            "message_type": self.message_type,
+            "timestamp": self.timestamp
+        })
     }
 }

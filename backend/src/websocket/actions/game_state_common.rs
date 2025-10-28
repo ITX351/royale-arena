@@ -398,6 +398,7 @@ impl GameState {
                 target_type: SearchResultType::Player,
                 target_id: target_player_id.to_string(),
                 target_name: target_player_name.clone(),
+                is_visible: reveal_target_name,
             });
         }
 
@@ -475,6 +476,7 @@ impl GameState {
                 target_type: SearchResultType::Item,
                 target_id: item_id.to_string(),
                 target_name: item_name.clone(),
+                is_visible: true,
             });
         }
 

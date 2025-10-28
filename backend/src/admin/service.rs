@@ -66,10 +66,9 @@ impl AdminService {
     }
 
     pub async fn has_any_admin(&self) -> Result<bool, ServiceError> {
-        let (count,): (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM admin_users")
-                .fetch_one(&self.pool)
-                .await?;
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM admin_users")
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(count > 0)
     }

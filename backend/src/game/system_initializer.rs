@@ -10,9 +10,7 @@ pub struct SystemInitializer;
 
 impl SystemInitializer {
     /// 执行数据库迁移，确保数据库结构与最新迁移保持一致
-    pub async fn run_migrations(
-        pool: &DatabasePool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run_migrations(pool: &DatabasePool) -> Result<(), Box<dyn std::error::Error>> {
         sqlx::migrate!("./migrations").run(pool).await?;
         info!("系统初始化：数据库迁移执行完成");
         Ok(())
