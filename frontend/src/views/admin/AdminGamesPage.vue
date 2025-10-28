@@ -257,7 +257,7 @@ const gameForm = reactive<CreateGameRequest>({
   name: '',
   description: '',
   director_password: '',
-  max_players: 10,
+  max_players: 100,
   rule_template_id: ''
 })
 

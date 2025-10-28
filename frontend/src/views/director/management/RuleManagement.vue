@@ -351,6 +351,7 @@ import type { GameWithRules } from '@/types/game'
 import type { RuleTemplate } from '@/types/ruleTemplate'
 import { directorService } from '@/services/directorService'
 import { GameRuleParser, type ParsedGameRules } from '@/utils/gameRuleParser'
+import { getBasePathUrl } from '@/utils/commonUtils'
 import RuleTemplateDialog from '@/views/director/components/RuleTemplateDialog.vue'
 
 // Props
@@ -511,7 +512,8 @@ const loadRulesDocumentation = async () => {
     loadingDocumentation.value = true
     documentationError.value = ''
     
-    const response = await fetch('/docs/game-rules-explain.md')
+    // 使用统一的函数获取带 base 路径的 URL
+    const response = await fetch(getBasePathUrl('docs/game-rules-explain.md'))
     if (!response.ok) {
       throw new Error('无法加载规则文档')
     }
@@ -530,7 +532,8 @@ const loadRulesExamples = async () => {
     loadingExamples.value = true
     documentationError.value = ''
     
-    const response = await fetch('/docs/game-rules-examples.md')
+    // 使用统一的函数获取带 base 路径的 URL
+    const response = await fetch(getBasePathUrl('docs/game-rules-examples.md'))
     if (!response.ok) {
       throw new Error('无法加载使用示例')
     }

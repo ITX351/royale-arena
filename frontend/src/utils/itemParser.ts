@@ -226,9 +226,9 @@ export class ItemParser {
       allItems.push(...armor.display_names)
     }
 
-  // 功能道具
-  const utilities = this.itemConfig.utilities.map(item => item.name)
-  allItems.push(...utilities)
+    // 功能道具
+    const utilities = this.itemConfig.utilities.map(item => item.name)
+    allItems.push(...utilities)
 
     // 消耗品
     const consumables = this.itemConfig.consumables.map(item => item.name)
@@ -244,7 +244,7 @@ export class ItemParser {
         weapons: weaponsByRarity,
         armors: armorsByRarity
       },
-  utilities,
+      utilities,
       consumables,
       upgraders,
       rarityLevels: this.itemConfig.rarity_levels
@@ -367,6 +367,14 @@ export class ItemParser {
   }
 
   /**
+   * 获取可空投的物品列表（全部物品减去场上已存在的物品）
+   */
+  getAvailableAirdropItems(): string[] {
+    const allItems = this.parseAllItems()
+    return allItems.allItems.filter(name => !this.existingItems.has(name))
+  }
+
+  /**
    * 更新场上已存在的物品列表
    */
   updateExistingItems(existingItems: string[]) {
@@ -389,10 +397,35 @@ import type { DirectorGameData } from '@/types/gameStateTypes'
 export function extractExistingItemsFromGameState(gameData: DirectorGameData | null): string[] {
   const existingItems: string[] = []
   
+  // 从地点中提取物品
   if (gameData && gameData.places) {
     for (const place of Object.values(gameData.places)) {
       if (place.items && Array.isArray(place.items)) {
         for (const item of place.items) {
+          if (item.name) {
+            existingItems.push(item.name)
+          }
+        }
+      }
+    }
+  }
+  
+  // 从玩家身上提取物品（包括装备和背包）
+  if (gameData && gameData.players) {
+    for (const player of Object.values(gameData.players)) {
+      // 添加已装备的武器
+      if (player.equipped_weapon && player.equipped_weapon.name) {
+        existingItems.push(player.equipped_weapon.name)
+      }
+      
+      // 添加已装备的防具
+      if (player.equipped_armor && player.equipped_armor.name) {
+        existingItems.push(player.equipped_armor.name)
+      }
+      
+      // 添加背包中的物品
+      if (player.inventory && Array.isArray(player.inventory)) {
+        for (const item of player.inventory) {
           if (item.name) {
             existingItems.push(item.name)
           }

@@ -116,6 +116,7 @@ import PlaceStatusCard from '../components/PlaceStatusCard.vue'
 import PlayerStatusCard from '../components/PlayerStatusCard.vue'
 import BroadcastMessage from '../components/BroadcastMessage.vue'
 import { useManualSaveGame } from '../composables/useManualSaveGame'
+import { areStringArraysEqual } from '@/utils/commonUtils'
 
 // 定义组件属性
 const props = defineProps<{
@@ -164,11 +165,29 @@ const { manualSave: manualSaveGame } = useManualSaveGame(gameIdRef, directorPass
 watch(
   () => store.globalState,
   (newState) => {
-    if (newState) {
-      weatherText.value = formatWeather(newState.weather)
-      nightTimeForm.startTime = newState.night_start_time
-      nightTimeForm.endTime = newState.night_end_time
-      selectedDestroyPlaces.value = newState.next_night_destroyed_places || []
+    // Skip reassigning fields when websocket pushes unchanged values to keep popovers open.
+    if (!newState) {
+      return
+    }
+
+    const normalizedWeather = formatWeather(newState.weather)
+    if (normalizedWeather !== weatherText.value) {
+      weatherText.value = normalizedWeather
+    }
+
+    const normalizedStart = newState.night_start_time ?? null
+    if (normalizedStart !== nightTimeForm.startTime) {
+      nightTimeForm.startTime = normalizedStart
+    }
+
+    const normalizedEnd = newState.night_end_time ?? null
+    if (normalizedEnd !== nightTimeForm.endTime) {
+      nightTimeForm.endTime = normalizedEnd
+    }
+
+    const normalizedPlaces = newState.next_night_destroyed_places ?? []
+    if (!areStringArraysEqual(normalizedPlaces, selectedDestroyPlaces.value)) {
+      selectedDestroyPlaces.value = [...normalizedPlaces]
     }
   },
   { immediate: true }

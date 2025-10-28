@@ -1,5 +1,6 @@
 //! GameState 通用逻辑实现
 
+use std::collections::HashSet;
 use std::mem;
 
 use rand::{rng, seq::SliceRandom};
@@ -513,5 +514,35 @@ impl GameState {
         if let Some(player) = self.players.get_mut(player_id) {
             player.last_search_result = None;
         }
+    }
+
+    pub fn collect_existing_item_names(&self) -> HashSet<String> {
+        let mut names = HashSet::new();
+
+        for player in self.players.values() {
+            for item in &player.inventory {
+                names.insert(item.name.clone());
+            }
+            if let Some(weapon) = &player.equipped_weapon {
+                names.insert(weapon.name.clone());
+            }
+            if let Some(armor) = &player.equipped_armor {
+                names.insert(armor.name.clone());
+            }
+        }
+
+        for place in self.places.values() {
+            for item in &place.items {
+                names.insert(item.name.clone());
+            }
+        }
+
+        names
+    }
+
+    /// 检查指定的物品名称是否已经存在于场上（玩家身上或地点中）
+    pub fn check_item_name_exists(&self, item_name: &str) -> bool {
+        let existing_names = self.collect_existing_item_names();
+        existing_names.contains(item_name)
     }
 }
