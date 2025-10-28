@@ -13,7 +13,24 @@
         <h4>武器和防具（按稀有度选择）</h4>
         <div class="rarity-grid">
           <div 
-            v-for="option in rarityOptions" 
+            v-for="option in weaponRarityOptions" 
+            :key="option.rarityKey"
+            class="rarity-option"
+          >
+            <el-form-item :label="option.displayName">
+              <el-input-number
+                v-model="raritySelections[option.rarityKey]"
+                :min="0"
+                :max="option.availableCount"
+                :disabled="option.availableCount === 0"
+                placeholder="数量"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </div>
+          <div class="rarity-break" aria-hidden="true"></div>
+          <div 
+            v-for="option in armorRarityOptions" 
             :key="option.rarityKey"
             class="rarity-option"
           >
@@ -221,14 +238,26 @@ const parsedItems = computed<ParsedItemInfo | null>(() => {
   }
 })
 
-const rarityOptions = computed<RarityOption[]>(() => {
-  if (!itemParser.value) return []
+const batchAirdropOptions = computed(() => {
+  if (!itemParser.value) return { weapons: [], armors: [] }
   try {
     return itemParser.value.getBatchAirdropRarityOptions()
   } catch (error) {
-    console.error('获取稀有度选项失败:', error)
-    return []
+    console.error('获取批量空投选项失败:', error)
+    return { weapons: [], armors: [] }
   }
+})
+
+const weaponRarityOptions = computed<RarityOption[]>(() => {
+  return batchAirdropOptions.value.weapons
+})
+
+const armorRarityOptions = computed<RarityOption[]>(() => {
+  return batchAirdropOptions.value.armors
+})
+
+const rarityOptions = computed<RarityOption[]>(() => {
+  return [...batchAirdropOptions.value.weapons, ...batchAirdropOptions.value.armors]
 })
 
 const hasAnySelection = computed(() => {
@@ -261,8 +290,12 @@ const initializeSelections = () => {
     delete specificSelections[key]
   })
   
-  // 初始化稀有度选择
-  rarityOptions.value.forEach(option => {
+  // 初始化武器稀有度选择
+  weaponRarityOptions.value.forEach(option => {
+    raritySelections[option.rarityKey] = 0
+  })
+  // 初始化防具稀有度选择
+  armorRarityOptions.value.forEach(option => {
     raritySelections[option.rarityKey] = 0
   })
   
@@ -401,6 +434,10 @@ const handleClose = () => {
   border: 1px solid #e1e6f0;
 }
 
+.rarity-break {
+  display: none;
+}
+
 .items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -448,6 +485,14 @@ const handleClose = () => {
   .dialog-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rarity-break {
+    display: block;
+    grid-column: 1 / -1;
+    height: 0;
   }
 }
 </style>

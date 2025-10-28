@@ -79,26 +79,20 @@
           </div>
         </div>
 
-        <!-- 地点状态管理和玩家状态管理卡片 - 修改为横跨整个屏幕 -->
-        <div class="full-width-section">
-          <PlaceStatusCard 
-            :places="placeList" 
-            @place-status-change="handlePlaceStatusChange"
-          />
-        </div>
-        
+        <!-- 地点状态管理和玩家状态管理卡片 - 横跨整个屏幕 -->
         <div class="full-width-section">
           <PlayerStatusCard 
             :players="directorPlayerList" 
             @player-binding-change="handlePlayerBindingChange"
           />
         </div>
-        
-        <!-- 空投设置面板 -->
-        <AirdropPanel 
-          :game-id="game.id"
-          @airdrop-accepted="handleAirdropAccepted"
-        />
+
+        <div class="full-width-section">
+          <PlaceStatusCard 
+            :places="placeList" 
+            @place-status-change="handlePlaceStatusChange"
+          />
+        </div>
         
         <!-- 广播消息面板 -->
         <BroadcastMessage 
@@ -120,7 +114,6 @@ import type { GameWithRules } from '@/types/game'
 import type { Player, DirectorPlace as Place } from '@/types/gameStateTypes'
 import PlaceStatusCard from '../components/PlaceStatusCard.vue'
 import PlayerStatusCard from '../components/PlayerStatusCard.vue'
-import AirdropPanel from '../components/AirdropPanel.vue'
 import BroadcastMessage from '../components/BroadcastMessage.vue'
 import { useManualSaveGame } from '../composables/useManualSaveGame'
 
@@ -251,12 +244,7 @@ function setBroadcastTarget(playerId: string) {
   }
 }
 
-// 空投和广播消息相关方法
-const handleAirdropAccepted = (items: any[], place: string) => {
-  ElMessage.success(`空投已发送到地点: ${place}`)
-  console.log('空投发送:', { items, place })
-}
-
+// 广播消息相关方法
 const handleMessageSent = (message: string, targetType: 'all' | 'player', targetPlayer?: string) => {
   console.log('消息发送:', { message, targetType, targetPlayer })
 }

@@ -17,6 +17,13 @@
               清空物品
             </el-button>
             <el-button 
+              type="success" 
+              size="small"
+              @click="openBatchAirdropDialog"
+            >
+              批量空投
+            </el-button>
+            <el-button 
               type="primary" 
               size="small"
               @click="showPlainTextDialog('place')"
@@ -64,7 +71,15 @@
           </el-table-column>
           <el-table-column label="物品列表" min-width="250">
             <template #default="scope">
-              <div class="items-list">
+              <div class="items-container">
+                <el-button 
+                  type="success" 
+                  size="small"
+                  circle
+                  :icon="Plus"
+                  aria-label="添加物品"
+                  @click="showAddItemDialog(scope.row.name)"
+                />
                 <div class="items-flow">
                   <el-tag
                     v-for="(item, index) in scope.row.items"
@@ -94,6 +109,18 @@
       </div>
     </el-collapse-transition>
     
+    <!-- 添加物品对话框 -->
+    <ItemSelectionDialog
+      v-model="addItemDialogVisible"
+      title="向地点添加物品"
+      item-label="物品名称"
+      placeholder="请选择物品"
+      width="400px"
+      :initial-selected-item="addItemForm.itemName"
+      @confirm="handleAddItemConfirm"
+      @cancel="handleAddItemCancel"
+    />
+    
     <!-- 纯文本显示对话框 -->
     <el-dialog v-model="plainTextDialogVisible" :title="dialogTitle" width="600px">
       <el-input 
@@ -114,15 +141,30 @@
         </span>
       </template>
     </el-dialog>
+    
+    <!-- 批量空投对话框 -->
+    <BatchAirdropDialog 
+      v-if="showBatchDialog"
+      v-model="showBatchDialog"
+      :rules-json="rulesJson"
+      :existing-items="existingItems"
+      :available-places="availablePlaces"
+      @confirm="handleBatchAirdrop"
+    />
   </el-card>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Delete, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import { Delete, Plus, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
-import type { DirectorPlace as Place } from '@/types/gameStateTypes'
+import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
+import { extractExistingItemsFromGameState } from '@/utils/itemParser'
+import type { DirectorPlace as Place, DirectorGameData } from '@/types/gameStateTypes'
+
+// 异步加载批量空投对话框组件
+const BatchAirdropDialog = defineAsyncComponent(() => import('./BatchAirdropDialog.vue'))
 
 // 定义组件属性
 const props = defineProps<{
@@ -136,13 +178,23 @@ const emit = defineEmits<{
 
 const store = useGameStateStore()
 
-// 折叠状态
-const isCollapsed = ref(true)
+// 初始自动折叠状态
+const isCollapsed = ref(false)
+
+// 添加物品对话框相关
+const addItemDialogVisible = ref(false)
+const addItemForm = ref({
+  placeName: '',
+  itemName: ''
+})
 
 // 纯文本对话框相关
 const plainTextDialogVisible = ref(false)
 const plainTextContent = ref('')
 const dialogTitle = ref('')
+
+// 批量空投对话框相关
+const showBatchDialog = ref(false)
 
 // 计算属性
 const placeList = computed<Place[]>(() => {
@@ -156,6 +208,23 @@ const placeList = computed<Place[]>(() => {
 
 const hasAnyItems = computed(() => {
   return placeList.value.some(place => place.items.length > 0)
+})
+
+// 批量空投相关的计算属性
+const rulesJson = computed(() => {
+  return store.gameState?.global_state?.rules_config || {}
+})
+
+const existingItems = computed(() => {
+  // 从游戏状态中提取现有物品
+  return extractExistingItemsFromGameState(store.gameData as DirectorGameData)
+})
+
+const availablePlaces = computed(() => {
+  if (!props.places) return []
+  return props.places
+    .filter(place => !place.is_destroyed)
+    .map(place => place.name)
 })
 
 // 获取玩家名称
@@ -175,24 +244,10 @@ const handlePlaceStatusChange = (placeName: string, isDestroyed: boolean | strin
 }
 
 // 删除单个物品
-const handleDeleteItem = async (placeName: string, itemName: string) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除地点「${placeName}」中的物品「${itemName}」吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    // 发送删除请求
-    store.sendBatchItemDeletion([{ place_name: placeName, item_name: itemName }], false)
-    ElMessage.success('删除请求已发送')
-  } catch {
-    // 用户取消操作
-  }
+const handleDeleteItem = (placeName: string, itemName: string) => {
+  // 发送删除请求
+  store.sendBatchItemDeletion([{ place_name: placeName, item_name: itemName }], false)
+  ElMessage.success('删除请求已发送')
 }
 
 // 清空地点所有物品
@@ -238,6 +293,35 @@ const handleClearAllItems = async () => {
   }
 }
 
+// 显示添加物品对话框
+const showAddItemDialog = (placeName: string) => {
+  addItemForm.value.placeName = placeName
+  addItemForm.value.itemName = ''
+  addItemDialogVisible.value = true
+}
+
+// 处理添加物品确认
+const handleAddItemConfirm = (itemName: string) => {
+  if (!itemName) {
+    ElMessage.error('请选择物品')
+    return
+  }
+  
+  // 调用store方法添加物品到地点（使用后端空投接口）
+  store.sendBatchAirdrop([
+    {
+      item_name: itemName,
+      place_name: addItemForm.value.placeName
+    }
+  ])
+  ElMessage.success('物品已添加到地点')
+}
+
+// 处理添加物品取消
+const handleAddItemCancel = () => {
+  // 保持对话框关闭状态，无需额外操作
+}
+
 // 显示纯文本对话框
 const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'place') {
@@ -272,6 +356,18 @@ const copyPlainTextContent = () => {
   }).catch(() => {
     ElMessage.error('复制失败')
   })
+}
+
+// 批量空投相关方法
+const openBatchAirdropDialog = () => {
+  showBatchDialog.value = true
+}
+
+const handleBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: string }>) => {
+  store.sendBatchAirdrop(airdrops)
+  ElMessage.success(`批量空投已发送，共 ${airdrops.length} 个物品`)
+  
+  showBatchDialog.value = false
 }
 </script>
 
@@ -319,8 +415,9 @@ const copyPlainTextContent = () => {
   margin: 2px 0;
 }
 
-.items-list {
+.items-container {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;

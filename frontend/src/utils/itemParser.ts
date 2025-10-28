@@ -252,10 +252,14 @@ export class ItemParser {
   }
 
   /**
-   * 获取批量空投的稀有度选项（考虑场上已存在的物品）
+   * 获取批量空投的武器和防具稀有度选项（考虑场上已存在的物品）
    */
-  getBatchAirdropRarityOptions(): RarityOption[] {
-    const options: RarityOption[] = []
+  getBatchAirdropRarityOptions(): {
+    weapons: RarityOption[]
+    armors: RarityOption[]
+  } {
+    const weaponOptions: RarityOption[] = []
+    const armorOptions: RarityOption[] = []
     const parsedItems = this.parseAllItems()
 
     // 处理武器稀有度
@@ -264,7 +268,7 @@ export class ItemParser {
       const availableWeapons = weaponNames.filter(name => !this.existingItems.has(name))
       
       if (weaponNames.length > 0) {
-        options.push({
+        weaponOptions.push({
           rarityKey: `weapon_${rarity.internal_name}`,
           displayName: `${rarity.display_name}武器(上限${availableWeapons.length})`,
           itemType: 'weapon',
@@ -280,7 +284,7 @@ export class ItemParser {
       const availableArmors = armorNames.filter(name => !this.existingItems.has(name))
       
       if (armorNames.length > 0) {
-        options.push({
+        armorOptions.push({
           rarityKey: `armor_${rarity.internal_name}`,
           displayName: `${rarity.display_name}防具(上限${availableArmors.length})`,
           itemType: 'armor',
@@ -290,7 +294,10 @@ export class ItemParser {
       }
     }
 
-    return options
+    return {
+      weapons: weaponOptions,
+      armors: armorOptions
+    }
   }
 
   /**

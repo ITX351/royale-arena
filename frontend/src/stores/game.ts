@@ -14,7 +14,9 @@ export const useGameStore = defineStore('game', () => {
 
   // 计算属性
   const filteredGames = computed(() => {
-    return filterGamesByStatus(games.value, statusFilter.value, searchQuery.value)
+    const filtered = filterGamesByStatus(games.value, statusFilter.value, searchQuery.value)
+    // 按创建时间倒序排序（最新的在前面）
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   })
 
   // 操作
