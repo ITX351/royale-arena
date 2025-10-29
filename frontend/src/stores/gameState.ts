@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElNotification } from 'element-plus'
+import type { NotificationHandle } from 'element-plus'
 import type { 
   DirectorGameState, 
   ActorGameState,
@@ -34,6 +35,7 @@ export const useGameStateStore = defineStore('gameState', () => {
   const logMessages = ref<ActionResult[]>([])
   const maxLogMessages = ref(10000) // 最多保存日志消息条数
   const serverOffsetMs = ref(0)
+  let activeInfoNotification: NotificationHandle | null = null
 
   // 计算属性
   const globalState = computed<GlobalState | null>(() => {
@@ -120,6 +122,10 @@ export const useGameStateStore = defineStore('gameState', () => {
     connected.value = false
     connecting.value = false
     gameState.value = null
+    if (activeInfoNotification) {
+      activeInfoNotification.close()
+      activeInfoNotification = null
+    }
   }
 
   const updateServerOffset = (serverTimestamp?: string | null, receivedAt?: number) => {
@@ -319,18 +325,29 @@ export const useGameStateStore = defineStore('gameState', () => {
         // 处理系统消息
         console.log('系统消息:', event.data)
         break
-      case 'info_notification':
+      case 'info_notification': {
         // 处理Info类型的轻量提示
         console.log('Info提示:', event.data)
-        ElNotification({
+        if (activeInfoNotification) {
+          activeInfoNotification.close()
+          activeInfoNotification = null
+        }
+        const notification = ElNotification({
           title: '提示',
           message: event.data.message,
           type: 'info',
           position: 'top-right',
           duration: 3000,
-          showClose: true
+          showClose: true,
+          onClose: () => {
+            if (activeInfoNotification === notification) {
+              activeInfoNotification = null
+            }
+          }
         })
+        activeInfoNotification = notification
         break
+      }
       case 'error':
         error.value = event.data.message || 'WebSocket错误'
         console.error('WebSocket错误:', event.data)

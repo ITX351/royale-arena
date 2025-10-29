@@ -36,7 +36,9 @@
             v-model="selectedPlace" 
             placeholder="选择出生地点" 
             size="small"
-            style="width: 160px;"
+            style="width: 120px;"
+            placement="bottom-start"
+            :popper-options="selectPopperOptions"
           >
             <el-option
               v-for="place in places.filter(p => !p.is_destroyed)"
@@ -59,7 +61,9 @@
             v-model="targetPlace" 
             placeholder="选择目标地点" 
             size="small"
-            style="width: 160px;"
+            style="width: 120px;"
+            placement="bottom-start"
+            :popper-options="selectPopperOptions"
           >
             <el-option
               v-for="place in places.filter(p => !p.is_destroyed && p.name !== player.location)"
@@ -228,6 +232,16 @@ const now = ref(Date.now() + serverOffsetMs.value)
 let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
+const selectPopperOptions = {
+  modifiers: [
+    {
+      name: 'flip',
+      options: {
+        fallbackPlacements: []
+      }
+    }
+  ]
+}
 
 // 计算属性
 const hasValidTarget = computed(() => {
