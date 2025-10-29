@@ -139,16 +139,6 @@ impl DirectorActionScheduler {
                 game_state.handle_set_player_strength(&player_id, strength)
             }
 
-            "move_player" => {
-                let player_id = action_params
-                    .player_id
-                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
-                let target_place = action_params
-                    .target_place
-                    .ok_or_else(|| "Missing target_place parameter".to_string())?;
-                game_state.handle_move_player(&player_id, &target_place)
-            }
-
             "add_player_item" => {
                 let player_id = action_params
                     .player_id

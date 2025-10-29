@@ -241,11 +241,6 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('strength', { player_id: playerId, strength: strength })
   }
 
-  // 玩家移动
-  const movePlayer = (playerId: string, targetPlace: string) => {
-    sendDirectorAction('move_player', { player_id: playerId, target_place: targetPlace })
-  }
-
   // 玩家捆绑/松绑
   const togglePlayerBinding = (playerId: string) => {
     // 先获取玩家当前状态来决定是捆绑还是松绑
@@ -397,7 +392,6 @@ export const useGameStateStore = defineStore('gameState', () => {
     togglePlaceStatus,
     setPlayerLife,
     setPlayerStrength,
-    movePlayer,
     togglePlayerBinding,
     destroyPlace,
     sendBroadcast,

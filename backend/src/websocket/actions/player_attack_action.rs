@@ -33,7 +33,7 @@ impl GameState {
         if self.rule_engine.is_safe_place(&player_location) {
             let action_result = ActionResult::new_info_message(
                 serde_json::json!({
-                    "place": player_location.clone(),
+                    "place": player_location,
                 }),
                 vec![player_id.to_string()],
                 "当前地点为安全区，无法发动攻击".to_string(),

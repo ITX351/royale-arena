@@ -122,7 +122,7 @@ impl GameState {
             },
         };
 
-        let existing_names = self.collect_existing_item_names();
+        let existing_names = self.collect_existing_weapons_and_armor_names();
         let available_names: Vec<String> = candidate_names
             .into_iter()
             .filter(|name| !existing_names.contains(name))

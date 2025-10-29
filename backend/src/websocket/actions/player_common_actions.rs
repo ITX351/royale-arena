@@ -260,7 +260,7 @@ impl GameState {
 
                 // 返回更新后的玩家信息
                 let data = serde_json::json!({
-                    "inventory": self.players.get(player_id).unwrap().inventory.clone(),
+                    "inventory": self.players.get(player_id).unwrap().inventory,
                     "strength": self.players.get(player_id).unwrap().strength
                 });
 
@@ -441,7 +441,7 @@ impl GameState {
 
         // 向该玩家发送背包更新
         let data = serde_json::json!({
-            "inventory": self.players.get(player_id).unwrap().inventory.clone(),
+            "inventory": self.players.get(player_id).unwrap().inventory,
             "strength": self.players.get(player_id).unwrap().strength
         });
 

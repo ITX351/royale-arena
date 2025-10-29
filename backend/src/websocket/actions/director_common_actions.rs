@@ -68,16 +68,54 @@ impl GameState {
         &mut self,
         places: &[serde_json::Value],
     ) -> Result<ActionResults, String> {
-        // 更新下一夜晚缩圈地点集合
-        self.next_night_destroyed_places = places
-            .iter()
-            .filter_map(|v| v.as_str())
-            .map(|s| s.to_string())
-            .collect();
+        // 先收集并验证所有传入的地点名（要求：字符串、存在于地图且未被摧毁）
+        let mut requested: Vec<String> = Vec::new();
+        for v in places {
+            if let Some(s) = v.as_str() {
+                requested.push(s.to_string());
+            }
+        }
+
+        // 找出不存在或已被摧毁的地点
+        let mut problematic: Vec<String> = Vec::new();
+        for name in &requested {
+            match self.places.get(name) {
+                Some(place) => {
+                    if place.is_destroyed {
+                        problematic.push(format!("{} (已被摧毁)", name));
+                    }
+                }
+                None => {
+                    problematic.push(format!("{} (地点不存在)", name));
+                }
+            }
+        }
+
+        if !problematic.is_empty() {
+            // 如果有任一地点被摧毁或不存在，拒绝本次设置请求并以 Info 形式返回
+            let log_message = format!(
+                "拒绝设置缩圈地点：以下地点已被摧毁或不存在：{:?}",
+                problematic
+            );
+
+            let data = serde_json::json!({
+                "message_type": "Info",
+                "log_message": log_message,
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "invalid_places": problematic
+            });
+
+            return Ok(
+                ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+            );
+        }
+
+        // 全部通过，更新下一夜晚缩圈地点集合
+        self.next_night_destroyed_places = requested;
 
         // 构造响应数据
         let data = serde_json::json!({
-            "next_night_destroyed_places": self.next_night_destroyed_places.clone()
+            "next_night_destroyed_places": self.next_night_destroyed_places
         });
 
         // 创建动作结果，只广播给导演（不需要通知玩家）
@@ -374,59 +412,6 @@ impl GameState {
                 final_strength,
                 format_delta(strength_change)
             ),
-            true,
-        );
-
-        Ok(action_result.as_results())
-    }
-
-    /// 移动角色
-    pub fn handle_move_player(
-        &mut self,
-        player_id: &str,
-        target_place: &str,
-    ) -> Result<ActionResults, String> {
-        // 验证目标地点是否存在且未被摧毁
-        if let Some(place) = self.places.get(target_place) {
-            if place.is_destroyed {
-                return Err("Target place is destroyed".to_string());
-            }
-        } else {
-            return Err("Target place not found".to_string());
-        }
-
-        // 获取玩家位置信息
-        let player = self
-            .players
-            .get_mut(player_id)
-            .ok_or("Player not found".to_string())?;
-
-        // 从当前地点移除玩家
-        if !player.location.is_empty() {
-            if let Some(current_place) = self.places.get_mut(&player.location) {
-                current_place.players.retain(|id| id != player_id);
-            }
-        }
-
-        // 更新玩家位置到目标地点
-        player.location = target_place.to_string();
-
-        // 将玩家添加到目标地点的玩家列表中
-        if let Some(target_place_obj) = self.places.get_mut(target_place) {
-            target_place_obj.players.push(player_id.to_string());
-        }
-
-        // 构造响应数据
-        let data = serde_json::json!({
-            "player_id": player_id,
-            "location": target_place
-        });
-
-        // 创建动作结果，广播给该玩家和所有导演
-        let action_result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
-            format!("导演将 {} 移动至地点 {}", player.name, target_place),
             true,
         );
 

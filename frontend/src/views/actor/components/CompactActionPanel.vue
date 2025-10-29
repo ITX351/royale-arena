@@ -66,10 +66,11 @@
             :popper-options="selectPopperOptions"
           >
             <el-option
-              v-for="place in places.filter(p => !p.is_destroyed && p.name !== player.location)"
+              v-for="place in places.filter(p => !p.is_destroyed)"
               :key="place.name"
               :label="place.name"
               :value="place.name"
+              :disabled="place.name === player.location"
             />
           </el-select>
           <el-button 
