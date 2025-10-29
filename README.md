@@ -5,15 +5,8 @@ Royale Arena 是一个基于网页的大逃杀游戏，玩家在限定时间内�
 ## 技术架构
 
 - **前端**: Vue 3 + TypeScript + Vite
-- **后端**: Rust 语言开发
-- **部署**: Nginx 服务器
-
-## 核心特性
-
-- 实时大逃杀游戏体验
-- 玩家可在特定时间段内执行行动
-- 导演可以控制游戏进程和规则
-- 响应式网页界面，支持多设备访问
+- **后端**: Rust
+- **部署**: Nginx
 
 ## 游戏规则参考
 
@@ -31,18 +24,22 @@ pnpm dev
 # 后端开发
 cd backend
 cargo run
-
-# 初始化管理员帐户脚本（硬编码用户名及密码）
-cargo run --bin init_admin_users
 ```
 
-## 文档
+## 部署
 
-- [游戏规则](docs/game-rules.md)
-- [API规范](docs/api/)
-- [项目总览](QWEN.md)
-- [前端上下文](frontend/QWEN.md)
-- [后端上下文](backend/QWEN.md)
+详细步骤参考 `DEPLOYMENT.md`，涵盖环境变量、镜像构建、Docker Compose 与 NGINX 配置。
+- 部署前端：在 `frontend` 目录运行 `pnpm build`，将生成的 `dist` 部署到 NGINX 静态目录。
+- 复制 `backend/.env.example` 为 `.env` 并配置数据库、JWT、API 前缀等关键项。
+- 通过 `docker build -t royale-arena-rust-backend:0.1.1 ./backend` 构建后端镜像，使用 Compose 挂载 `/srv/royale/game_states` 目录并注入 `.env`。
+- 在 NGINX 中创建 `location ^~ /royale-arena/api/`，将请求代理至 `royale:3000` 并保留 WebSocket 头。
+- 首次部署按顺序启动数据库与后端容器，使用 `docker logs -f royale_arena` 观察运行状态。
+
+## 访问使用
+
+目前该项目已在[雾雨小镇](https://www.mistytown.cn/)服务器部署。
+
+访问以下链接以使用：[https://www.mistytown.cn/royale-arena/](https://www.mistytown.cn/royale-arena/)
 
 ## 相关项目
 
