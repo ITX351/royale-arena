@@ -100,7 +100,7 @@ impl GameState {
 
             let data = serde_json::json!({
                 "message_type": "Info",
-                "log_message": log_message.clone(),
+                "log_message": log_message,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "invalid_places": problematic
             });

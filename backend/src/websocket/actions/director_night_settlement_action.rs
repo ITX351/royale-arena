@@ -92,7 +92,7 @@ impl GameState {
         if !missing_places.is_empty() {
             let missing_joined = missing_places.join("、");
             let data = serde_json::json!({
-                "missing_places": missing_places.clone(),
+                "missing_places": missing_places,
             });
             results.push(ActionResult::new_info_message(
                 data,
