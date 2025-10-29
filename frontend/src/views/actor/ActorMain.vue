@@ -315,6 +315,7 @@ const fetchPlayerMessages = async () => {
       // 添加API获取的消息到日志消息列表
       response.data.forEach(message => {
         gameStateStore.addLogMessage({
+          id: message.id, // 使用API返回的ID
           timestamp: message.timestamp,
           log_message: message.message,
           message_type: message.type

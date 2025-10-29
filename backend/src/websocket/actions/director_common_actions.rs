@@ -99,6 +99,24 @@ impl GameState {
         &mut self,
         airdrops: Vec<AirdropItem>,
     ) -> Result<ActionResults, String> {
+        // 验证所有空投物品名称是否已存在于场上
+        for airdrop in &airdrops {
+            if self.check_item_name_exists(&airdrop.item_name) {
+                let data = serde_json::json!({
+                    "message_type": "Info",
+                    "log_message": format!("批量空投被拒绝: 物品 {} 已存在于场上", airdrop.item_name),
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                });
+
+                let log_message =
+                    format!("批量空投被拒绝: 物品 {} 已存在于场上", airdrop.item_name);
+
+                return Ok(
+                    ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+                );
+            }
+        }
+
         let mut success_count = 0;
 
         for airdrop in airdrops {
@@ -267,7 +285,7 @@ impl GameState {
             );
         }
 
-        if current_life == 0 && !is_alive && life > 0 {
+        if current_life <= 0 && !is_alive && life > 0 {
             return self.revive_player(player_id, life);
         }
 
@@ -421,6 +439,21 @@ impl GameState {
         player_id: &str,
         item_name: &str,
     ) -> Result<ActionResults, String> {
+        // 验证物品名称是否已存在于场上
+        if self.check_item_name_exists(item_name) {
+            let data = serde_json::json!({
+                "message_type": "Info",
+                "log_message": format!("无法添加物品 {}: 该物品已存在于场上", item_name),
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            });
+
+            let log_message = format!("无法添加物品 {}: 该物品已存在于场上", item_name);
+
+            return Ok(
+                ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+            );
+        }
+
         // 根据物品名称从规则JSON中查找并创建物品
         let item = self
             .rule_engine

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use rand::Rng;
 use serde_json::json;
 
@@ -225,29 +223,5 @@ impl GameState {
             ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
 
         Ok(action_result.as_results())
-    }
-
-    fn collect_existing_item_names(&self) -> HashSet<String> {
-        let mut names = HashSet::new();
-
-        for player in self.players.values() {
-            for item in &player.inventory {
-                names.insert(item.name.clone());
-            }
-            if let Some(weapon) = &player.equipped_weapon {
-                names.insert(weapon.name.clone());
-            }
-            if let Some(armor) = &player.equipped_armor {
-                names.insert(armor.name.clone());
-            }
-        }
-
-        for place in self.places.values() {
-            for item in &place.items {
-                names.insert(item.name.clone());
-            }
-        }
-
-        names
     }
 }

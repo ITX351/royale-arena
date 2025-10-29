@@ -1,5 +1,6 @@
 //! GameState 通用逻辑实现
 
+use std::collections::HashSet;
 use std::mem;
 
 use rand::{rng, seq::SliceRandom};
@@ -351,10 +352,7 @@ impl GameState {
 
     /// 处理空搜索结果
     pub fn handle_empty_search_result(&mut self, player_id: &str) -> Result<ActionResults, String> {
-        {
-            let player = self.players.get_mut(player_id).unwrap();
-            player.last_search_result = None;
-        }
+        self.clear_player_search_result(player_id);
 
         let (player_strength, player_last_search_time) = {
             let player = self.players.get(player_id).unwrap();
@@ -401,12 +399,19 @@ impl GameState {
                 target_type: SearchResultType::Player,
                 target_id: target_player_id.to_string(),
                 target_name: target_player_name.clone(),
+                is_visible: reveal_target_name,
             });
         }
 
         let (player_strength, player_last_search_time) = {
             let player = self.players.get(player_id).unwrap();
             (player.strength, player.last_search_time)
+        };
+
+        let display_target_id = if reveal_target_name {
+            target_player_id.to_string()
+        } else {
+            "unknown".to_string()
         };
 
         let display_target_name = if reveal_target_name {
@@ -418,7 +423,7 @@ impl GameState {
         let data = serde_json::json!({
             "last_search_result": {
                 "target_type": "player",
-                "target_id": target_player_id,
+                "target_id": display_target_id,
                 "target_name": display_target_name
             },
             "strength": player_strength,
@@ -472,6 +477,7 @@ impl GameState {
                 target_type: SearchResultType::Item,
                 target_id: item_id.to_string(),
                 target_name: item_name.clone(),
+                is_visible: true,
             });
         }
 
@@ -502,5 +508,41 @@ impl GameState {
         );
 
         Ok(action_result.as_results())
+    }
+
+    pub fn clear_player_search_result(&mut self, player_id: &str) {
+        if let Some(player) = self.players.get_mut(player_id) {
+            player.last_search_result = None;
+        }
+    }
+
+    pub fn collect_existing_item_names(&self) -> HashSet<String> {
+        let mut names = HashSet::new();
+
+        for player in self.players.values() {
+            for item in &player.inventory {
+                names.insert(item.name.clone());
+            }
+            if let Some(weapon) = &player.equipped_weapon {
+                names.insert(weapon.name.clone());
+            }
+            if let Some(armor) = &player.equipped_armor {
+                names.insert(armor.name.clone());
+            }
+        }
+
+        for place in self.places.values() {
+            for item in &place.items {
+                names.insert(item.name.clone());
+            }
+        }
+
+        names
+    }
+
+    /// 检查指定的物品名称是否已经存在于场上（玩家身上或地点中）
+    pub fn check_item_name_exists(&self, item_name: &str) -> bool {
+        let existing_names = self.collect_existing_item_names();
+        existing_names.contains(item_name)
     }
 }

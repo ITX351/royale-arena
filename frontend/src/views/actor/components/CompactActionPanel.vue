@@ -36,7 +36,9 @@
             v-model="selectedPlace" 
             placeholder="选择出生地点" 
             size="small"
-            style="width: 160px;"
+            style="width: 120px;"
+            placement="bottom-start"
+            :popper-options="selectPopperOptions"
           >
             <el-option
               v-for="place in places.filter(p => !p.is_destroyed)"
@@ -59,7 +61,9 @@
             v-model="targetPlace" 
             placeholder="选择目标地点" 
             size="small"
-            style="width: 160px;"
+            style="width: 120px;"
+            placement="bottom-start"
+            :popper-options="selectPopperOptions"
           >
             <el-option
               v-for="place in places.filter(p => !p.is_destroyed && p.name !== player.location)"
@@ -196,9 +200,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, withDefaults } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
+import { useGameStateStore } from '@/stores/gameState'
 
 const props = withDefaults(defineProps<{
   player: Player
@@ -220,10 +226,22 @@ const targetPlace = ref('')
 const targetPlayer = ref('')
 const deliverMessage = ref('')
 const directorMessage = ref('')
-const now = ref(Date.now())
+const gameStateStore = useGameStateStore()
+const { serverOffsetMs } = storeToRefs(gameStateStore)
+const now = ref(Date.now() + serverOffsetMs.value)
 let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
+const selectPopperOptions = {
+  modifiers: [
+    {
+      name: 'flip',
+      options: {
+        fallbackPlacements: []
+      }
+    }
+  ]
+}
 
 // 计算属性
 const hasValidTarget = computed(() => {
@@ -372,8 +390,12 @@ const lifeAnimationClass = computed(() => {
 
 onMounted(() => {
   timer = window.setInterval(() => {
-    now.value = Date.now()
+    now.value = Date.now() + serverOffsetMs.value
   }, 100)
+})
+
+watch(serverOffsetMs, (newOffset) => {
+  now.value = Date.now() + newOffset
 })
 
 onUnmounted(() => {
@@ -448,12 +470,7 @@ const handleAttack = () => {
   if (actionsDisabled.value) {
     return
   }
-  const target = props.player.last_search_result
-  if (target?.target_type === 'player') {
-    emit('action', 'attack', { target_player_id: target.target_id })
-  } else {
-    emit('action', 'attack', {})
-  }
+  emit('action', 'attack', {})
 }
 
 const handlePick = () => {

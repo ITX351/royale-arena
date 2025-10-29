@@ -1,97 +1,24 @@
 // 物品解析工具模块 - 从游戏规则JSON中提取物品信息
 
-// 稀有度配置接口
-export interface RarityLevel {
-  internal_name: string
-  display_name: string
-  prefix: string
-  is_airdropped: boolean
-}
+import { findDuplicateItemNames, parseItemsConfig } from './itemConfigUtils'
+import type {
+  NormalizedItemsConfig,
+  RarityLevelConfig,
+  WeaponConfig as NormalizedWeaponConfig,
+  ArmorConfig as NormalizedArmorConfig,
+  UtilityConfig as NormalizedUtilityConfig,
+  ConsumableConfig as NormalizedConsumableConfig,
+  UpgraderConfig as NormalizedUpgraderConfig
+} from './itemConfigUtils'
+import type { DirectorGameData } from '@/types/gameStateTypes'
 
-// 武器配置接口
-export interface WeaponConfig {
-  internal_name: string
-  display_names: string[]
-  rarity: string
-  properties?: Record<string, any>
-}
-
-// 防具配置接口
-export interface ArmorConfig {
-  internal_name: string
-  display_names: string[]
-  rarity: string
-  properties?: Record<string, any>
-}
-
-// 功能道具配置接口（utilities）
-export interface UtilityConfig {
-  name: string
-  category?: string
-  properties?: Record<string, any>
-}
-
-// 消耗品配置接口
-export interface ConsumableConfig {
-  name: string
-  effect_type?: string
-  effect_value?: number
-  cure_bleed?: number
-  properties?: Record<string, any>
-}
-
-// 升级器配置接口
-export interface UpgraderConfig {
-  internal_name: string
-  display_names: string[]
-  rarity: string
-}
-
-// 物品配置接口
-export interface ItemConfig {
-  rarity_levels: RarityLevel[]
-  weapons: WeaponConfig[]
-  armors: ArmorConfig[]
-  utilities: UtilityConfig[]
-  consumables: ConsumableConfig[]
-  upgraders: UpgraderConfig[]
-}
-
-function ensureArray<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : []
-}
-
-function normalizeItemConfig(rulesJson: any): ItemConfig {
-  const itemsConfigRoot = rulesJson?.items_config
-  if (!itemsConfigRoot) {
-    throw new Error('规则JSON缺少 items_config 配置')
-  }
-
-  const itemsSection = itemsConfigRoot.items
-  if (!itemsSection) {
-    throw new Error('规则JSON缺少 items_config.items 配置')
-  }
-
-  const rarityLevels = ensureArray<RarityLevel>(itemsConfigRoot.rarity_levels)
-  const weapons = ensureArray<WeaponConfig>(itemsSection.weapons)
-  const armors = ensureArray<ArmorConfig>(itemsSection.armors)
-  const utilities = ensureArray<UtilityConfig>(itemsSection.utilities)
-  const consumables = ensureArray<ConsumableConfig>(itemsSection.consumables)
-  const upgraders = ensureArray<UpgraderConfig>(itemsSection.upgraders)
-
-  if (rarityLevels.length === 0 && weapons.length === 0 && armors.length === 0 && utilities.length === 0 && consumables.length === 0 && upgraders.length === 0) {
-    throw new Error('无法从规则JSON中解析物品配置，请检查 items_config.items 字段内容是否正确')
-  }
-
-  return {
-    rarity_levels: rarityLevels,
-    weapons,
-    armors,
-    utilities,
-    consumables,
-    upgraders
-  }
-}
+export type RarityLevel = RarityLevelConfig
+export type WeaponConfig = NormalizedWeaponConfig
+export type ArmorConfig = NormalizedArmorConfig
+export type UtilityConfig = NormalizedUtilityConfig
+export type ConsumableConfig = NormalizedConsumableConfig
+export type UpgraderConfig = NormalizedUpgraderConfig
+export type ItemConfig = NormalizedItemsConfig
 
 // 解析后的物品信息接口
 export interface ParsedItemInfo {
@@ -107,7 +34,7 @@ export interface ParsedItemInfo {
   consumables: string[]
   upgraders: string[]
   // 稀有度配置
-  rarityLevels: RarityLevel[]
+  rarityLevels: RarityLevelConfig[]
 }
 
 // 批量空投可选择的稀有度类型（带数量上限）
@@ -123,80 +50,42 @@ export interface RarityOption {
  * 物品解析器类
  */
 export class ItemParser {
-  private itemConfig: ItemConfig
+  private itemConfig: NormalizedItemsConfig
   private existingItems: Set<string> // 场上已存在的物品名称
+  public readonly issues: string[]
 
   constructor(rulesJson: any, existingItems: string[] = []) {
-    this.itemConfig = normalizeItemConfig(rulesJson)
-    this.existingItems = new Set(existingItems)
-    
-    // 验证规则JSON中是否有重复物品名称
-    this.validateUniqueItemNames()
-  }
+    const itemsConfigRoot = rulesJson?.items_config
+    if (!itemsConfigRoot) {
+      throw new Error('规则JSON缺少 items_config 配置')
+    }
 
-  /**
-   * 验证规则JSON中物品名称的唯一性
-   */
-  private validateUniqueItemNames(): void {
-    const allItemNames = new Set<string>()
-    const duplicateNames: string[] = []
-    
-    // 检查武器名称
-    for (const weapon of this.itemConfig.weapons) {
-      for (const displayName of weapon.display_names) {
-        if (allItemNames.has(displayName)) {
-          duplicateNames.push(displayName)
-        } else {
-          allItemNames.add(displayName)
-        }
-      }
+    if (!itemsConfigRoot.items) {
+      throw new Error('规则JSON缺少 items_config.items 配置')
     }
-    
-    // 检查防具名称
-    for (const armor of this.itemConfig.armors) {
-      for (const displayName of armor.display_names) {
-        if (allItemNames.has(displayName)) {
-          duplicateNames.push(displayName)
-        } else {
-          allItemNames.add(displayName)
-        }
-      }
+
+    const { config, issues } = parseItemsConfig(itemsConfigRoot)
+    this.issues = issues
+
+    const hasAnyItem =
+      config.rarityLevels.length > 0 ||
+      config.items.weapons.length > 0 ||
+      config.items.armors.length > 0 ||
+      config.items.utilities.length > 0 ||
+      config.items.consumables.length > 0 ||
+      config.items.upgraders.length > 0
+
+    if (!hasAnyItem) {
+      throw new Error('无法从规则JSON中解析物品配置，请检查 items_config.items 字段内容是否正确')
     }
-    
-    // 检查功能道具名称
-    for (const utility of this.itemConfig.utilities) {
-      if (allItemNames.has(utility.name)) {
-        duplicateNames.push(utility.name)
-      } else {
-        allItemNames.add(utility.name)
-      }
-    }
-    
-    // 检查消耗品名称
-    for (const consumable of this.itemConfig.consumables) {
-      if (allItemNames.has(consumable.name)) {
-        duplicateNames.push(consumable.name)
-      } else {
-        allItemNames.add(consumable.name)
-      }
-    }
-    
-    // 检查升级器名称
-    for (const upgrader of this.itemConfig.upgraders) {
-      for (const displayName of upgrader.display_names) {
-        if (allItemNames.has(displayName)) {
-          duplicateNames.push(displayName)
-        } else {
-          allItemNames.add(displayName)
-        }
-      }
-    }
-    
-    // 如果发现重复名称，抛出错误
+
+    const duplicateNames = findDuplicateItemNames(config)
     if (duplicateNames.length > 0) {
-      const uniqueDuplicates = [...new Set(duplicateNames)]
-      throw new Error(`规则JSON中发现重复的物品名称: ${uniqueDuplicates.join(', ')}`)
+      throw new Error(`规则JSON中发现重复的物品名称: ${duplicateNames.join(', ')}`)
     }
+
+    this.itemConfig = config
+    this.existingItems = new Set(existingItems)
   }
 
   /**
@@ -208,34 +97,38 @@ export class ItemParser {
     
     // 武器稀有度映射
     const weaponsByRarity: Record<string, string[]> = {}
-    for (const weapon of this.itemConfig.weapons) {
-      if (!weaponsByRarity[weapon.rarity]) {
+    for (const weapon of this.itemConfig.items.weapons) {
+      if (weapon.rarity && !weaponsByRarity[weapon.rarity]) {
         weaponsByRarity[weapon.rarity] = []
       }
-      weaponsByRarity[weapon.rarity].push(...weapon.display_names)
-      allItems.push(...weapon.display_names)
+      if (weapon.rarity) {
+        weaponsByRarity[weapon.rarity].push(...weapon.displayNames)
+      }
+      allItems.push(...weapon.displayNames)
     }
 
     // 防具稀有度映射
     const armorsByRarity: Record<string, string[]> = {}
-    for (const armor of this.itemConfig.armors) {
-      if (!armorsByRarity[armor.rarity]) {
+    for (const armor of this.itemConfig.items.armors) {
+      if (armor.rarity && !armorsByRarity[armor.rarity]) {
         armorsByRarity[armor.rarity] = []
       }
-      armorsByRarity[armor.rarity].push(...armor.display_names)
-      allItems.push(...armor.display_names)
+      if (armor.rarity) {
+        armorsByRarity[armor.rarity].push(...armor.displayNames)
+      }
+      allItems.push(...armor.displayNames)
     }
 
-  // 功能道具
-  const utilities = this.itemConfig.utilities.map(item => item.name)
-  allItems.push(...utilities)
+    // 功能道具
+    const utilities = this.itemConfig.items.utilities.map(item => item.name)
+    allItems.push(...utilities)
 
     // 消耗品
-    const consumables = this.itemConfig.consumables.map(item => item.name)
+    const consumables = this.itemConfig.items.consumables.map(item => item.name)
     allItems.push(...consumables)
 
     // 升级器
-    const upgraders = this.itemConfig.upgraders.flatMap(upgrader => upgrader.display_names)
+    const upgraders = this.itemConfig.items.upgraders.flatMap(upgrader => upgrader.displayNames)
     allItems.push(...upgraders)
 
     return {
@@ -244,29 +137,33 @@ export class ItemParser {
         weapons: weaponsByRarity,
         armors: armorsByRarity
       },
-  utilities,
+      utilities,
       consumables,
       upgraders,
-      rarityLevels: this.itemConfig.rarity_levels
+      rarityLevels: this.itemConfig.rarityLevels
     }
   }
 
   /**
-   * 获取批量空投的稀有度选项（考虑场上已存在的物品）
+   * 获取批量空投的武器和防具稀有度选项（考虑场上已存在的物品）
    */
-  getBatchAirdropRarityOptions(): RarityOption[] {
-    const options: RarityOption[] = []
+  getBatchAirdropRarityOptions(): {
+    weapons: RarityOption[]
+    armors: RarityOption[]
+  } {
+    const weaponOptions: RarityOption[] = []
+    const armorOptions: RarityOption[] = []
     const parsedItems = this.parseAllItems()
 
     // 处理武器稀有度
-    for (const rarity of this.itemConfig.rarity_levels) {
-      const weaponNames = parsedItems.rarityItems.weapons[rarity.internal_name] || []
+    for (const rarity of this.itemConfig.rarityLevels) {
+      const weaponNames = parsedItems.rarityItems.weapons[rarity.internalName] || []
       const availableWeapons = weaponNames.filter(name => !this.existingItems.has(name))
       
       if (weaponNames.length > 0) {
-        options.push({
-          rarityKey: `weapon_${rarity.internal_name}`,
-          displayName: `${rarity.display_name}武器(上限${availableWeapons.length})`,
+        weaponOptions.push({
+          rarityKey: `weapon_${rarity.internalName}`,
+          displayName: `${rarity.displayName}武器(上限${availableWeapons.length})`,
           itemType: 'weapon',
           availableCount: availableWeapons.length,
           maxCount: weaponNames.length
@@ -275,14 +172,14 @@ export class ItemParser {
     }
 
     // 处理防具稀有度
-    for (const rarity of this.itemConfig.rarity_levels) {
-      const armorNames = parsedItems.rarityItems.armors[rarity.internal_name] || []
+    for (const rarity of this.itemConfig.rarityLevels) {
+      const armorNames = parsedItems.rarityItems.armors[rarity.internalName] || []
       const availableArmors = armorNames.filter(name => !this.existingItems.has(name))
       
       if (armorNames.length > 0) {
-        options.push({
-          rarityKey: `armor_${rarity.internal_name}`,
-          displayName: `${rarity.display_name}防具(上限${availableArmors.length})`,
+        armorOptions.push({
+          rarityKey: `armor_${rarity.internalName}`,
+          displayName: `${rarity.displayName}防具(上限${availableArmors.length})`,
           itemType: 'armor',
           availableCount: availableArmors.length,
           maxCount: armorNames.length
@@ -290,7 +187,10 @@ export class ItemParser {
       }
     }
 
-    return options
+    return {
+      weapons: weaponOptions,
+      armors: armorOptions
+    }
   }
 
   /**
@@ -360,6 +260,14 @@ export class ItemParser {
   }
 
   /**
+   * 获取可空投的物品列表（全部物品减去场上已存在的物品）
+   */
+  getAvailableAirdropItems(): string[] {
+    const allItems = this.parseAllItems()
+    return allItems.allItems.filter(name => !this.existingItems.has(name))
+  }
+
+  /**
    * 更新场上已存在的物品列表
    */
   updateExistingItems(existingItems: string[]) {
@@ -374,18 +282,41 @@ export function createItemParser(rulesJson: any, existingItems: string[] = []): 
   return new ItemParser(rulesJson, existingItems)
 }
 
-import type { DirectorGameData } from '@/types/gameStateTypes'
-
 /**
  * 从游戏状态中提取场上已存在的物品名称
  */
 export function extractExistingItemsFromGameState(gameData: DirectorGameData | null): string[] {
   const existingItems: string[] = []
   
+  // 从地点中提取物品
   if (gameData && gameData.places) {
     for (const place of Object.values(gameData.places)) {
       if (place.items && Array.isArray(place.items)) {
         for (const item of place.items) {
+          if (item.name) {
+            existingItems.push(item.name)
+          }
+        }
+      }
+    }
+  }
+  
+  // 从玩家身上提取物品（包括装备和背包）
+  if (gameData && gameData.players) {
+    for (const player of Object.values(gameData.players)) {
+      // 添加已装备的武器
+      if (player.equipped_weapon && player.equipped_weapon.name) {
+        existingItems.push(player.equipped_weapon.name)
+      }
+      
+      // 添加已装备的防具
+      if (player.equipped_armor && player.equipped_armor.name) {
+        existingItems.push(player.equipped_armor.name)
+      }
+      
+      // 添加背包中的物品
+      if (player.inventory && Array.isArray(player.inventory)) {
+        for (const item of player.inventory) {
           if (item.name) {
             existingItems.push(item.name)
           }

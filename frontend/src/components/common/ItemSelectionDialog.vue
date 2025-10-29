@@ -79,9 +79,8 @@ const allItemOptions = computed(() => {
     // 创建物品解析器
     const parser = createItemParser(rulesJson, existingItems)
     
-    // 解析所有物品
-    const parsedItems = parser.parseAllItems()
-    return parsedItems.allItems
+    // 获取可空投物品列表
+    return parser.getAvailableAirdropItems()
   } catch (error) {
     console.error('解析物品列表失败:', error)
     return []

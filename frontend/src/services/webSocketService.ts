@@ -43,7 +43,16 @@ export class WebSocketService {
       this.gameId = gameId
       this.password = password
       this.userType = userType // 保存用户类型
-      this.url = `${API_CONFIG.BASE_URL}/ws/${gameId}?user_type=${userType}&password=${encodeURIComponent(password)}`
+
+      try {
+        this.url = this.buildWebSocketUrl(gameId, password, userType)
+      } catch (error) {
+        console.error('构建WebSocket连接地址失败:', error)
+        this.setStatus(WebSocketStatus.ERROR)
+        reject(error)
+        return
+      }
+
       console.log('连接URL:', this.url)
       
       // 设置连接超时定时器
@@ -278,6 +287,17 @@ export class WebSocketService {
         console.error('事件监听器执行出错:', error)
       }
     })
+  }
+
+  private buildWebSocketUrl(gameId: string, password: string, userType: string): string {
+    const resolvedBase = new URL(API_CONFIG.BASE_URL, window.location.origin)
+    const wsUrl = new URL(resolvedBase.toString())
+    wsUrl.protocol = resolvedBase.protocol === 'https:' ? 'wss:' : 'ws:'
+    wsUrl.pathname = `${resolvedBase.pathname.replace(/\/+$/, '')}/ws/${encodeURIComponent(gameId)}`
+    wsUrl.search = ''
+    wsUrl.searchParams.set('user_type', userType)
+    wsUrl.searchParams.set('password', password)
+    return wsUrl.toString()
   }
 }
 

@@ -95,7 +95,7 @@
       <div class="log-list" ref="logListRef">
         <div 
           v-for="message in displayedMessages" 
-          :key="message.timestamp"
+          :key="message.id"
           :class="['log-item', message.message_type, isNewMessage(message.timestamp) ? 'fade-effect' : '']"
           :data-timestamp="message.timestamp"
         >
@@ -503,6 +503,7 @@ watch(filterForm, () => {
 .log-item.UserDirected {
   background-color: #f0f9ff;
   border-left: 4px solid #67c23a;
+  font-weight: bold;
 }
 
 .log-item.Info {
@@ -517,6 +518,10 @@ watch(filterForm, () => {
   box-shadow: 0 0 15px rgba(64, 158, 255, 0.8) !important;
   transform: scale(1.02);
   animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+.log-item.UserDirected.fade-effect {
+  font-weight: bold;
 }
 
 @keyframes pulse {
@@ -575,6 +580,10 @@ watch(filterForm, () => {
   line-height: 1.5;
   color: #606266;
   text-align: left;
+}
+
+.log-item.UserDirected .log-content-text {
+  font-weight: bold;
 }
 
 .log-item.fade-effect .log-content-text {

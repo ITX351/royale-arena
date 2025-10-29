@@ -33,7 +33,7 @@
           max-height="400"
           :fit="false"
         >
-          <el-table-column label="玩家" min-width="120">
+          <el-table-column label="玩家" min-width="100">
             <template #default="scope">
               <div class="player-name-cell">
                 <el-tooltip
@@ -54,7 +54,8 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="生命值" min-width="110">
+          <el-table-column label="位置" min-width="60" prop="location" />
+          <el-table-column label="生命" min-width="50">
             <template #default="scope">
               <div class="status-value">
                 <el-input 
@@ -65,7 +66,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="体力值" min-width="110">
+          <el-table-column label="体力" min-width="50">
             <template #default="scope">
               <div class="status-value">
                 <el-input 
@@ -76,7 +77,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="物品" min-width="260">
+          <el-table-column label="物品" min-width="360">
             <template #default="scope">
               <div class="items-container">
                 <el-button 
@@ -122,7 +123,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作">
+          <el-table-column label="操作" min-width="80">
             <template #default="scope">
               <el-button 
                 size="small" 
@@ -275,12 +276,12 @@ const removeItem = (playerId: string, itemName: string) => {
 const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'player') {
     // 创建玩家状态的表格文本表示
-    let statusText = '玩家\t生命值\t体力值\t物品\n'
-    statusText += '----\t------\t------\t----\n'
+    let statusText = '玩家\t位置\t生命值\t体力值\t物品\n'
+    statusText += '----\t----\t------\t------\t----\n'
     
     playerList.value.forEach(player => {
       const items = player.inventory.map(item => item.name).join(', ')
-      statusText += `${player.name}\t${player.life}\t${player.strength}\t${items || '无'}\n`
+      statusText += `${player.name}\t${player.location}\t${player.life}\t${player.strength}\t${items || '无'}\n`
     })
     
     plainTextContent.value = statusText

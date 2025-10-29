@@ -241,10 +241,11 @@ impl GameState {
 
             if dealt > 0 {
                 if let Some(bleed_value) = weapon_bleed_damage {
-                    target_player.set_bleed_effect(bleed_value);
-                    main_bleed_value = Some(bleed_value);
+                    if target_player.update_bleed_effect(bleed_value) {
+                        main_bleed_value = Some(bleed_value);
+                    }
                 }
-                if target_player.life == 0 && target_player.is_alive {
+                if target_player.life <= 0 && target_player.is_alive {
                     main_requires_kill = true;
                 }
             }
@@ -275,11 +276,12 @@ impl GameState {
 
                     if dealt > 0 {
                         if let Some(bleed_value) = weapon_bleed_damage {
-                            target.set_bleed_effect(bleed_value);
-                            applied_bleed = Some(bleed_value);
+                            if target.update_bleed_effect(bleed_value) {
+                                applied_bleed = Some(bleed_value);
+                            }
                         }
 
-                        if target.life == 0 && target.is_alive {
+                        if target.life <= 0 && target.is_alive {
                             requires_kill = true;
                         }
                     }
@@ -416,10 +418,7 @@ impl GameState {
         });
 
         // 消耗体力值并清除上一次搜索结果，防止连续攻击同一目标
-        {
-            let player = self.players.get_mut(player_id).unwrap();
-            player.last_search_result = None;
-        }
+        self.clear_player_search_result(player_id);
 
         self.consume_strength(player_id, attack_cost)?;
 

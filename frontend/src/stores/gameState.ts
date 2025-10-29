@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElNotification } from 'element-plus'
+import type { NotificationHandle } from 'element-plus'
 import type { 
   DirectorGameState, 
   ActorGameState,
@@ -33,6 +34,8 @@ export const useGameStateStore = defineStore('gameState', () => {
   const error = ref<string | null>(null)
   const logMessages = ref<ActionResult[]>([])
   const maxLogMessages = ref(10000) // 最多保存日志消息条数
+  const serverOffsetMs = ref(0)
+  let activeInfoNotification: NotificationHandle | null = null
 
   // 计算属性
   const globalState = computed<GlobalState | null>(() => {
@@ -119,6 +122,24 @@ export const useGameStateStore = defineStore('gameState', () => {
     connected.value = false
     connecting.value = false
     gameState.value = null
+    if (activeInfoNotification) {
+      activeInfoNotification.close()
+      activeInfoNotification = null
+    }
+  }
+
+  const updateServerOffset = (serverTimestamp?: string | null, receivedAt?: number) => {
+    if (!serverTimestamp) {
+      return
+    }
+
+    const serverMs = Date.parse(serverTimestamp)
+    if (Number.isNaN(serverMs)) {
+      return
+    }
+
+    const reference = typeof receivedAt === 'number' ? receivedAt : Date.now()
+    serverOffsetMs.value = serverMs - reference
   }
 
   const updateGameState = (newState: DirectorGameState | ActorGameState) => {
@@ -127,11 +148,20 @@ export const useGameStateStore = defineStore('gameState', () => {
       return
     }
 
+    updateServerOffset(newState.global_state?.server_now, undefined)
+    if (newState.action_result?.timestamp) {
+      updateServerOffset(newState.action_result.timestamp, undefined)
+    }
+
     gameState.value = newState
     
     // 如果有动作结果，只有非Info类型的消息才添加到日志消息中
     if (newState.action_result && newState.action_result.message_type !== 'Info') {
-      addLogMessage(newState.action_result)
+      // 如果消息没有ID，为WebSocket消息添加UUID
+      const resultWithId = newState.action_result.id 
+        ? newState.action_result 
+        : { ...newState.action_result, id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(36).substr(2, 9) };
+      addLogMessage(resultWithId)
     }
   }
 
@@ -276,28 +306,48 @@ export const useGameStateStore = defineStore('gameState', () => {
     switch (event.type) {
       case 'state_update':
         console.log('游戏状态更新:', event.data)
+        if (event.data?.global_state?.server_now) {
+          updateServerOffset(event.data.global_state.server_now, event.timestamp.getTime())
+        }
+        if (event.data?.action_result?.timestamp) {
+          updateServerOffset(event.data.action_result.timestamp, event.timestamp.getTime())
+        }
         updateGameState(event.data)
         break
       case 'action_result':
         console.log('追加日志:', event.data)
+        if (event.data?.timestamp) {
+          updateServerOffset(event.data.timestamp, event.timestamp.getTime())
+        }
         //addLogMessage(event.data)
         break
       case 'system_message':
         // 处理系统消息
         console.log('系统消息:', event.data)
         break
-      case 'info_notification':
+      case 'info_notification': {
         // 处理Info类型的轻量提示
         console.log('Info提示:', event.data)
-        ElNotification({
+        if (activeInfoNotification) {
+          activeInfoNotification.close()
+          activeInfoNotification = null
+        }
+        const notification = ElNotification({
           title: '提示',
           message: event.data.message,
           type: 'info',
           position: 'top-right',
           duration: 3000,
-          showClose: true
+          showClose: true,
+          onClose: () => {
+            if (activeInfoNotification === notification) {
+              activeInfoNotification = null
+            }
+          }
         })
+        activeInfoNotification = notification
         break
+      }
       case 'error':
         error.value = event.data.message || 'WebSocket错误'
         console.error('WebSocket错误:', event.data)
@@ -331,6 +381,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     directorPlaceList,
     actorPlayerList,
     actorPlaceList,
+    serverOffsetMs,
     
     // 操作
     connect,
