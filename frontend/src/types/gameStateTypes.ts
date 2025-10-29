@@ -79,6 +79,7 @@ export interface GlobalState {
   night_end_time: string | null;
   next_night_destroyed_places: string[];
   rules_config: Record<string, any>; // 后端传递的规则配置
+  server_now?: string; // 后端服务器当前时间戳（ISO字符串）
 }
 
 // 导演视角的游戏数据接口

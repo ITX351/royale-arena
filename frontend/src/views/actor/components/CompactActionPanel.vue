@@ -197,8 +197,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
+import { useGameStateStore } from '@/stores/gameState'
 
 const props = withDefaults(defineProps<{
   player: Player
@@ -220,7 +222,9 @@ const targetPlace = ref('')
 const targetPlayer = ref('')
 const deliverMessage = ref('')
 const directorMessage = ref('')
-const now = ref(Date.now())
+const gameStateStore = useGameStateStore()
+const { serverOffsetMs } = storeToRefs(gameStateStore)
+const now = ref(Date.now() + serverOffsetMs.value)
 let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
@@ -372,8 +376,12 @@ const lifeAnimationClass = computed(() => {
 
 onMounted(() => {
   timer = window.setInterval(() => {
-    now.value = Date.now()
+    now.value = Date.now() + serverOffsetMs.value
   }, 100)
+})
+
+watch(serverOffsetMs, (newOffset) => {
+  now.value = Date.now() + newOffset
 })
 
 onUnmounted(() => {

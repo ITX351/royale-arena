@@ -4,6 +4,7 @@
 use crate::websocket::game_connection_manager::GameConnectionManager;
 use crate::websocket::models::SearchResultType;
 use crate::websocket::models::{ActionResult, GameState, Place, Player};
+use chrono::Utc;
 use serde_json::{Value as JsonValue, json};
 
 /// 消息广播器
@@ -151,6 +152,7 @@ impl GameState {
             "night_end_time": self.night_end_time,
             "next_night_destroyed_places": self.next_night_destroyed_places,
             "rules_config": self.rules_config,
+            "server_now": Utc::now(),
         })
     }
 
@@ -162,6 +164,7 @@ impl GameState {
             "night_end_time": self.night_end_time,
             // "next_night_destroyed_places": self.next_night_destroyed_places,
             "rules_config": self.rules_config,
+            "server_now": Utc::now(),
         })
     }
 }

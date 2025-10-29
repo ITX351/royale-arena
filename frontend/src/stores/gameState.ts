@@ -33,6 +33,7 @@ export const useGameStateStore = defineStore('gameState', () => {
   const error = ref<string | null>(null)
   const logMessages = ref<ActionResult[]>([])
   const maxLogMessages = ref(10000) // 最多保存日志消息条数
+  const serverOffsetMs = ref(0)
 
   // 计算属性
   const globalState = computed<GlobalState | null>(() => {
@@ -121,10 +122,29 @@ export const useGameStateStore = defineStore('gameState', () => {
     gameState.value = null
   }
 
+  const updateServerOffset = (serverTimestamp?: string | null, receivedAt?: number) => {
+    if (!serverTimestamp) {
+      return
+    }
+
+    const serverMs = Date.parse(serverTimestamp)
+    if (Number.isNaN(serverMs)) {
+      return
+    }
+
+    const reference = typeof receivedAt === 'number' ? receivedAt : Date.now()
+    serverOffsetMs.value = serverMs - reference
+  }
+
   const updateGameState = (newState: DirectorGameState | ActorGameState) => {
     if (!newState || !newState.game_data) {
       console.warn('忽略无效的游戏状态更新', newState)
       return
+    }
+
+    updateServerOffset(newState.global_state?.server_now, undefined)
+    if (newState.action_result?.timestamp) {
+      updateServerOffset(newState.action_result.timestamp, undefined)
     }
 
     gameState.value = newState
@@ -280,10 +300,19 @@ export const useGameStateStore = defineStore('gameState', () => {
     switch (event.type) {
       case 'state_update':
         console.log('游戏状态更新:', event.data)
+        if (event.data?.global_state?.server_now) {
+          updateServerOffset(event.data.global_state.server_now, event.timestamp.getTime())
+        }
+        if (event.data?.action_result?.timestamp) {
+          updateServerOffset(event.data.action_result.timestamp, event.timestamp.getTime())
+        }
         updateGameState(event.data)
         break
       case 'action_result':
         console.log('追加日志:', event.data)
+        if (event.data?.timestamp) {
+          updateServerOffset(event.data.timestamp, event.timestamp.getTime())
+        }
         //addLogMessage(event.data)
         break
       case 'system_message':
@@ -335,6 +364,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     directorPlaceList,
     actorPlayerList,
     actorPlaceList,
+    serverOffsetMs,
     
     // 操作
     connect,
