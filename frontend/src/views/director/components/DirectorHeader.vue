@@ -77,8 +77,37 @@
           <span>创建时间: {{ formatDate(game.created_at) }}</span>
           <span class="game-id">游戏ID: {{ game.id }}</span>
         </div>
+        <el-button
+          v-if="canPreviewRules"
+          type="primary"
+          link
+          @click="showRulesPreview = true"
+          :disabled="!game.rules_config"
+          class="rules-preview-button"
+        >
+          浏览当前规则解析
+        </el-button>
       </div>
     </el-card>
+
+    <el-dialog
+      v-model="showRulesPreview"
+      title="当前规则解析"
+      width="min(90vw, 800px)"
+      destroy-on-close
+    >
+      <div class="rules-preview-dialog">
+        <GameRulesPreview
+          v-if="game.rules_config"
+          :rules-config="game.rules_config"
+          class="dialog-preview"
+        />
+        <el-empty v-else description="暂无规则配置" />
+      </div>
+      <template #footer>
+        <el-button @click="showRulesPreview = false">关闭</el-button>
+      </template>
+    </el-dialog>
     
     <!-- 存档文件选择对话框 -->
     <el-dialog
@@ -129,6 +158,7 @@ import {
   shouldShowEndButton
 } from '@/utils/gameUtils'
 import { useManualSaveGame } from '../composables/useManualSaveGame'
+import GameRulesPreview from '@/components/GameRulesPreview.vue'
 
 // Props
 const props = defineProps<{
@@ -150,6 +180,7 @@ const showDetails = ref(false)
 const showSaveFileDialog = ref(false)
 const saveFiles = ref<any[]>([])
 const selectedSaveFile = ref<any>(null)
+const showRulesPreview = ref(false)
 
 const gameIdRef = computed(() => props.game.id)
 const directorPasswordRef = computed(() => props.directorPassword)
@@ -172,6 +203,9 @@ const showSaveButton = computed(() => {
 })
 const showResumeButton = computed(() => shouldShowResumeButton(props.game.status))
 const showEndButton = computed(() => shouldShowEndButton(props.game.status))
+const canPreviewRules = computed(() => {
+  return props.game.status === GameStatus.RUNNING || props.game.status === GameStatus.PAUSED
+})
 
 // 方法实现
 const formatDate = (dateString: string) => {
@@ -345,6 +379,19 @@ const goHome = () => {
 
 .director-header {
   margin-bottom: 24px;
+}
+
+.rules-preview-button {
+  margin-top: 12px;
+}
+
+.rules-preview-dialog {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.dialog-preview {
+  width: 100%;
 }
 
 .header-actions {

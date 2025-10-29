@@ -45,6 +45,7 @@
       <el-collapse-transition>
         <div v-show="!playersTableCollapsed">
           <el-table
+            v-if="players.length > 0 || playersLoading"
             :data="players"
             v-loading="playersLoading"
             @selection-change="handleSelectionChange"
