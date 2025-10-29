@@ -49,7 +49,7 @@
 
           <el-alert
             v-else-if="!webSocketConnected && game.status === GameStatus.RUNNING"
-            title="WebSocket连接已断开，正在尝试重连..."
+            title="WebSocket连接已断开，如无响应请刷新页面"
             type="warning"
             show-icon
             :closable="false"

@@ -54,7 +54,14 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="位置" min-width="60" prop="location" />
+          <el-table-column label="票数" min-width="50">
+            <template #default="scope">
+              <div class="status-value">
+                {{ calculatePlayerVotes(scope.row) }}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="位置" min-width="70" prop="location" />
           <el-table-column label="生命" min-width="50">
             <template #default="scope">
               <div class="status-value">
@@ -77,7 +84,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="物品" min-width="360">
+          <el-table-column label="物品" min-width="280">
             <template #default="scope">
               <div class="items-container">
                 <el-button 
@@ -180,6 +187,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowUp, ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
+import { calculatePlayerVotes } from '@/utils/playerUtils'
 import type { Player } from '@/types/gameStateTypes'
 
 // 定义组件属性
@@ -275,15 +283,16 @@ const removeItem = (playerId: string, itemName: string) => {
 // 显示纯文本对话框
 const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'player') {
-    // 创建玩家状态的表格文本表示
-    let statusText = '玩家\t位置\t生命值\t体力值\t物品\n'
-    statusText += '----\t----\t------\t------\t----\n'
-    
+    // 创建玩家状态的表格文本表示（包含票数列）
+    let statusText = '玩家\t票数\t位置\t生命值\t体力值\t物品\n'
+    statusText += '----\t----\t----\t------\t------\t----\n'
+
     playerList.value.forEach(player => {
       const items = player.inventory.map(item => item.name).join(', ')
-      statusText += `${player.name}\t${player.location}\t${player.life}\t${player.strength}\t${items || '无'}\n`
+      const votes = calculatePlayerVotes(player)
+      statusText += `${player.name}\t${votes}\t${player.location}\t${player.life}\t${player.strength}\t${items || '无'}\n`
     })
-    
+
     plainTextContent.value = statusText
     dialogTitle.value = '玩家状态'
   }
