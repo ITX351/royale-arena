@@ -41,7 +41,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
-import { createItemParser, extractExistingItemsFromGameState } from '@/utils/itemParser'
+import { createItemParser, extractExistingWeaponsAndArmorsFromGameState } from '@/utils/itemParser'
 import type { DirectorGameData } from '@/types/gameStateTypes'
 
 // 定义组件属性
@@ -74,7 +74,9 @@ const allItemOptions = computed(() => {
   
   try {
     // 获取现有物品
-    const existingItems = extractExistingItemsFromGameState(store.gameData as DirectorGameData)
+    const existingItems = store.gameData && 'places' in store.gameData 
+      ? extractExistingWeaponsAndArmorsFromGameState(store.gameData as DirectorGameData) 
+      : []
     
     // 创建物品解析器
     const parser = createItemParser(rulesJson, existingItems)

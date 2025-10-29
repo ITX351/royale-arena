@@ -160,7 +160,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { Delete, Plus, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
-import { extractExistingItemsFromGameState } from '@/utils/itemParser'
+import { extractExistingWeaponsAndArmorsFromGameState } from '@/utils/itemParser'
 import type { DirectorPlace as Place, DirectorGameData } from '@/types/gameStateTypes'
 
 // 异步加载批量空投对话框组件
@@ -217,7 +217,7 @@ const rulesJson = computed(() => {
 
 const existingItems = computed(() => {
   // 从游戏状态中提取现有物品
-  return extractExistingItemsFromGameState(store.gameData as DirectorGameData)
+  return extractExistingWeaponsAndArmorsFromGameState(store.gameData as DirectorGameData)
 })
 
 const availablePlaces = computed(() => {

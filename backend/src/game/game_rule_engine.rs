@@ -80,6 +80,11 @@ impl Item {
     pub fn is_upgrader(&self) -> bool {
         matches!(self.item_type, ItemType::Upgrader)
     }
+
+    /// 判断物品是否是武器或防具（即需要保持唯一性的物品）
+    pub fn is_weapon_or_armor(&self) -> bool {
+        matches!(self.item_type, ItemType::Weapon(_) | ItemType::Armor(_))
+    }
 }
 
 /// 物品类型枚举

@@ -10,7 +10,7 @@ import type {
   ConsumableConfig as NormalizedConsumableConfig,
   UpgraderConfig as NormalizedUpgraderConfig
 } from './itemConfigUtils'
-import type { DirectorGameData } from '@/types/gameStateTypes'
+import type { DirectorGameData, Item } from '@/types/gameStateTypes'
 
 export type RarityLevel = RarityLevelConfig
 export type WeaponConfig = NormalizedWeaponConfig
@@ -285,45 +285,62 @@ export function createItemParser(rulesJson: any, existingItems: string[] = []): 
 /**
  * 从游戏状态中提取场上已存在的物品名称
  */
-export function extractExistingItemsFromGameState(gameData: DirectorGameData | null): string[] {
+/**
+ * 判断一个物品对象是否属于武器或防具
+ * 返回 true 表示该物品的 item_type.type 为 'weapon' 或 'armor'
+ */
+export function isWeaponOrArmor(item: Item | any): boolean {
+  if (!item || typeof item !== 'object') return false
+  const itemType = item.item_type
+  if (!itemType || typeof itemType !== 'object') return false
+  const t = itemType.type
+  return t === 'weapon' || t === 'armor'
+}
+
+/**
+ * 从导演视角的游戏数据中提取场上已存在的武器和防具名称
+ * - 地点与背包中的物品会先通过 isWeaponOrArmor 判断类型
+ * - 已装备的武器/护甲字段 (equipped_weapon / equipped_armor) 直接加入（只要存在 name）
+ */
+export function extractExistingWeaponsAndArmorsFromGameState(gameData: DirectorGameData | null): string[] {
   const existingItems: string[] = []
-  
-  // 从地点中提取物品
+
+  // 从地点中提取物品（仅武器/防具）
   if (gameData && gameData.places) {
     for (const place of Object.values(gameData.places)) {
       if (place.items && Array.isArray(place.items)) {
         for (const item of place.items) {
-          if (item.name) {
+          if (item && item.name && isWeaponOrArmor(item)) {
             existingItems.push(item.name)
           }
         }
       }
     }
   }
-  
-  // 从玩家身上提取物品（包括装备和背包）
+
+  // 从玩家身上提取物品（包括装备和背包） - 装备项直接加入
   if (gameData && gameData.players) {
     for (const player of Object.values(gameData.players)) {
       // 添加已装备的武器
       if (player.equipped_weapon && player.equipped_weapon.name) {
         existingItems.push(player.equipped_weapon.name)
       }
-      
+
       // 添加已装备的防具
       if (player.equipped_armor && player.equipped_armor.name) {
         existingItems.push(player.equipped_armor.name)
       }
-      
-      // 添加背包中的物品
+
+      // 添加背包中的物品（仅武器/防具）
       if (player.inventory && Array.isArray(player.inventory)) {
         for (const item of player.inventory) {
-          if (item.name) {
+          if (item && item.name && isWeaponOrArmor(item)) {
             existingItems.push(item.name)
           }
         }
       }
     }
   }
-  
+
   return existingItems
 }
