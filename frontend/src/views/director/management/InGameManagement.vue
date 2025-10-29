@@ -67,7 +67,7 @@
               style="flex: 1"
             >
               <el-option
-                v-for="place in placeList"
+                v-for="place in placeList.filter(p => !p.is_destroyed)"
                 :key="place.name"
                 :label="place.name"
                 :value="place.name"

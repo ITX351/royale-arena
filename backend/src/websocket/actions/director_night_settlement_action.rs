@@ -28,6 +28,11 @@ impl GameState {
             }
         };
 
+        // 如果被标记为已摧毁，从 next_night_destroyed_places 中移除该地点（避免重复处理）
+        if is_destroyed {
+            self.next_night_destroyed_places.retain(|p| p != place_name);
+        }
+
         // 构造响应数据
         let data = serde_json::json!({
             "place": {
