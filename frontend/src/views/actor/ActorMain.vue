@@ -81,7 +81,6 @@
   <el-dialog
     v-model="killRecordsDialogVisible"
     title="击杀记录"
-    width="80%"
     max-height="80%"
   >
     <KillRecordDisplay

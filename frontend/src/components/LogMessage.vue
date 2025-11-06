@@ -60,6 +60,7 @@
             <el-select 
               v-model="filterForm.selectedPlayer" 
               placeholder="选择演员"
+              filterable
               clearable
               class="player-select"
             >
@@ -126,22 +127,14 @@
       </div>
 
       <!-- 显示控制 -->
-      <div class="log-controls" v-if="filteredMessages.length > visibleCount">
-        <el-button 
-          v-if="!showAll" 
-          type="primary" 
-          @click="showAllMessages"
-          class="show-more-btn"
-        >
-          显示全部 ({{ filteredMessages.length }}条)
-        </el-button>
-        <el-button 
-          v-else 
-          @click="hideExtraMessages"
-          class="show-less-btn"
-        >
-          折叠消息
-        </el-button>
+      <div class="log-controls" v-if="hasPagination">
+        <el-pagination
+          layout="prev, pager, next"
+          :current-page="currentPage"
+          :page-size="PAGE_SIZE"
+          :total="filteredMessages.length"
+          @current-change="handlePageChange"
+        />
       </div>
     </div>
   </el-card>
@@ -168,6 +161,8 @@ const emit = defineEmits<{
 }>()
 
 // 响应式状态
+const PAGE_SIZE = 20
+
 const filterForm = ref({
   selectedDate: '',
   showOnlyUserMessages: false,
@@ -175,8 +170,7 @@ const filterForm = ref({
   keyword: ''
 })
 
-const visibleCount = ref(20)
-const showAll = ref(false)
+const currentPage = ref(1)
 const logListRef = ref<HTMLElement | null>(null)
 const newMessages = ref<Set<string>>(new Set())
 const previousMessageTimestamps = ref<Set<string>>(new Set())
@@ -184,10 +178,12 @@ const showFilters = ref(false)
 
 // 计算属性
 const playerOptions = computed(() => {
-  return props.players.map(player => ({
+  const options = props.players.map(player => ({
     id: player.id,
     name: player.name
   }))
+
+  return options.sort((a, b) => a.name.localeCompare(b.name))
 })
 
 const isDirectorView = computed(() => props.isDirector === true)
@@ -243,12 +239,22 @@ const filteredMessages = computed(() => {
   )
 })
 
-const displayedMessages = computed(() => {
-  if (showAll.value) {
-    return filteredMessages.value
+const totalPages = computed(() => {
+  if (filteredMessages.value.length === 0) {
+    return 1
   }
-  return filteredMessages.value.slice(0, visibleCount.value)
+  return Math.ceil(filteredMessages.value.length / PAGE_SIZE)
 })
+
+const displayedMessages = computed(() => {
+  if (filteredMessages.value.length === 0) {
+    return []
+  }
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredMessages.value.slice(start, start + PAGE_SIZE)
+})
+
+const hasPagination = computed(() => filteredMessages.value.length > PAGE_SIZE)
 
 // 方法实现
 const getMessageTypeLabel = (type: string) => {
@@ -266,20 +272,16 @@ const resetFilter = () => {
   filterForm.value.selectedPlayer = ''
   filterForm.value.keyword = ''
   ElMessage.info('筛选条件已重置')
-  // 重置显示状态
-  showAll.value = false
-}
-
-const showAllMessages = () => {
-  showAll.value = true
-}
-
-const hideExtraMessages = () => {
-  showAll.value = false
+  // 重置分页
+  currentPage.value = 1
 }
 
 const toggleFilters = () => {
   showFilters.value = !showFilters.value
+}
+
+const handlePageChange = (page: number) => {
+  currentPage.value = page
 }
 
 // 新增方法：检查消息是否为新消息
@@ -357,6 +359,18 @@ watch(isDirectorView, (isDirector) => {
   }
 });
 
+watch(filteredMessages, () => {
+  if (filteredMessages.value.length === 0) {
+    currentPage.value = 1
+    return
+  }
+
+  const total = totalPages.value
+  if (currentPage.value > total) {
+    currentPage.value = total
+  }
+});
+
 // 组件卸载时的操作
 onUnmounted(() => {
   // 清理操作（如果需要）
@@ -364,7 +378,7 @@ onUnmounted(() => {
 
 // 自动应用筛选条件
 watch(filterForm, () => {
-  showAll.value = false
+  currentPage.value = 1
 }, { deep: true });
 </script>
 

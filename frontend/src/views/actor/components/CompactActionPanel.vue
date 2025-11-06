@@ -39,6 +39,7 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
+            filterable
             :class="{ 'safe-zone-selected': isSafePlace(selectedPlace) }"
           >
             <el-option
@@ -67,6 +68,7 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
+            filterable
             :class="{ 'safe-zone-selected': isSafePlace(targetPlace) }"
           >
             <el-option
@@ -155,9 +157,10 @@
           placeholder="选择玩家" 
           size="small"
           style="width: 120px;"
+          filterable
         >
           <el-option
-            v-for="otherPlayer in otherPlayers"
+            v-for="otherPlayer in sortedOtherPlayers"
             :key="otherPlayer.id"
             :label="otherPlayer.name"
             :value="otherPlayer.id"
@@ -168,15 +171,18 @@
           placeholder="传音内容"
           size="small"
           style="width: 150px;"
+          :maxlength="MESSAGE_MAX_LENGTH"
+          show-word-limit
           @keyup.enter="handleDeliver"
         />
         <el-button 
           size="small"
-          :disabled="!targetPlayer || !deliverMessage"
+          :disabled="!targetPlayer || !deliverMessage.trim() || deliverMessageTooLong"
           @click="handleDeliver"
         >
           传音
         </el-button>
+        <span v-if="deliverMessageTooLong" class="input-error">内容不能超过 {{ MESSAGE_MAX_LENGTH }} 字</span>
       </div>
 
       <!-- 发送给导演 -->
@@ -186,15 +192,18 @@
           placeholder="发送给导演"
           size="small"
           style="width: 200px;"
+          :maxlength="MESSAGE_MAX_LENGTH"
+          show-word-limit
           @keyup.enter="handleSendToDirector"
         />
         <el-button 
           size="small"
-          :disabled="!directorMessage"
+          :disabled="!directorMessage.trim() || directorMessageTooLong"
           @click="handleSendToDirector"
         >
           发送
         </el-button>
+        <span v-if="directorMessageTooLong" class="input-error">内容不能超过 {{ MESSAGE_MAX_LENGTH }} 字</span>
       </div>
       <div
         class="rest-status-chip rest-mobile"
@@ -239,6 +248,8 @@ const now = ref(Date.now() + serverOffsetMs.value)
 let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
+const MESSAGE_MAX_LENGTH = 100
+
 const selectPopperOptions = {
   modifiers: [
     {
@@ -428,6 +439,13 @@ const otherPlayers = computed((): ActorPlayer[] => {
   return props.players.filter(p => p.id !== props.player.id)
 })
 
+const sortedOtherPlayers = computed(() => {
+  return [...otherPlayers.value].sort((a, b) => {
+    const localeResult = a.name.localeCompare(b.name, 'zh-CN-u-co-pinyin')
+    return localeResult || a.name.localeCompare(b.name)
+  })
+})
+
 const searchResultText = computed(() => {
   const result = props.player.last_search_result
   if (!result) {
@@ -442,6 +460,14 @@ const lifeAnimationClass = computed(() => {
     return ''
   }
   return lifeAnimation.value === 'damage' ? 'life-damage' : 'life-heal'
+})
+
+const deliverMessageTooLong = computed(() => {
+  return deliverMessage.value.length > MESSAGE_MAX_LENGTH
+})
+
+const directorMessageTooLong = computed(() => {
+  return directorMessage.value.length > MESSAGE_MAX_LENGTH
 })
 
 onMounted(() => {
@@ -537,15 +563,23 @@ const handlePick = () => {
 }
 
 const handleDeliver = () => {
-  emit('action', 'deliver', { 
-    target_player_id: targetPlayer.value, 
-    message: deliverMessage.value 
+  const trimmedMessage = deliverMessage.value.trim()
+  if (!targetPlayer.value || !trimmedMessage || trimmedMessage.length > MESSAGE_MAX_LENGTH) {
+    return
+  }
+  emit('action', 'deliver', {
+    target_player_id: targetPlayer.value,
+    message: trimmedMessage
   })
   deliverMessage.value = ''
 }
 
 const handleSendToDirector = () => {
-  emit('action', 'send', { message: directorMessage.value })
+  const trimmedMessage = directorMessage.value.trim()
+  if (!trimmedMessage || trimmedMessage.length > MESSAGE_MAX_LENGTH) {
+    return
+  }
+  emit('action', 'send', { message: trimmedMessage })
   directorMessage.value = ''
 }
 
@@ -866,6 +900,12 @@ function formatDuration(durationMs: number) {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.input-error {
+  color: #f56c6c;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 @media (min-width: 769px) {

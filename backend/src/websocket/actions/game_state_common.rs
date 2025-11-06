@@ -438,7 +438,7 @@ impl GameState {
             )
         } else {
             format!(
-                "{} 搜索时察觉到了附近的动静",
+                "{} 搜索发现了未知玩家",
                 self.players.get(player_id).unwrap().name
             )
         };

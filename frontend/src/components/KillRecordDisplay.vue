@@ -1,84 +1,76 @@
 <template>
-  <el-card class="kill-record-display">
-    <template #header>
-      <div class="card-header" :class="{ 'card-header--no-title': !props.showTitle }">
-        <span v-if="props.showTitle" class="header-spacer" aria-hidden="true"></span>
-        <h3 v-if="props.showTitle">击杀记录</h3>
-        <div class="header-controls">
-          <el-select 
-            v-if="props.isDirector" 
-            v-model="filterForm.selectedKiller" 
-            placeholder="筛选击杀者"
-            clearable
+  <div class="kill-record-display">
+    <div
+      v-if="props.showTitle || props.isDirector"
+      class="table-toolbar"
+      :class="{ 'table-toolbar--no-title': !props.showTitle }"
+    >
+      <h3 v-if="props.showTitle" class="toolbar-title">击杀记录</h3>
+      <div class="toolbar-controls">
+        <el-select 
+          v-if="props.isDirector" 
+          v-model="filterForm.selectedKiller" 
+          placeholder="筛选击杀者"
+          clearable
+          filterable
+          size="small"
+          class="killer-filter"
+        >
+          <el-option label="无击杀者" value="__none__" />
+          <el-option
+            v-for="player in sortedPlayers"
+            :key="player.id"
+            :label="player.name"
+            :value="player.id"
+          />
+        </el-select>
+        <el-button-group>
+          <el-button 
+            :type="sortOrder === 'asc' ? 'primary' : 'default'" 
+            @click="changeSortOrder('asc')"
             size="small"
-            class="killer-filter"
           >
-            <el-option label="无击杀者" value="__none__" />
-            <el-option
-              v-for="player in props.players"
-              :key="player.id"
-              :label="player.name"
-              :value="player.id"
-            />
-          </el-select>
-          <el-button-group>
-            <el-button 
-              :type="sortOrder === 'asc' ? 'primary' : 'default'" 
-              @click="changeSortOrder('asc')"
-              size="small"
-            >
-              时间正序
-            </el-button>
-            <el-button 
-              :type="sortOrder === 'desc' ? 'primary' : 'default'" 
-              @click="changeSortOrder('desc')"
-              size="small"
-            >
-              时间倒序
-            </el-button>
-          </el-button-group>
-        </div>
+            时间正序
+          </el-button>
+          <el-button 
+            :type="sortOrder === 'desc' ? 'primary' : 'default'" 
+            @click="changeSortOrder('desc')"
+            size="small"
+          >
+            时间倒序
+          </el-button>
+        </el-button-group>
       </div>
-    </template>
-    
+    </div>
+
     <el-table 
-      v-if="hasRecords"
       :data="filteredAndSortedRecords" 
-      style="width: 100%" 
+      class="kill-record-table"
       size="small"
       max-height="400"
+      empty-text="暂无击杀记录"
     >
-      <el-table-column prop="kill_time" label="时间" width="160">
+      <el-table-column prop="kill_time" label="时间" width="140">
         <template #default="scope">
           {{ formatTime(scope.row.kill_time) }}
         </template>
       </el-table-column>
-      <el-table-column prop="killer_name" label="击杀者" width="120">
+      <el-table-column prop="killer_name" label="击杀者" width="110">
         <template #default="scope">
           <span v-if="scope.row.killer_name">{{ scope.row.killer_name }}</span>
           <span v-else class="no-killer">无击杀者</span>
         </template>
       </el-table-column>
-      <el-table-column prop="victim_name" label="被击杀者" width="120" />
-      <el-table-column prop="cause" label="原因" width="120" />
-      <el-table-column prop="weapon" label="武器" width="120">
-        <template #default="scope">
-          <span v-if="scope.row.weapon">{{ scope.row.weapon }}</span>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="location" label="地点" width="120">
+      <el-table-column prop="victim_name" label="被击杀者" width="110" />
+      <el-table-column prop="cause" label="原因" width="110" />
+      <el-table-column prop="location" label="地点" width="110">
         <template #default="scope">
           <span v-if="scope.row.location">{{ scope.row.location }}</span>
           <span v-else>-</span>
         </template>
       </el-table-column>
     </el-table>
-    
-    <div v-else class="no-records">
-      暂无击杀记录
-    </div>
-  </el-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -103,6 +95,11 @@ const filterForm = ref({
 })
 
 const sortOrder = ref<'asc' | 'desc'>('asc')
+
+// Sort players so the select remains easy to scan when many entries exist.
+const sortedPlayers = computed(() => {
+  return [...props.players].sort((a, b) => a.name.localeCompare(b.name))
+})
 
 // 计算属性
 const recordsWithPlayerNames = computed(() => {
@@ -148,8 +145,6 @@ const filteredAndSortedRecords = computed(() => {
   return sorted
 })
 
-const hasRecords = computed(() => filteredAndSortedRecords.value.length > 0)
-
 // 方法
 const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
@@ -162,40 +157,34 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
 
 <style scoped>
 .kill-record-display {
-  margin-top: 20px;
-}
-
-.card-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 10px;
+  margin: 12px auto 0;
+  max-width: 640px;
   width: 100%;
 }
 
-.card-header--no-title {
-  grid-template-columns: 1fr;
-  justify-items: end;
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
-.header-spacer {
-  height: 1px;
+.table-toolbar--no-title {
+  justify-content: flex-end;
 }
 
-.card-header h3 {
+.toolbar-title {
   margin: 0;
-  justify-self: center;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.header-controls {
-  justify-self: end;
+.toolbar-controls {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.card-header--no-title .header-controls {
-  justify-self: end;
 }
 
 .killer-filter {
@@ -207,10 +196,10 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
   font-style: italic;
 }
 
-.no-records {
-  text-align: center;
-  padding: 20px;
-  color: #909399;
+.kill-record-table {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .kill-record-display :deep(.el-table__header-wrapper table),
@@ -220,17 +209,8 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
 }
 
 @media (max-width: 600px) {
-  .card-header {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-
-  .header-spacer {
-    display: none;
-  }
-
-  .header-controls {
-    justify-self: center;
+  .table-toolbar {
+    justify-content: center;
   }
 }
 </style>

@@ -62,7 +62,6 @@
                 <el-input-number
                   v-model="specificSelections[item]"
                   :min="0"
-                  :max="10"
                   placeholder="数量"
                   style="width: 100%"
                 />
@@ -78,7 +77,6 @@
                 <el-input-number
                   v-model="specificSelections[item]"
                   :min="0"
-                  :max="10"
                   placeholder="数量"
                   style="width: 100%"
                 />
@@ -94,7 +92,6 @@
                 <el-input-number
                   v-model="specificSelections[item]"
                   :min="0"
-                  :max="10"
                   placeholder="数量"
                   style="width: 100%"
                 />

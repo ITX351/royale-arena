@@ -277,6 +277,27 @@ export class GameRuleParser {
       if (!Array.isArray(rulesConfig.map.safe_places)) {
         errors.push('安全地点必须是数组');
       }
+      if (Array.isArray(rulesConfig.map.places)) {
+        const placeDuplicates = this.findDuplicates(rulesConfig.map.places as string[]);
+        if (placeDuplicates.length > 0) {
+          errors.push(`地图地点列表存在重复项: ${placeDuplicates.map(String).join(', ')}`);
+        }
+      }
+      if (Array.isArray(rulesConfig.map.safe_places)) {
+        const safePlaceDuplicates = this.findDuplicates(rulesConfig.map.safe_places as string[]);
+        if (safePlaceDuplicates.length > 0) {
+          errors.push(`安全地点列表存在重复项: ${safePlaceDuplicates.map(String).join(', ')}`);
+        }
+      }
+      if (Array.isArray(rulesConfig.map.places) && Array.isArray(rulesConfig.map.safe_places)) {
+        const missingSafePlaces = this.findMissingSafePlaces(
+          rulesConfig.map.safe_places as string[],
+          rulesConfig.map.places as string[]
+        );
+        if (missingSafePlaces.length > 0) {
+          errors.push(`安全地点列表包含未在地点名单中的地点: ${missingSafePlaces.map(String).join(', ')}`);
+        }
+      }
     }
     
     // 检查玩家配置
@@ -466,5 +487,23 @@ export class GameRuleParser {
       canViewStatus: (value & 4) !== 0,    // 允许查看队友状态 (4)
       canTransferItems: (value & 8) !== 0  // 允许赠送物品给队友 (8)
     };
+  }
+
+  private findDuplicates<T>(values: T[]): T[] {
+    const seen = new Set<T>();
+    const duplicates = new Set<T>();
+    values.forEach((value) => {
+      if (seen.has(value)) {
+        duplicates.add(value);
+      } else {
+        seen.add(value);
+      }
+    });
+    return Array.from(duplicates);
+  }
+
+  private findMissingSafePlaces(safePlaces: string[], places: string[]): string[] {
+    const placeSet = new Set(places);
+    return safePlaces.filter((place) => !placeSet.has(place));
   }
 }
