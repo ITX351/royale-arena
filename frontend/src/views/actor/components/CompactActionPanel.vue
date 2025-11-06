@@ -39,12 +39,15 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
+            :class="{ 'safe-zone-selected': isSafePlace(selectedPlace) }"
           >
             <el-option
-              v-for="place in places.filter(p => !p.is_destroyed)"
+              v-for="place in availablePlaces"
               :key="place.name"
               :label="place.name"
               :value="place.name"
+              :class="{ 'safe-zone-option': isSafePlace(place.name) }"
+              :style="getPlaceOptionStyle(place.name)"
             />
           </el-select>
           <el-button 
@@ -64,13 +67,16 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
+            :class="{ 'safe-zone-selected': isSafePlace(targetPlace) }"
           >
             <el-option
-              v-for="place in places.filter(p => !p.is_destroyed)"
+              v-for="place in availablePlaces"
               :key="place.name"
               :label="place.name"
               :value="place.name"
               :disabled="place.name === player.location"
+              :class="{ 'safe-zone-option': isSafePlace(place.name) }"
+              :style="getPlaceOptionStyle(place.name)"
             />
           </el-select>
           <el-button 
@@ -242,6 +248,55 @@ const selectPopperOptions = {
       }
     }
   ]
+}
+
+const safeZoneOptionStyle: Record<string, string> = {
+  color: '#67c23a',
+  fontWeight: '600'
+}
+
+const safePlaceNames = computed<Set<string>>(() => {
+  const safePlaces = props.globalState?.rules_config?.map?.safe_places
+  if (Array.isArray(safePlaces)) {
+    return new Set<string>(safePlaces)
+  }
+  return new Set<string>()
+})
+
+const comparePlaceName = (a: ActorPlace, b: ActorPlace) => {
+  const localeResult = a.name.localeCompare(b.name, 'zh-CN-u-co-pinyin')
+  return localeResult || a.name.localeCompare(b.name)
+}
+
+const availablePlaces = computed<ActorPlace[]>(() => {
+  const validPlaces = props.places.filter(place => !place.is_destroyed)
+  if (!validPlaces.length) {
+    return []
+  }
+
+  const safe: ActorPlace[] = []
+  const regular: ActorPlace[] = []
+
+  for (const place of validPlaces) {
+    if (safePlaceNames.value.has(place.name)) {
+      safe.push(place)
+    } else {
+      regular.push(place)
+    }
+  }
+
+  safe.sort(comparePlaceName)
+  regular.sort(comparePlaceName)
+
+  return [...safe, ...regular]
+})
+
+const isSafePlace = (placeName: string) => {
+  return safePlaceNames.value.has(placeName)
+}
+
+const getPlaceOptionStyle = (placeName: string): Record<string, string> | undefined => {
+  return isSafePlace(placeName) ? safeZoneOptionStyle : undefined
 }
 
 // 计算属性
@@ -517,6 +572,16 @@ function formatDuration(durationMs: number) {
   border-radius: 6px;
   margin-bottom: 16px;
   border: 1px solid #e1e6f0;
+}
+
+:deep(.el-select-dropdown__item.safe-zone-option) {
+  color: #67c23a;
+  font-weight: 600;
+}
+
+:deep(.el-select.safe-zone-selected .el-select__selected-item) {
+  color: #67c23a;
+  font-weight: 600;
 }
 
 .status-item {

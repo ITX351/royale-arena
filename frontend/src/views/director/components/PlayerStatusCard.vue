@@ -7,11 +7,17 @@
       <div class="card-header">
         <h3>玩家状态管理</h3>
         <div class="header-actions">
+          <el-checkbox 
+            v-model="showDeadPlayers"
+                  size="small"
+          >
+            显示已出局玩家
+          </el-checkbox>
           <el-button 
             type="primary" 
             size="small" 
             @click="showPlainTextDialog('player')"
-          >
+                >
             复制状态
           </el-button>
           <el-button 
@@ -27,13 +33,27 @@
     <el-collapse-transition>
       <div v-show="!isCollapsed" class="player-status-content">
         <el-table
-          :data="playerList"
+          :data="sortedPlayers"
           style="width: 100%"
           size="small"
           max-height="400"
           :fit="false"
         >
           <el-table-column label="玩家" min-width="100">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('name')"
+                @keydown.enter.prevent="toggleSort('name')"
+                @keydown.space.prevent="toggleSort('name')"
+              >
+                玩家
+                <ArrowUp v-if="sortKey === 'name' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'name' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
             <template #default="scope">
               <div class="player-name-cell">
                 <el-tooltip
@@ -54,37 +74,96 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="票数" min-width="50">
+          <el-table-column label="票数" min-width="60">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('votes')"
+                @keydown.enter.prevent="toggleSort('votes')"
+                @keydown.space.prevent="toggleSort('votes')"
+              >
+                票数
+                <ArrowUp v-if="sortKey === 'votes' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'votes' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
             <template #default="scope">
               <div class="status-value">
                 {{ calculatePlayerVotes(scope.row) }}
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="位置" min-width="70" prop="location" />
-          <el-table-column label="生命" min-width="50">
+          <el-table-column label="位置" min-width="80" prop="location">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('location')"
+                @keydown.enter.prevent="toggleSort('location')"
+                @keydown.space.prevent="toggleSort('location')"
+              >
+                位置
+                <ArrowUp v-if="sortKey === 'location' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'location' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="生命" min-width="60">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('life')"
+                @keydown.enter.prevent="toggleSort('life')"
+                @keydown.space.prevent="toggleSort('life')"
+              >
+                生命
+                <ArrowUp v-if="sortKey === 'life' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'life' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
             <template #default="scope">
               <div class="status-value">
                 <el-input 
                   v-model="scope.row.life"
-                  @blur="(event: FocusEvent) => updatePlayerLife(scope.row.id, scope.row.life, (event.target as HTMLInputElement).value)"
+                  @focus="() => handleEditableFieldFocus(scope.row, 'life')"
+                  @blur="(event: FocusEvent) => handleLifeBlur(scope.row, event)"
                   size="small"
                 />
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="体力" min-width="50">
+          <el-table-column label="体力" min-width="60">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('strength')"
+                @keydown.enter.prevent="toggleSort('strength')"
+                @keydown.space.prevent="toggleSort('strength')"
+              >
+                体力
+                <ArrowUp v-if="sortKey === 'strength' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'strength' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
             <template #default="scope">
               <div class="status-value">
                 <el-input 
                   v-model="scope.row.strength"
-                  @blur="(event: FocusEvent) => updatePlayerStrength(scope.row.id, scope.row.strength, (event.target as HTMLInputElement).value)"
+                  @focus="() => handleEditableFieldFocus(scope.row, 'strength')"
+                  @blur="(event: FocusEvent) => handleStrengthBlur(scope.row, event)"
                   size="small"
                 />
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="物品" min-width="280">
+          <el-table-column label="物品" min-width="240">
             <template #default="scope">
               <div class="items-container">
                 <el-button 
@@ -104,7 +183,7 @@
                   closable
                   @close="() => scope.row.equipped_weapon && removeItem(scope.row.id, scope.row.equipped_weapon.name)"
                 >
-                  {{ scope.row.equipped_weapon.name }}
+                  {{ getItemDisplayName(scope.row.equipped_weapon) }}
                 </el-tag>
                 <el-tag
                   v-if="scope.row.equipped_armor"
@@ -115,7 +194,7 @@
                   closable
                   @close="() => scope.row.equipped_armor && removeItem(scope.row.id, scope.row.equipped_armor.name)"
                 >
-                  {{ scope.row.equipped_armor.name }}
+                  {{ getItemDisplayName(scope.row.equipped_armor) }}
                 </el-tag>
                 <el-tag 
                   v-for="(item, index) in scope.row.inventory" 
@@ -125,7 +204,7 @@
                   closable
                   @close="removeItem(scope.row.id, item.name)"
                 >
-                  {{ item.name }}
+                  {{ getItemDisplayName(item) }}
                 </el-tag>
               </div>
             </template>
@@ -188,6 +267,7 @@ import { ArrowUp, ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
+import { getItemDisplayName } from '@/utils/itemDisplay'
 import type { Player } from '@/types/gameStateTypes'
 
 // 定义组件属性
@@ -223,6 +303,173 @@ const dialogTitle = ref('')
 const playerList = computed<Player[]>(() => {
   return props.players
 })
+
+const showDeadPlayers = ref(true)
+
+type SortKey = 'name' | 'votes' | 'location' | 'life' | 'strength'
+type SortOrder = 'asc' | 'desc'
+
+const sortKey = ref<SortKey>('name')
+const sortOrder = ref<SortOrder>('asc')
+const sortLockOrder = ref<string[] | null>(null)
+const editingSortKey = ref<SortKey | null>(null)
+
+interface EditingState {
+  playerId: string
+  key: SortKey
+  originalValue: number
+}
+
+const editingState = ref<EditingState | null>(null)
+
+const filteredPlayers = computed<Player[]>(() => {
+  if (showDeadPlayers.value) {
+    return playerList.value
+  }
+  return playerList.value.filter(player => player.is_alive)
+})
+
+const getSortValue = (player: Player, key: SortKey): string | number => {
+  switch (key) {
+    case 'votes':
+      return calculatePlayerVotes(player)
+    case 'location':
+      return player.location
+    case 'life':
+      return player.life
+    case 'strength':
+      return player.strength
+    case 'name':
+    default:
+      return player.name
+  }
+}
+
+const computeSortedPlayers = (): Player[] => {
+  const alivePlayers = filteredPlayers.value.filter(player => player.is_alive)
+  const eliminatedPlayers = filteredPlayers.value.filter(player => !player.is_alive)
+
+  const direction = sortOrder.value === 'asc' ? 1 : -1
+
+  const comparePlayers = (a: Player, b: Player) => {
+    const aVal = getSortValue(a, sortKey.value)
+    const bVal = getSortValue(b, sortKey.value)
+
+    let result: number
+
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      result = aVal - bVal
+    } else {
+      result = String(aVal).localeCompare(String(bVal))
+    }
+
+    if (result === 0) {
+      result = a.name.localeCompare(b.name)
+    }
+
+    return result * direction
+  }
+
+  alivePlayers.sort(comparePlayers)
+  eliminatedPlayers.sort(comparePlayers)
+
+  return [...alivePlayers, ...eliminatedPlayers]
+}
+
+const baseSortedPlayers = computed<Player[]>(() => computeSortedPlayers())
+
+const sortedPlayers = computed<Player[]>(() => {
+  const base = baseSortedPlayers.value
+
+  if (!sortLockOrder.value || editingSortKey.value !== sortKey.value) {
+    return base
+  }
+
+  const orderMap = new Map<string, number>()
+  sortLockOrder.value.forEach((id, index) => {
+    orderMap.set(id, index)
+  })
+
+  return [...base].sort((a, b) => {
+    const aIndex = orderMap.get(a.id)
+    const bIndex = orderMap.get(b.id)
+
+    if (aIndex != null && bIndex != null) {
+      return aIndex - bIndex
+    }
+
+    if (aIndex != null) {
+      return -1
+    }
+
+    if (bIndex != null) {
+      return 1
+    }
+
+    return base.indexOf(a) - base.indexOf(b)
+  })
+})
+
+const lockSortOrder = (key: SortKey) => {
+  if (sortLockOrder.value || sortKey.value !== key) {
+    return
+  }
+
+  sortLockOrder.value = sortedPlayers.value.map(player => player.id)
+  editingSortKey.value = key
+}
+
+const unlockSortOrder = () => {
+  sortLockOrder.value = null
+  editingSortKey.value = null
+}
+
+const toggleSort = (key: SortKey) => {
+  unlockSortOrder()
+
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+}
+
+const handleEditableFieldFocus = (player: Player, key: SortKey) => {
+  const originalValue = key === 'life' ? player.life : player.strength
+  editingState.value = {
+    playerId: player.id,
+    key,
+    originalValue
+  }
+
+  lockSortOrder(key)
+}
+
+const finishEditing = () => {
+  editingState.value = null
+  unlockSortOrder()
+}
+
+const handleLifeBlur = (player: Player, event: FocusEvent) => {
+  const newValueStr = (event.target as HTMLInputElement).value
+  const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'life'
+    ? editingState.value.originalValue
+    : player.life
+
+  updatePlayerLife(player.id, currentValue, newValueStr)
+  finishEditing()
+}
+
+const handleStrengthBlur = (player: Player, event: FocusEvent) => {
+  const newValueStr = (event.target as HTMLInputElement).value
+  const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'strength'
+    ? editingState.value.originalValue
+    : player.strength
+
+  updatePlayerStrength(player.id, currentValue, newValueStr)
+  finishEditing()
+}
 
 // 玩家状态管理方法
 const togglePlayerBinding = (playerId: string) => {
@@ -285,13 +532,15 @@ const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'player') {
     // 创建玩家状态的表格文本表示（包含票数列）
     let statusText = '玩家\t票数\t位置\t生命值\t体力值\t物品\n'
-    statusText += '----\t----\t----\t------\t------\t----\n'
+    // statusText += '----\t----\t----\t------\t------\t----\n'
 
-    playerList.value.forEach(player => {
-      const items = player.inventory.map(item => item.name).join(', ')
+    playerList.value
+      .filter(player => player.is_alive)
+      .forEach(player => {
+      const items = player.inventory.map(item => getItemDisplayName(item)).join(', ')
       const votes = calculatePlayerVotes(player)
       statusText += `${player.name}\t${votes}\t${player.location}\t${player.life}\t${player.strength}\t${items || '无'}\n`
-    })
+      })
 
     plainTextContent.value = statusText
     dialogTitle.value = '玩家状态'
@@ -403,5 +652,23 @@ const goToActorPage = (playerPassword: string) => {
 .player-name:focus {
   outline: none;
   text-decoration: underline;
+}
+
+.sortable-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable-header:focus-visible {
+  outline: 2px solid #409eff;
+  border-radius: 2px;
+}
+
+.sort-icon {
+  width: 14px;
+  height: 14px;
 }
 </style>

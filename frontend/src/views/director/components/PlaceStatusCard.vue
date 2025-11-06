@@ -44,7 +44,25 @@
     <el-collapse-transition>
       <div v-show="!isCollapsed" class="place-status-content">
         <el-table :data="placeList" style="width: 100%" size="small" max-height="500">
-          <el-table-column prop="name" label="地点名称" width="120" />
+          <el-table-column label="地点名称" min-width="140">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="togglePlaceSort"
+                @keydown.enter.prevent="togglePlaceSort"
+                @keydown.space.prevent="togglePlaceSort"
+              >
+                地点名称
+                <ArrowUp v-if="placeSortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else class="sort-icon" />
+              </div>
+            </template>
+            <template #default="scope">
+              {{ scope.row.name }}
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="120">
             <template #default="scope">
               <el-switch
@@ -89,7 +107,7 @@
                     closable
                     @close="handleDeleteItem(scope.row.name, item.name)"
                   >
-                    {{ item.name }}
+                    {{ getItemDisplayName(item) }}
                   </el-tag>
                   <span v-if="scope.row.items.length === 0" class="empty-text">无</span>
                 </div>
@@ -161,6 +179,7 @@ import { Delete, Plus, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
 import { extractExistingWeaponsAndArmorsFromGameState } from '@/utils/itemParser'
+import { getItemDisplayName } from '@/utils/itemDisplay'
 import type { DirectorPlace as Place, DirectorGameData } from '@/types/gameStateTypes'
 
 // 异步加载批量空投对话框组件
@@ -177,6 +196,10 @@ const emit = defineEmits<{
 }>()
 
 const store = useGameStateStore()
+
+type SortOrder = 'asc' | 'desc'
+
+const placeSortOrder = ref<SortOrder>('asc')
 
 // 初始自动折叠状态
 const isCollapsed = ref(false)
@@ -198,9 +221,11 @@ const showBatchDialog = ref(false)
 
 // 计算属性
 const placeList = computed<Place[]>(() => {
+  const direction = placeSortOrder.value === 'asc' ? 1 : -1
+
   return [...props.places].sort((a, b) => {
     if (a.is_destroyed === b.is_destroyed) {
-      return a.name.localeCompare(b.name)
+      return a.name.localeCompare(b.name) * direction
     }
     return a.is_destroyed ? 1 : -1
   })
@@ -226,6 +251,10 @@ const availablePlaces = computed(() => {
     .filter(place => !place.is_destroyed)
     .map(place => place.name)
 })
+
+const togglePlaceSort = () => {
+  placeSortOrder.value = placeSortOrder.value === 'asc' ? 'desc' : 'asc'
+}
 
 // 获取玩家名称
 const getPlayerName = (playerId: string): string => {
@@ -327,7 +356,7 @@ const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'place') {
     // 创建地点状态的表格文本表示
     let statusText = '地点\t玩家\t物品\n'
-    statusText += '----\t----\t----\n'
+    // statusText += '----\t----\t----\n'
 
     placeList.value
       .filter(place => !place.is_destroyed)
@@ -336,7 +365,7 @@ const showPlainTextDialog = (type: 'place' | 'player') => {
           .map(playerId => getPlayerName(playerId))
           .join(', ') || '无'
         const itemNames = place.items
-          .map(item => item.name)
+          .map(item => getItemDisplayName(item))
           .join(', ') || '无'
 
         statusText += `${place.name}\t${playerNames}\t${itemNames}\n`
@@ -449,5 +478,23 @@ const handleBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: str
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.sortable-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable-header:focus-visible {
+  outline: 2px solid #409eff;
+  border-radius: 2px;
+}
+
+.sort-icon {
+  width: 14px;
+  height: 14px;
 }
 </style>

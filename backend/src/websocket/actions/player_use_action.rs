@@ -4,7 +4,7 @@ use crate::game::game_rule_engine::{ConsumableProperties, Item, ItemType, Utilit
 use crate::websocket::actions::player_action_scheduler::ActionParams;
 use crate::websocket::actions::utils::{UseMode, UseOutcome, decrement_uses, format_delta};
 use crate::websocket::models::{ActionResult, ActionResults, GameState};
-use rand::seq::SliceRandom;
+use rand::seq::{IteratorRandom, SliceRandom};
 use serde_json::json;
 
 /// 统一的道具使用结果描述
@@ -418,45 +418,48 @@ impl GameState {
 
         let use_outcome = decrement_uses(properties, UseMode::Night)?;
 
-        let mut holder_info: Option<(String, String)> = None;
-        let mut location_result: Option<String> = None;
-        let mut found_in_equipment = false;
-        let mut found_on_ground = false;
+        let mut locations: Vec<String> = Vec::new();
+        // Collect every occurrence to guarantee uniform sampling across all copies found.
 
-        for (id, player) in &self.players {
-            if player.inventory.iter().any(|item| item.name == target_name) {
-                holder_info = Some((id.clone(), player.name.clone()));
-                location_result = Some(player.location.clone());
-                break;
+        for player in self.players.values() {
+            if player.location.is_empty() {
+                continue;
             }
+            
+            let location = player.location.clone();
+
+            for item in &player.inventory {
+                if item.name == target_name {
+                    locations.push(location.clone());
+                }
+            }
+
             if let Some(weapon) = &player.equipped_weapon {
                 if weapon.name == target_name {
-                    holder_info = Some((id.clone(), player.name.clone()));
-                    location_result = Some(player.location.clone());
-                    found_in_equipment = true;
-                    break;
+                    locations.push(location.clone());
                 }
             }
+
             if let Some(armor) = &player.equipped_armor {
                 if armor.name == target_name {
-                    holder_info = Some((id.clone(), player.name.clone()));
-                    location_result = Some(player.location.clone());
-                    found_in_equipment = true;
-                    break;
+                    locations.push(location.clone());
                 }
             }
         }
 
-        if location_result.is_none() {
-            for (place_name, place) in &self.places {
-                if place.items.iter().any(|item| item.name == target_name) {
-                    location_result = Some(place_name.clone());
-                    found_on_ground = true;
-                    break;
-                }
+        for (place_name, place) in &self.places {
+            let count = place
+                .items
+                .iter()
+                .filter(|item| item.name == target_name)
+                .count();
+            for _ in 0..count {
+                locations.push(place_name.clone());
             }
         }
 
+        let mut rng = rand::rng();
+        let location_result = locations.iter().choose(&mut rng).cloned();
         let found = location_result.is_some();
         let strength_after = self.predict_strength_after_use(player_id, use_cost);
         let strength_delta = strength_after - strength_before;
@@ -472,12 +475,7 @@ impl GameState {
             })
             .unwrap_or_else(|| "未找到目标".to_string());
 
-        let mut log_message = if let Some((_, holder_name)) = &holder_info {
-            format!(
-                "{} 使用了 {}，定位 {} 当前由 {} 持有，位于 {}",
-                player_name, item_display_name, target_name, holder_name, location_description
-            )
-        } else if found {
+        let mut log_message = if found {
             format!(
                 "{} 使用了 {}，定位 {} 在 {}",
                 player_name, item_display_name, target_name, location_description
@@ -496,10 +494,6 @@ impl GameState {
             "target_item_name": target_name,
             "found": found,
             "location": location_result,
-            "holder_player_id": holder_info.as_ref().map(|(id, _)| id.clone()),
-            "holder_player_name": holder_info.as_ref().map(|(_, name)| name.clone()),
-            "found_in_equipment": found_in_equipment,
-            "found_on_ground": found_on_ground,
             "strength": strength_after,
             "strength_delta": strength_delta,
             "uses_night_remaining": use_outcome.remaining_night,

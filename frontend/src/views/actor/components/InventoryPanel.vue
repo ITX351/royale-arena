@@ -282,8 +282,8 @@ const isUseDisabled = (item: Item): boolean => {
     return true
   }
 
-  const usesNight = getItemUsesNight(item)
-  if (usesNight === 0) {
+  const uses_night = getItemUsesNight(item)
+  if (uses_night === 0) {
     return true
   }
 
