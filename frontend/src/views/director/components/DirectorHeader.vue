@@ -15,6 +15,14 @@
           </div>
           <div class="header-actions">
             <el-button 
+              v-if="showResetButton"
+              type="info"
+              @click="confirmResetToWaiting"
+              :loading="actionLoading"
+            >
+              回退等待
+            </el-button>
+            <el-button 
               v-if="showStartButton"
               type="primary"
               @click="confirmStartGame"
@@ -23,20 +31,20 @@
               开始游戏
             </el-button>
             <el-button 
-              v-if="showPauseButton"
-              type="warning"
-              @click="pauseGame"
-              :loading="actionLoading"
-            >
-              暂停游戏
-            </el-button>
-            <el-button 
               v-if="showSaveButton"
               type="primary"
               @click="saveGame"
               :loading="actionLoading"
             >
               存盘游戏
+            </el-button>
+            <el-button 
+              v-if="showPauseButton"
+              type="warning"
+              @click="pauseGame"
+              :loading="actionLoading"
+            >
+              暂停游戏
             </el-button>
             <el-button 
               v-if="showResumeButton"
@@ -203,6 +211,7 @@ const showSaveButton = computed(() => {
 })
 const showResumeButton = computed(() => shouldShowResumeButton(props.game.status))
 const showEndButton = computed(() => shouldShowEndButton(props.game.status))
+const showResetButton = computed(() => props.game.status === GameStatus.PAUSED)
 const canPreviewRules = computed(() => {
   return props.game.status === GameStatus.RUNNING || props.game.status === GameStatus.PAUSED
 })
@@ -255,7 +264,7 @@ const updateGameStatus = async (targetStatus: GameStatus, saveFileName?: string)
 
 const confirmStartGame = () => {
   ElMessageBox.confirm(
-    '确定要开始游戏吗？开始后无法回到等待状态。',
+    '确定要开始游戏吗？开始后需要暂停游戏才可以回到等待状态。',
     '确认开始游戏',
     {
       confirmButtonText: '确定',
@@ -264,6 +273,22 @@ const confirmStartGame = () => {
     }
   ).then(() => {
     updateGameStatus(GameStatus.RUNNING)
+  }).catch(() => {
+    // 用户取消操作
+  })
+}
+
+const confirmResetToWaiting = () => {
+  ElMessageBox.confirm(
+    '确定要回退到等待状态吗？演员需要重新准备进入游戏。',
+    '确认回退等待',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    await updateGameStatus(GameStatus.WAITING)
   }).catch(() => {
     // 用户取消操作
   })

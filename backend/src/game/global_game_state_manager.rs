@@ -223,6 +223,11 @@ impl GlobalGameStateManager {
         Ok(save_files)
     }
 
+    /// 移除内存中的游戏状态
+    pub fn remove_game_state(&self, game_id: &str) -> bool {
+        self.game_states.remove(game_id).is_some()
+    }
+
     /// 检查游戏是否接受连接
     pub async fn is_status_accepting_connections(status: &GameStatus) -> bool {
         matches!(status, GameStatus::Running)

@@ -188,6 +188,7 @@ pub struct GameWithPlayerCounts {
 /// 创建游戏请求
 #[derive(Debug, Deserialize)]
 pub struct CreateGameRequest {
+    pub id: String,
     pub name: String,
     pub description: Option<String>,
     pub director_password: String,
@@ -307,6 +308,20 @@ pub struct GameListQuery {
 impl CreateGameRequest {
     /// 验证创建游戏请求的参数
     pub fn validate(&self) -> Result<(), String> {
+        let trimmed_id = self.id.trim();
+        if trimmed_id.is_empty() {
+            return Err("游戏ID不能为空".to_string());
+        }
+        if trimmed_id.len() > 36 {
+            return Err("游戏ID不能超过36个字符".to_string());
+        }
+        if !trimmed_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return Err("游戏ID只能包含字母、数字和下划线".to_string());
+        }
+
         if self.name.trim().is_empty() {
             return Err("游戏名称不能为空".to_string());
         }
@@ -425,6 +440,7 @@ mod tests {
     fn test_create_game_request_validation() {
         // 测试有效请求
         let valid_request = CreateGameRequest {
+            id: "custom_game_01".to_string(),
             name: "测试游戏".to_string(),
             description: Some("测试描述".to_string()),
             director_password: "password123".to_string(),
@@ -433,18 +449,9 @@ mod tests {
         };
         assert!(valid_request.validate().is_ok());
 
-        // 测试空名称
-        let invalid_name = CreateGameRequest {
-            name: "".to_string(),
-            description: None,
-            director_password: "password123".to_string(),
-            max_players: 10,
-            rule_template_id: "template-id".to_string(), // 修改：现在是必需的
-        };
-        assert!(invalid_name.validate().is_err());
-
         // 测试密码为空
         let invalid_password = CreateGameRequest {
+            id: "custom_game_01".to_string(),
             name: "测试游戏".to_string(),
             description: None,
             director_password: "".to_string(),
@@ -455,6 +462,7 @@ mod tests {
 
         // 测试密码过长
         let overly_long_password = CreateGameRequest {
+            id: "custom_game_01".to_string(),
             name: "测试游戏".to_string(),
             description: None,
             director_password: "a".repeat(41),
@@ -465,6 +473,7 @@ mod tests {
 
         // 测试玩家数超限
         let invalid_players = CreateGameRequest {
+            id: "custom_game_01".to_string(),
             name: "测试游戏".to_string(),
             description: None,
             director_password: "password123".to_string(),
@@ -475,6 +484,7 @@ mod tests {
 
         // 测试空模板ID
         let invalid_template_id = CreateGameRequest {
+            id: "custom_game_01".to_string(),
             name: "测试游戏".to_string(),
             description: None,
             director_password: "password123".to_string(),
@@ -482,6 +492,39 @@ mod tests {
             rule_template_id: "".to_string(), // 修改：空模板ID
         };
         assert!(invalid_template_id.validate().is_err());
+
+        // 测试无效ID
+        let invalid_id = CreateGameRequest {
+            id: "".to_string(),
+            name: "测试游戏".to_string(),
+            description: None,
+            director_password: "password123".to_string(),
+            max_players: 10,
+            rule_template_id: "template-id".to_string(),
+        };
+        assert!(invalid_id.validate().is_err());
+
+        // 测试过长ID
+        let too_long_id = CreateGameRequest {
+            id: "a".repeat(37),
+            name: "测试游戏".to_string(),
+            description: None,
+            director_password: "password123".to_string(),
+            max_players: 10,
+            rule_template_id: "template-id".to_string(),
+        };
+        assert!(too_long_id.validate().is_err());
+
+        // 测试包含非法字符的ID
+        let invalid_chars_id = CreateGameRequest {
+            id: "invalid-id".to_string(),
+            name: "测试游戏".to_string(),
+            description: None,
+            director_password: "password123".to_string(),
+            max_players: 10,
+            rule_template_id: "template-id".to_string(),
+        };
+        assert!(invalid_chars_id.validate().is_err());
     }
 
     #[test]

@@ -63,6 +63,13 @@ pub async fn delete_game(
 ) -> Result<Json<serde_json::Value>, GameError> {
     state.game_service.delete_game(&game_id).await?;
 
+    // 删除数据库记录后，同步清理内存状态与WebSocket连接
+    state.game_state_manager.remove_game_state(&game_id);
+    state
+        .global_connection_manager
+        .remove_game_manager(game_id.clone())
+        .await;
+
     Ok(Json(json!({
         "success": true,
         "message": "Game deleted successfully"

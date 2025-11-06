@@ -131,6 +131,23 @@ pub async fn update_game_status(
                 _ => return Err(DirectorError::InvalidGameStateTransition),
             }
         }
+        GameStatus::Waiting => {
+            // 只有在暂停状态才能回退到等待
+            match game.status {
+                GameStatus::Paused => {
+                    state
+                        .director_service
+                        .reset_game_to_waiting(&state, &game_id)
+                        .await?;
+                    Ok(UpdateGameStatusResponse {
+                        success: true,
+                        message: "Game reset to waiting state successfully".to_string(),
+                        save_file_name: None,
+                    })
+                }
+                _ => return Err(DirectorError::InvalidGameStateTransition),
+            }
+        }
         GameStatus::Ended => {
             // 只有在运行或暂停状态才能结束
             match game.status {

@@ -105,23 +105,8 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item 
-                    command="hide" 
-                    v-if="row.status !== 'hidden' && row.status !== 'deleted'"
-                  >
-                    <el-icon><Hide /></el-icon>
-                    隐藏游戏
-                  </el-dropdown-item>
-                  <el-dropdown-item 
-                    command="show" 
-                    v-if="row.status === 'hidden'"
-                  >
-                    <el-icon><View /></el-icon>
-                    显示游戏
-                  </el-dropdown-item>
-                  <el-dropdown-item 
                     command="delete" 
-                    v-if="row.status !== 'deleted'"
-                    divided
+                      v-if="row.status !== 'deleted'"
                   >
                     <el-icon><Delete /></el-icon>
                     删除游戏
@@ -139,7 +124,6 @@
           已选择 {{ selectedGames.length }} 项
         </div>
         <div class="batch-actions">
-          <el-button size="small" @click="batchHide">批量隐藏</el-button>
           <el-button size="small" type="danger" @click="batchDelete">批量删除</el-button>
         </div>
       </div>
@@ -158,6 +142,15 @@
         :rules="gameFormRules"
         label-width="100px"
       >
+        <el-form-item v-if="!editingGame" label="游戏ID" prop="id">
+          <el-input
+            v-model="gameForm.id"
+            placeholder="请输入游戏ID（字母、数字或下划线，最长36个字符）"
+            maxlength="36"
+            clearable
+          />
+        </el-form-item>
+
         <el-form-item label="游戏名称" prop="name">
           <el-input v-model="gameForm.name" placeholder="请输入游戏名称" />
         </el-form-item>
@@ -229,7 +222,6 @@ import {
   Edit, 
   View, 
   More, 
-  Hide, 
   Delete 
 } from '@element-plus/icons-vue'
 import { gameService } from '@/services/gameService'
@@ -254,6 +246,7 @@ const editingGame = ref<GameListItem | null>(null)
 // 表单引用和数据
 const gameFormRef = ref<FormInstance>()
 const gameForm = reactive<CreateGameRequest>({
+  id: '',
   name: '',
   description: '',
   director_password: '',
@@ -263,6 +256,28 @@ const gameForm = reactive<CreateGameRequest>({
 
 // 表单验证规则
 const gameFormRules: FormRules = {
+  id: [
+    { required: true, message: '请输入游戏ID', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        const currentValue = (value ?? '').toString().trim()
+        if (!currentValue) {
+          callback(new Error('请输入游戏ID'))
+          return
+        }
+        if (currentValue.length > 36) {
+          callback(new Error('游戏ID长度不能超过36个字符'))
+          return
+        }
+        if (!/^[A-Za-z0-9_]+$/.test(currentValue)) {
+          callback(new Error('游戏ID只能包含字母、数字和下划线'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
   name: [
     { required: true, message: '请输入游戏名称', trigger: 'blur' },
     { min: 1, max: 100, message: '游戏名称长度在 1 到 100 个字符', trigger: 'blur' }
@@ -359,6 +374,7 @@ const editGame = (game: GameListItem) => {
   gameForm.director_password = game.director_password || '' // 显示现有密码
   gameForm.max_players = game.max_players
   gameForm.rule_template_id = ''
+  gameForm.id = game.id
   // 注意：编辑时不再显示规则模板选择
   
   showCreateDialog.value = true
@@ -369,6 +385,7 @@ const createGame = () => {
   editingGame.value = null
   gameFormRef.value?.resetFields()
   gameForm.rule_template_id = ''
+  gameForm.id = ''
   showCreateDialog.value = true
   nextTick(() => gameFormRef.value?.clearValidate())
 }
@@ -378,28 +395,8 @@ const viewGame = (game: GameListItem) => {
 }
 
 const handleGameAction = async (command: string, game: GameListItem) => {
-  switch (command) {
-    case 'hide':
-      await updateGameStatus(game, 'hidden')
-      break
-    case 'show':
-      await updateGameStatus(game, 'waiting')
-      break
-    case 'delete':
-      await confirmAndDeleteGame(game)
-      break
-  }
-}
-
-const updateGameStatus = async (game: GameListItem, status: string) => {
-  try {
-    // 这里需要调用更新游戏状态的API
-    // TODO: 由于当前API设计中没有直接的状态更新接口，这里先用占位逻辑
-    // ElMessage.success(`游戏"${game.name}"状态已更新`)
-    console.log(`更新游戏 ${game.id} 状态为 ${status} 的逻辑待实现`)
-    await loadGames()
-  } catch {
-    ElMessage.error('更新游戏状态失败')
+  if (command === 'delete') {
+    await confirmAndDeleteGame(game)
   }
 }
 
@@ -423,11 +420,6 @@ const confirmAndDeleteGame = async (game: GameListItem) => {
       ElMessage.error('删除游戏失败')
     }
   }
-}
-
-const batchHide = async () => {
-  // 批量隐藏逻辑
-  ElMessage.info('批量隐藏功能待实现')
 }
 
 const batchDelete = async () => {
@@ -476,7 +468,19 @@ const saveGame = async () => {
       ElMessage.success('游戏更新成功')
     } else {
       // 创建游戏
-      await gameService.createGame(gameForm)
+      const trimmedId = gameForm.id.trim()
+      gameForm.id = trimmedId
+
+      const payload: CreateGameRequest = {
+        id: trimmedId,
+        name: gameForm.name,
+        description: gameForm.description || undefined,
+        director_password: gameForm.director_password,
+        max_players: gameForm.max_players,
+        rule_template_id: gameForm.rule_template_id
+      }
+
+      await gameService.createGame(payload)
       ElMessage.success('游戏创建成功')
     }
     
@@ -493,6 +497,7 @@ const saveGame = async () => {
 const cancelEdit = () => {
   showCreateDialog.value = false
   gameFormRef.value?.resetFields()
+  gameForm.id = ''
 }
 
 // 生命周期

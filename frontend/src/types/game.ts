@@ -57,6 +57,7 @@ export interface GameWithRules extends GameListItem {
 
 // 创建游戏请求
 export interface CreateGameRequest {
+  id: string
   name: string
   description?: string
   director_password: string

@@ -35,6 +35,7 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
 
     // 测试1: 创建另一个游戏使用相同模板
     let create_request_with_template = CreateGameRequest {
+        id: "custom_game_test".to_string(),
         name: "test_game_2".to_string(),
         description: Some("带规则模板的测试游戏".to_string()),
         director_password: "password456".to_string(),
@@ -43,6 +44,7 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     };
 
     let game_with_template = service.create_game(create_request_with_template).await?;
+    assert_eq!(game_with_template.id, "custom_game_test");
     assert_eq!(game_with_template.name, "test_game_2");
     assert_eq!(game_with_template.rules_config, template_rules_config);
 
@@ -124,6 +126,7 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
 
     // 重复名称检查
     let duplicate_name_request = CreateGameRequest {
+        id: "another_game_id".to_string(),
         name: "updated_game_name".to_string(), // 与已存在的游戏同名
         description: None,
         director_password: "password".to_string(),
@@ -134,8 +137,45 @@ async fn test_game_crud_operations(pool: MySqlPool) -> Result<(), Box<dyn std::e
     println!("Duplicate name error: {:?}", duplicate_result);
     assert!(duplicate_result.is_err());
 
+    // 自定义ID重复检查
+    let duplicate_id_request = CreateGameRequest {
+        id: "custom_game_test".to_string(),
+        name: "another_unique_name".to_string(),
+        description: None,
+        director_password: "password".to_string(),
+        max_players: 5,
+        rule_template_id: template_id.clone(),
+    };
+    let duplicate_id_result = service.create_game(duplicate_id_request).await;
+    assert!(duplicate_id_result.is_err());
+
+    // 自定义ID长度检查
+    let invalid_length_id_request = CreateGameRequest {
+        id: "a".repeat(37),
+        name: "length_test".to_string(),
+        description: None,
+        director_password: "password".to_string(),
+        max_players: 5,
+        rule_template_id: template_id.clone(),
+    };
+    let invalid_length_id_result = service.create_game(invalid_length_id_request).await;
+    assert!(invalid_length_id_result.is_err());
+
+    // 自定义ID非法字符检查
+    let invalid_chars_id_request = CreateGameRequest {
+        id: "invalid-id".to_string(),
+        name: "invalid_chars_game".to_string(),
+        description: None,
+        director_password: "password".to_string(),
+        max_players: 5,
+        rule_template_id: template_id.clone(),
+    };
+    let invalid_chars_id_result = service.create_game(invalid_chars_id_request).await;
+    assert!(invalid_chars_id_result.is_err());
+
     // 无效规则模板ID
     let invalid_template_request = CreateGameRequest {
+        id: "another_custom_id".to_string(),
         name: "test_game_3".to_string(),
         description: None,
         director_password: "password".to_string(),
@@ -206,6 +246,7 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
 
     // 空游戏名称
     let empty_name_request = CreateGameRequest {
+        id: "templated_id".to_string(),
         name: "".to_string(),
         description: None,
         director_password: "password123".to_string(),
@@ -217,6 +258,7 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
 
     // 游戏名称过长
     let long_name_request = CreateGameRequest {
+        id: "templated_id".to_string(),
         name: "a".repeat(101),
         description: None,
         director_password: "password123".to_string(),
@@ -228,6 +270,7 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
 
     // 密码过长
     let long_password_request = CreateGameRequest {
+        id: "templated_id".to_string(),
         name: "valid_name".to_string(),
         description: None,
         director_password: "a".repeat(51),
@@ -239,6 +282,7 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
 
     // 玩家数量无效
     let invalid_players_request = CreateGameRequest {
+        id: "templated_id".to_string(),
         name: "valid_name".to_string(),
         description: None,
         director_password: "password123".to_string(),
@@ -249,6 +293,7 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
     assert!(result.is_err());
 
     let too_many_players_request = CreateGameRequest {
+        id: "templated_id".to_string(),
         name: "valid_name".to_string(),
         description: None,
         director_password: "password123".to_string(),
@@ -260,6 +305,7 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
 
     // 空模板ID
     let empty_template_id_request = CreateGameRequest {
+        id: "templated_id".to_string(),
         name: "valid_name".to_string(),
         description: None,
         director_password: "password123".to_string(),
@@ -267,6 +313,30 @@ async fn test_game_validation(pool: MySqlPool) -> Result<(), Box<dyn std::error:
         rule_template_id: "".to_string(), // 修改：空模板ID
     };
     let result = service.create_game(empty_template_id_request).await;
+    assert!(result.is_err());
+
+    // 自定义ID为空字符串
+    let empty_id_request = CreateGameRequest {
+        id: "".to_string(),
+        name: "valid_name".to_string(),
+        description: None,
+        director_password: "password123".to_string(),
+        max_players: 10,
+        rule_template_id: template_id.clone(),
+    };
+    let result = service.create_game(empty_id_request).await;
+    assert!(result.is_err());
+
+    // 自定义ID包含非法字符
+    let invalid_chars_id_request = CreateGameRequest {
+        id: "invalid-id".to_string(),
+        name: "valid_name".to_string(),
+        description: None,
+        director_password: "password123".to_string(),
+        max_players: 10,
+        rule_template_id: template_id,
+    };
+    let result = service.create_game(invalid_chars_id_request).await;
     assert!(result.is_err());
 
     Ok(())
