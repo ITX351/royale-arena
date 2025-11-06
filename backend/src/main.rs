@@ -14,6 +14,14 @@ use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+#[cfg(all(not(target_env = "msvc")))]
+use jemallocator::Jemalloc;
+
+#[cfg(all(not(target_env = "msvc")))]
+#[global_allocator]
+// Use jemalloc globally where supported to improve allocator performance.
+static GLOBAL: Jemalloc = Jemalloc;
+
 use admin::AdminService;
 use auth::{AuthService, JwtManager};
 use config::AppConfig;
@@ -22,6 +30,23 @@ use director::DirectorService;
 use game::{GameService, SystemInitializer, global_game_state_manager::GlobalGameStateManager};
 use routes::create_routes;
 use rule_template::RuleTemplateService;
+
+fn log_allocator_status() {
+    #[cfg(all(not(target_env = "msvc")))]
+    {
+        let jemalloc_conf = std::env::var("JEMALLOC_CONF").ok();
+        let malloc_conf = std::env::var("MALLOC_CONF").ok();
+        info!(
+            "allocator detected: jemalloc; JEMALLOC_CONF={:?}, MALLOC_CONF={:?}",
+            jemalloc_conf, malloc_conf
+        );
+    }
+
+    #[cfg(target_env = "msvc")]
+    {
+        info!("allocator detected: system default (jemalloc disabled on MSVC target)");
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -33,6 +58,8 @@ async fn main() {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    log_allocator_status();
 
     // 加载配置
     let config = AppConfig::from_env().expect("Failed to load configuration");
