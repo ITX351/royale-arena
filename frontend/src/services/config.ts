@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
   GAMES: '/games',
   GAME_DETAIL: (id: string) => `/games/${id}`,
   GAME_AUTH: (gameId: string) => `/game/${gameId}/auth`,
+  GAMES_RULES_CONFIG: '/games/rules-config',
   RULE_TEMPLATES: '/rule-templates',
   
   // 管理员相关

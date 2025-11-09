@@ -253,6 +253,23 @@ impl GameService {
         Ok(game_list)
     }
 
+    /// 获取包含规则配置的游戏信息列表（公开接口）
+    pub async fn get_games_rules_config_view(&self) -> Result<Vec<GameRulesConfigView>, GameError> {
+        let games = sqlx::query_as!(
+            GameRulesConfigView,
+            r#"
+            SELECT id, name, description, rules_config,
+                   status as "status: GameStatus"
+            FROM games
+            ORDER BY created_at DESC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(games)
+    }
+
     /// 获取游戏详情（包含规则信息）
     pub async fn get_game_by_id_with_player_counts(
         &self,

@@ -28,6 +28,7 @@
               maxlength="500"
               show-word-limit
               ref="messageInputRef"
+              @keydown.enter.ctrl.prevent="handleCtrlEnter"
             />
           </el-form-item>
 
@@ -70,8 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, nextTick } from 'vue'
 import { ElMessage, ElForm } from 'element-plus'
+import type { InputInstance } from 'element-plus'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { Player } from '@/types/gameStateTypes'
@@ -109,7 +111,7 @@ const broadcastForm = reactive({
 })
 
 // 添加对消息输入框的引用
-const messageInputRef = ref<HTMLInputElement | null>(null)
+const messageInputRef = ref<InputInstance>()
 
 const sending = ref(false)
 
@@ -128,17 +130,21 @@ function setTargetPlayer(playerId: string) {
 
 // 新增方法：聚焦到消息输入框
 function focusMessageInput() {
-  // 等待DOM更新后聚焦
-  setTimeout(() => {
-    if (messageInputRef.value) {
-      messageInputRef.value.focus();
-    }
-  }, 100);
+  // 使用 nextTick 确保在 DOM 更新后再聚焦
+  nextTick(() => {
+    messageInputRef.value?.focus()
+  })
 }
 
 // 新增方法：展开面板
 function expandPanel() {
-  isCollapsed.value = false;
+  isCollapsed.value = false
+}
+
+// 新增方法：处理 Ctrl + Enter 快捷发送
+function handleCtrlEnter() {
+  if (sending.value) return
+  sendBroadcast()
 }
 
 // 方法实现

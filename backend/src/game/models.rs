@@ -125,6 +125,16 @@ pub struct Game {
     pub updated_at: DateTime<Utc>,
 }
 
+/// 游戏规则配置视图（公开用途）
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct GameRulesConfigView {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub rules_config: serde_json::Value,
+    pub status: GameStatus,
+}
+
 /// 游戏列表项（用于列表查询）
 #[derive(Debug, Serialize)]
 pub struct GameListItem {

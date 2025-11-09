@@ -425,7 +425,7 @@ impl GameState {
             if player.location.is_empty() {
                 continue;
             }
-            
+
             let location = player.location.clone();
 
             for item in &player.inventory {

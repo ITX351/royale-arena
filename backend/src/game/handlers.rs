@@ -96,6 +96,18 @@ pub async fn get_games(
     })))
 }
 
+/// 获取包含规则配置的游戏列表 (公开接口)
+pub async fn get_games_rules_config_view(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    let games = state.game_service.get_games_rules_config_view().await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": games
+    })))
+}
+
 /// 获取指定游戏信息（包括规则） (公开接口)
 pub async fn get_game_with_rules(
     State(state): State<AppState>,

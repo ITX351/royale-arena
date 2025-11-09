@@ -1,15 +1,16 @@
 import apiClient from './client'
 import adminClient from './adminClient'
 import { API_ENDPOINTS } from './config'
-import type { 
-  GameListItem, 
-  GameWithRules, 
-  GameListQuery, 
-  CreateGameRequest, 
+import type {
+  GameListItem,
+  GameWithRules,
+  GameListQuery,
+  CreateGameRequest,
   UpdateGameRequest,
   ApiResponse,
   KillRecord,
-  MessageRecord
+  MessageRecord,
+  GameRulesConfigView
 } from '@/types/game'
 
 export const gameService = {
@@ -74,4 +75,10 @@ export const gameService = {
     const response = await apiClient.post(API_ENDPOINTS.PLAYER_KILL_RECORDS(gameId, playerId), { password })
     return response.data
   },
+
+  // 获取带规则配置的游戏列表
+  async getGamesRulesConfig(): Promise<ApiResponse<GameRulesConfigView[]>> {
+    const response = await apiClient.get(API_ENDPOINTS.GAMES_RULES_CONFIG)
+    return response.data
+  }
 }
