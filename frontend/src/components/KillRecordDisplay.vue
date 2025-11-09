@@ -1,69 +1,58 @@
 <template>
   <div class="kill-record-display">
-    <div
-      v-if="props.showTitle || props.isDirector"
-      class="table-toolbar"
-      :class="{ 'table-toolbar--no-title': !props.showTitle }"
-    >
-      <h3 v-if="props.showTitle" class="toolbar-title">击杀记录</h3>
-      <div class="toolbar-controls">
-        <el-select 
-          v-if="props.isDirector" 
-          v-model="filterForm.selectedKiller" 
-          placeholder="筛选击杀者"
-          clearable
-          filterable
-          size="small"
-          class="killer-filter"
-        >
-          <el-option label="无击杀者" value="__none__" />
-          <el-option
-            v-for="player in sortedPlayers"
-            :key="player.id"
-            :label="player.name"
-            :value="player.id"
-          />
-        </el-select>
-        <el-button-group>
-          <el-button 
-            :type="sortOrder === 'asc' ? 'primary' : 'default'" 
-            @click="changeSortOrder('asc')"
-            size="small"
-          >
-            时间正序
-          </el-button>
-          <el-button 
-            :type="sortOrder === 'desc' ? 'primary' : 'default'" 
-            @click="changeSortOrder('desc')"
-            size="small"
-          >
-            时间倒序
-          </el-button>
-        </el-button-group>
-      </div>
+    <div v-if="props.showTitle" class="table-toolbar">
+      <h3 class="toolbar-title">击杀记录</h3>
     </div>
 
     <el-table 
-      :data="filteredAndSortedRecords" 
+      ref="tableRef"
+      :data="sortedRecords" 
       class="kill-record-table"
       size="small"
       max-height="400"
       empty-text="暂无击杀记录"
+      :default-sort="{ prop: 'kill_time', order: 'ascending' }"
+      @sort-change="handleSortChange"
     >
-      <el-table-column prop="kill_time" label="时间" width="140">
+      <el-table-column
+        prop="kill_time"
+        label="时间"
+        width="140"
+        sortable="custom"
+      >
         <template #default="scope">
           {{ formatTime(scope.row.kill_time) }}
         </template>
       </el-table-column>
-      <el-table-column prop="killer_name" label="击杀者" width="110">
+      <el-table-column
+        prop="killer_name"
+        label="击杀者"
+        width="110"
+        sortable="custom"
+      >
         <template #default="scope">
           <span v-if="scope.row.killer_name">{{ scope.row.killer_name }}</span>
           <span v-else class="no-killer">无击杀者</span>
         </template>
       </el-table-column>
-      <el-table-column prop="victim_name" label="被击杀者" width="110" />
-      <el-table-column prop="cause" label="原因" width="110" />
-      <el-table-column prop="location" label="地点" width="110">
+      <el-table-column
+        prop="victim_name"
+        label="被击杀者"
+        width="110"
+        sortable="custom"
+      />
+      <el-table-column
+        prop="cause"
+        label="原因"
+        width="110"
+        sortable="custom"
+      />
+      <el-table-column
+        prop="location"
+        label="地点"
+        width="110"
+        sortable="custom"
+      >
         <template #default="scope">
           <span v-if="scope.row.location">{{ scope.row.location }}</span>
           <span v-else>-</span>
@@ -75,6 +64,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import type { TableInstance } from 'element-plus'
 import type { KillRecord } from '@/types/game'
 
 interface Props {
@@ -89,19 +79,17 @@ const props = withDefaults(defineProps<Props>(), {
   showTitle: true
 })
 
-// 响应式数据
-const filterForm = ref({
-  selectedKiller: ''
+type TableSortOrder = 'ascending' | 'descending' | null
+type SortOrder = Exclude<TableSortOrder, null>
+type SortableProp = keyof KillRecord | 'killer_name' | 'victim_name'
+
+const sortState = ref<{ prop: SortableProp; order: SortOrder }>({
+  prop: 'kill_time',
+  order: 'ascending'
 })
 
-const sortOrder = ref<'asc' | 'desc'>('asc')
+const tableRef = ref<TableInstance>()
 
-// Sort players so the select remains easy to scan when many entries exist.
-const sortedPlayers = computed(() => {
-  return [...props.players].sort((a, b) => a.name.localeCompare(b.name))
-})
-
-// 计算属性
 const recordsWithPlayerNames = computed(() => {
   return props.records.map(record => {
     const killer = props.players.find(p => p.id === record.killer_id)
@@ -115,33 +103,39 @@ const recordsWithPlayerNames = computed(() => {
   })
 })
 
-const filteredRecords = computed(() => {
-  if (!props.isDirector || !filterForm.value.selectedKiller) {
-    return recordsWithPlayerNames.value
+function compareByProp(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  prop: SortableProp,
+  order: SortOrder
+) {
+  if (prop === 'kill_time') {
+    const timeA = new Date(String(a[prop] ?? '')).getTime()
+    const timeB = new Date(String(b[prop] ?? '')).getTime()
+    const safeTimeA = Number.isNaN(timeA) ? 0 : timeA
+    const safeTimeB = Number.isNaN(timeB) ? 0 : timeB
+    return order === 'ascending' ? safeTimeA - safeTimeB : safeTimeB - safeTimeA
   }
-  
-  if (filterForm.value.selectedKiller === '__none__') {
-    return recordsWithPlayerNames.value.filter(record => !record.killer_id)
-  }
-  
-  return recordsWithPlayerNames.value.filter(
-    record => record.killer_id === filterForm.value.selectedKiller
-  )
-})
 
-const filteredAndSortedRecords = computed(() => {
-  const sorted = [...filteredRecords.value]
-  sorted.sort((a, b) => {
-    const timeA = new Date(a.kill_time).getTime()
-    const timeB = new Date(b.kill_time).getTime()
-    
-    if (sortOrder.value === 'asc') {
-      return timeA - timeB
-    } else {
-      return timeB - timeA
+  const toComparable = (value: unknown) => {
+    if (value === null || value === undefined || value === '') {
+      return ''
     }
-  })
-  
+    return String(value)
+  }
+
+  const valueA = toComparable(a[prop])
+  const valueB = toComparable(b[prop])
+
+  return order === 'ascending'
+    ? valueA.localeCompare(valueB)
+    : valueB.localeCompare(valueA)
+}
+
+const sortedRecords = computed(() => {
+  const { prop, order } = sortState.value
+  const sorted = [...recordsWithPlayerNames.value]
+  sorted.sort((a, b) => compareByProp(a, b, prop, order))
   return sorted
 })
 
@@ -150,8 +144,19 @@ const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
 }
 
-const changeSortOrder = (order: 'asc' | 'desc') => {
-  sortOrder.value = order
+const handleSortChange = ({ prop, order }: { prop: string | null; order: TableSortOrder }) => {
+  const resolvedProp = (prop as SortableProp) ?? sortState.value.prop ?? 'kill_time'
+  const currentOrder = sortState.value.order
+  const nextOrder: SortOrder = order === null
+    ? (currentOrder === 'ascending' ? 'descending' : 'ascending')
+    : order
+
+  sortState.value = {
+    prop: resolvedProp,
+    order: nextOrder
+  }
+
+  tableRef.value?.sort(resolvedProp, nextOrder)
 }
 </script>
 
@@ -171,24 +176,10 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
   margin-bottom: 12px;
 }
 
-.table-toolbar--no-title {
-  justify-content: flex-end;
-}
-
 .toolbar-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-}
-
-.toolbar-controls {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.killer-filter {
-  width: 150px;
 }
 
 .no-killer {

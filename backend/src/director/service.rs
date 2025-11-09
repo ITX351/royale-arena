@@ -432,6 +432,23 @@ impl DirectorService {
             .remove_game_manager(game_id.to_string())
             .await;
 
+        // 清除回退游戏的全部日志和击杀记录，避免历史数据影响重新开始
+        app_state
+            .game_log_service
+            .delete_logs_after_timestamp(game_id, None)
+            .await
+            .map_err(|e| DirectorError::OtherError {
+                message: format!("Failed to clear game logs: {}", e),
+            })?;
+
+        app_state
+            .game_log_service
+            .delete_kill_records_after_timestamp(game_id, None)
+            .await
+            .map_err(|e| DirectorError::OtherError {
+                message: format!("Failed to clear kill records: {}", e),
+            })?;
+
         Ok(())
     }
 

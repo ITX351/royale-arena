@@ -295,7 +295,7 @@ impl GameState {
 
                 if requires_kill {
                     let mut death_outcome =
-                        self.kill_player(&aoe_target_id, Some(player_id), "溅射伤害致死")?;
+                        self.kill_player(&aoe_target_id, Some(player_id), "攻击致死")?;
                     death_results.append(&mut death_outcome.results);
                 }
 

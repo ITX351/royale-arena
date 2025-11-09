@@ -157,6 +157,8 @@
           placeholder="选择玩家" 
           size="small"
           style="width: 120px;"
+          placement="bottom-start"
+          :popper-options="selectPopperOptions"
           filterable
         >
           <el-option
@@ -1010,6 +1012,22 @@ function formatDuration(durationMs: number) {
 
   .rest-status-chip.rest-mobile {
     flex: 0 0 auto;
+  }
+}
+
+:deep(.el-input__inner),
+:deep(.el-select .el-input__inner),
+:deep(.el-select__selected-item) {
+  font-size: 12px;
+}
+
+@supports (-webkit-touch-callout: none) {
+  :deep(.el-input__inner),
+  :deep(.el-select .el-input__inner),
+  :deep(.el-select__selected-item) {
+    font-size: 16px;
+    transform: scale(0.75);
+    transform-origin: left center;
   }
 }
 </style>

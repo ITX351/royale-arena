@@ -280,7 +280,7 @@ const confirmStartGame = () => {
 
 const confirmResetToWaiting = () => {
   ElMessageBox.confirm(
-    '确定要回退到等待状态吗？演员需要重新准备进入游戏。',
+    '确定要回退到等待状态吗？回退动作会清除当前游戏的全部记录。',
     '确认回退等待',
     {
       confirmButtonText: '确定',

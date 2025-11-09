@@ -63,6 +63,7 @@
                 >
                   <span
                     class="player-name"
+                    :class="{ 'player-name--bleeding': scope.row.bleed_damage > 0 }"
                     role="link"
                     tabindex="0"
                     @click="goToActorPage(scope.row.password)"
@@ -647,6 +648,10 @@ const goToActorPage = (playerPassword: string) => {
 .player-name {
   cursor: pointer;
   color: #409eff;
+}
+
+.player-name--bleeding {
+  color: #f56c6c;
 }
 
 .player-name:focus {
