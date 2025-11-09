@@ -127,6 +127,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { isAxiosError } from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -158,8 +159,8 @@ const loginLoading = ref(false)
 // 计算属性
 const canLogin = computed(() => {
   if (!gameDetail.value) return false
-  
-  return ['waiting', 'running', 'paused'].includes(gameDetail.value.status)
+
+  return ['waiting', 'running', 'paused', 'ended'].includes(gameDetail.value.status)
 })
 
 // 方法
@@ -182,7 +183,19 @@ const loadGameDetail = async () => {
     }
   } catch (err) {
     console.error('加载游戏详情失败:', err)
-    error.value = err instanceof Error ? err.message : '加载游戏详情失败'
+    const fallbackMessage = '加载游戏详情失败，请稍后重试'
+
+    if (isAxiosError(err)) {
+      if (err.response?.status === 404) {
+        error.value = '未找到对应的游戏'
+      } else if (typeof err.response?.data?.message === 'string') {
+        error.value = err.response.data.message
+      } else {
+        error.value = fallbackMessage
+      }
+    } else {
+      error.value = err instanceof Error ? err.message : fallbackMessage
+    }
   } finally {
     loading.value = false
   }

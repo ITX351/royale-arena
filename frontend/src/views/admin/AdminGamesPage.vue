@@ -169,7 +169,19 @@
             v-model="gameForm.director_password" 
             type="text"
             placeholder="请输入导演密码"
-          />
+            clearable
+          >
+            <template #append>
+              <el-button 
+                size="small"
+                type="primary"
+                :icon="RefreshRight"
+                @click="generateDirectorPassword"
+              >
+                随机
+              </el-button>
+            </template>
+          </el-input>
         </el-form-item>
 
         <el-form-item label="最大玩家数" prop="max_players">
@@ -222,7 +234,8 @@ import {
   Edit, 
   View, 
   More, 
-  Delete 
+  Delete,
+  RefreshRight
 } from '@element-plus/icons-vue'
 import { gameService } from '@/services/gameService'
 import { adminService } from '@/services/adminService'
@@ -253,6 +266,24 @@ const gameForm = reactive<CreateGameRequest>({
   max_players: 100,
   rule_template_id: ''
 })
+
+const PASSWORD_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+
+const generateRandomPassword = (length = 14) => {
+  const charsetLength = PASSWORD_CHARSET.length
+
+  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    const randomValues = window.crypto.getRandomValues(new Uint32Array(length))
+    return Array.from(randomValues, value => PASSWORD_CHARSET[value % charsetLength]).join('')
+  }
+
+  return Array.from({ length }, () => PASSWORD_CHARSET[Math.floor(Math.random() * charsetLength)]).join('')
+}
+
+const generateDirectorPassword = () => {
+  gameForm.director_password = generateRandomPassword()
+  nextTick(() => gameFormRef.value?.validateField('director_password'))
+}
 
 // 表单验证规则
 const gameFormRules: FormRules = {

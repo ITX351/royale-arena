@@ -58,9 +58,8 @@
 
           <!-- 状态页面内容 -->
           <component 
-            :is="currentStateComponent" 
-            :game="gameWithData"
-            :actor-password="actorPassword"
+            :is="currentStateComponent"
+            v-bind="currentStateProps"
           />
         </div>
 
@@ -127,6 +126,7 @@ const killRecords = ref<KillRecord[]>([])
 const killRecordsDialogVisible = ref(false)
 const initialMessagesLoaded = ref(false) // 新增状态，标记初始消息是否已加载
 const playerId = ref<string>('') // 新增状态，存储玩家ID
+const playerName = ref<string>('')
 const isAuthorized = ref(false)
 
 // 计算属性
@@ -173,6 +173,24 @@ const currentStateComponent = computed(() => {
   }
   
   return statusComponentMap[gameWithData.value.status] || OtherState
+})
+
+const playerDisplayName = computed(() => {
+  const fallbackName = gameStateStore.actorPlayer?.name?.trim() || ''
+  return playerName.value.trim() || fallbackName
+})
+
+const currentStateProps = computed(() => {
+  const props: Record<string, any> = {
+    game: gameWithData.value,
+    actorPassword: actorPassword.value
+  }
+
+  if (currentStateComponent.value === PreGameState) {
+    props.playerName = playerDisplayName.value
+  }
+
+  return props
 })
 
 // 判断是否应该显示日志消息组件
@@ -227,6 +245,7 @@ const initialize = async () => {
   }
 
   playerId.value = authResult.actorId
+  playerName.value = authResult.actorName?.trim() || ''
   isAuthorized.value = true
 
   await fetchGameDetail()
@@ -356,11 +375,18 @@ watch(
       return
     }
 
-    if (newActorPlayer && newActorPlayer.id && newActorPlayer.id !== playerId.value) {
-      playerId.value = newActorPlayer.id
-      // 一旦获取到玩家ID，立即获取消息记录
-      fetchPlayerMessages()
-      fetchPlayerKillRecords()
+    if (newActorPlayer) {
+      const latestName = newActorPlayer.name?.trim() || ''
+      if (latestName && latestName !== playerName.value) {
+        playerName.value = latestName
+      }
+
+      if (newActorPlayer.id && newActorPlayer.id !== playerId.value) {
+        playerId.value = newActorPlayer.id
+        // 一旦获取到玩家ID，立即获取消息记录
+        fetchPlayerMessages()
+        fetchPlayerKillRecords()
+      }
     }
   },
   { immediate: true }  // 立即执行一次检查
