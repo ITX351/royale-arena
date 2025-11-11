@@ -567,6 +567,8 @@ watch(filterForm, () => {
   padding: 2px 6px;
   border-radius: 2px;
   font-weight: 500;
+  user-select: none; /* Keep badge out of copy selections */
+  pointer-events: none;
 }
 
 .log-type.SystemNotice {
