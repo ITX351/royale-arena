@@ -141,6 +141,9 @@ pub struct Player {
     pub team_id: Option<u32>,
     /// 持续伤害效果（流血状态）
     pub bleed_damage: i32,
+    /// 附加流血的玩家ID
+    #[serde(default)]
+    pub bleed_inflictor: Option<String>,
 }
 
 impl Player {
@@ -175,6 +178,7 @@ impl Player {
             last_search_time: None,
             team_id: Some(team_id),
             bleed_damage: 0,
+            bleed_inflictor: None,
         }
     }
 
@@ -190,9 +194,10 @@ impl Player {
         count
     }
     /// 设置持续伤害效果
-    pub fn update_bleed_effect(&mut self, damage: i32) -> bool {
-        if damage > self.bleed_damage {
+    pub fn update_bleed_effect(&mut self, damage: i32, inflictor: Option<String>) -> bool {
+        if damage >= self.bleed_damage {
             self.bleed_damage = damage;
+            self.bleed_inflictor = inflictor;
             true
         } else {
             false
@@ -202,6 +207,7 @@ impl Player {
     /// 清除持续伤害效果
     pub fn clear_bleed_effect(&mut self) {
         self.bleed_damage = 0;
+        self.bleed_inflictor = None;
     }
 
     /// 检查是否有持续伤害效果

@@ -123,6 +123,7 @@ impl Player {
                 }
             }
         }
+        player.bleed_inflictor = None; // 移除流血附加者信息
         player
     }
 

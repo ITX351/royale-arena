@@ -673,7 +673,8 @@ impl GameState {
             };
 
             if requires_kill {
-                let mut kill_outcome = self.kill_player(&target_id, None, "遥控地雷爆炸")?;
+                let mut kill_outcome =
+                    self.kill_player(&target_id, None, Some(player_id), "遥控地雷爆炸")?;
                 death_results.append(&mut kill_outcome.results);
             }
 

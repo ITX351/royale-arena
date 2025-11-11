@@ -136,6 +136,7 @@ impl GameState {
         };
 
         let attacker_name = self.players.get(player_id).unwrap().name.clone();
+        let attacker_id_owned = player_id.to_string();
 
         let mut weapon_destroyed_result: Option<ActionResult> = None;
         let mut armor_destroyed_result: Option<ActionResult> = None;
@@ -241,7 +242,9 @@ impl GameState {
 
             if dealt > 0 {
                 if let Some(bleed_value) = weapon_bleed_damage {
-                    if target_player.update_bleed_effect(bleed_value) {
+                    if target_player
+                        .update_bleed_effect(bleed_value, Some(attacker_id_owned.clone()))
+                    {
                         main_bleed_value = Some(bleed_value);
                     }
                 }
@@ -255,8 +258,12 @@ impl GameState {
 
         let mut death_results: Vec<ActionResult> = Vec::new();
         if main_requires_kill {
-            let mut death_outcome =
-                self.kill_player(&target_player_id, Some(player_id), "攻击致死")?;
+            let mut death_outcome = self.kill_player(
+                &target_player_id,
+                Some(player_id),
+                Some(player_id),
+                "攻击致死",
+            )?;
             death_results.append(&mut death_outcome.results);
         }
 
@@ -276,7 +283,9 @@ impl GameState {
 
                     if dealt > 0 {
                         if let Some(bleed_value) = weapon_bleed_damage {
-                            if target.update_bleed_effect(bleed_value) {
+                            if target
+                                .update_bleed_effect(bleed_value, Some(attacker_id_owned.clone()))
+                            {
                                 applied_bleed = Some(bleed_value);
                             }
                         }
@@ -294,8 +303,12 @@ impl GameState {
                 }
 
                 if requires_kill {
-                    let mut death_outcome =
-                        self.kill_player(&aoe_target_id, Some(player_id), "攻击致死")?;
+                    let mut death_outcome = self.kill_player(
+                        &aoe_target_id,
+                        Some(player_id),
+                        Some(player_id),
+                        "攻击致死",
+                    )?;
                     death_results.append(&mut death_outcome.results);
                 }
 

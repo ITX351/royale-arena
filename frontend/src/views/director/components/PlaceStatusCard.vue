@@ -166,6 +166,7 @@
       v-model="showBatchDialog"
       :rules-json="rulesJson"
       :existing-items="existingItems"
+      :places="placeList"
       :available-places="availablePlaces"
       @confirm="handleBatchAirdrop"
     />
