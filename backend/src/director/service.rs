@@ -453,7 +453,12 @@ impl DirectorService {
     }
 
     /// 结束游戏（进行中 → 结束）
-    pub async fn end_game(&self, app_state: &AppState, game_id: &str, saving_stats: bool) -> Result<(), DirectorError> {
+    pub async fn end_game(
+        &self,
+        app_state: &AppState,
+        game_id: &str,
+        saving_stats: bool,
+    ) -> Result<(), DirectorError> {
         // 更新数据库中游戏状态为 "ended"
         let result = sqlx::query!(
             "UPDATE games SET status = 'ended', updated_at = CURRENT_TIMESTAMP WHERE id = ?",

@@ -147,9 +147,8 @@ impl GameLogService {
 
         // 查询玩家相关的消息记录，包括所有标记为visible_to_all_players为true的记录
         let messages = if let Some(limit) = limit {
-            let limit = i64::try_from(limit).map_err(|_| {
-                GameError::ValidationError("请求条数过大".to_string())
-            })?;
+            let limit = i64::try_from(limit)
+                .map_err(|_| GameError::ValidationError("请求条数过大".to_string()))?;
             let mut result = sqlx::query_as!(
                 MessageRecord,
                 r#"
@@ -201,9 +200,7 @@ impl GameLogService {
     ) -> Result<Vec<MessageRecord>, GameError> {
         if let Some(limit) = limit {
             if limit == 0 {
-                return Err(GameError::ValidationError(
-                    "请求条数必须大于0".to_string(),
-                ));
+                return Err(GameError::ValidationError("请求条数必须大于0".to_string()));
             }
         }
 
@@ -225,9 +222,8 @@ impl GameLogService {
 
         // 查询所有标记为visible_to_director为true的记录
         let messages = if let Some(limit) = limit {
-            let limit = i64::try_from(limit).map_err(|_| {
-                GameError::ValidationError("请求条数过大".to_string())
-            })?;
+            let limit = i64::try_from(limit)
+                .map_err(|_| GameError::ValidationError("请求条数过大".to_string()))?;
             let mut result = sqlx::query_as!(
                 MessageRecord,
                 r#"

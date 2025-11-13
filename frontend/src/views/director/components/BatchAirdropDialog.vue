@@ -139,11 +139,11 @@
                 v-model="row.place_name"
                 placeholder="选择地点"
                 filterable
-                :disabled="props.availablePlaces.length === 0"
+                :disabled="activeAvailablePlaces.length === 0"
                 style="width: 100%"
               >
                 <el-option
-                  v-for="place in props.availablePlaces"
+                  v-for="place in activeAvailablePlaces"
                   :key="place"
                   :label="place"
                   :value="place"
@@ -341,7 +341,14 @@ interface PlacePreview {
   canReceiveDrop: boolean
 }
 
-const availablePlaceSet = computed(() => new Set(props.availablePlaces))
+const alivePlaces = computed(() => props.places.filter(place => !place.is_destroyed))
+
+const activeAvailablePlaces = computed(() => {
+  const activePlaceNames = new Set(alivePlaces.value.map(place => place.name))
+  return props.availablePlaces.filter(name => activePlaceNames.has(name))
+})
+
+const availablePlaceSet = computed(() => new Set(activeAvailablePlaces.value))
 
 const incomingGroups = computed(() => {
   const grouped = new Map<string, IncomingPreview[]>()
@@ -354,7 +361,7 @@ const incomingGroups = computed(() => {
 })
 
 const placePreviews = computed<PlacePreview[]>(() => {
-  return props.places.map(place => ({
+  return alivePlaces.value.map(place => ({
     name: place.name,
     existing: (place.items || []).map(item => getItemDisplayName(item)),
     incoming: incomingGroups.value.get(place.name) ?? [],
@@ -411,7 +418,7 @@ const generateRandomAssignment = () => {
     return
   }
   
-  if (props.availablePlaces.length === 0) {
+  if (activeAvailablePlaces.value.length === 0) {
     ElMessage.error('没有可用的地点')
     return
   }
@@ -447,7 +454,7 @@ const generateRandomAssignment = () => {
     }
     
     // 随机分配地点
-    generatedAirdrops.value = itemParser.value.randomAssignPlaces(selectedItems, props.availablePlaces)
+    generatedAirdrops.value = itemParser.value.randomAssignPlaces(selectedItems, activeAvailablePlaces.value)
     
     ElMessage.success(`生成完成，共 ${generatedAirdrops.value.length} 个物品`)
   } catch (error) {
