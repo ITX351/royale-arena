@@ -49,9 +49,18 @@ export const gameService = {
   },
 
   // 获取导演消息记录
-  async getDirectorMessages(gameId: string, password: string): Promise<ApiResponse<MessageRecord[]>> {
-    const response = await apiClient.get(API_ENDPOINTS.DIRECTOR_MESSAGES(gameId), { 
-      params: { password } 
+  async getDirectorMessages(
+    gameId: string,
+    password: string,
+    limit?: number
+  ): Promise<ApiResponse<MessageRecord[]>> {
+    const params: Record<string, unknown> = { password }
+    if (typeof limit === 'number') {
+      params.limit = limit
+    }
+
+    const response = await apiClient.get(API_ENDPOINTS.DIRECTOR_MESSAGES(gameId), {
+      params
     })
     return response.data
   },
@@ -65,8 +74,18 @@ export const gameService = {
   },
 
   // 获取玩家消息记录
-  async getPlayerMessages(gameId: string, playerId: string, password: string): Promise<ApiResponse<MessageRecord[]>> {
-    const response = await apiClient.post(API_ENDPOINTS.PLAYER_MESSAGES(gameId, playerId), { password })
+  async getPlayerMessages(
+    gameId: string,
+    playerId: string,
+    password: string,
+    limit?: number
+  ): Promise<ApiResponse<MessageRecord[]>> {
+    const payload: { password: string; limit?: number } = { password }
+    if (typeof limit === 'number') {
+      payload.limit = limit
+    }
+
+    const response = await apiClient.post(API_ENDPOINTS.PLAYER_MESSAGES(gameId, playerId), payload)
     return response.data
   },
 

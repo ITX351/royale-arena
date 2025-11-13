@@ -15,6 +15,8 @@ use crate::routes::AppState;
 #[derive(Debug, Deserialize)]
 pub struct DirectorPasswordQuery {
     pub password: String,
+    #[serde(default)]
+    pub limit: Option<usize>,
 }
 
 /// 删除日志的时间戳参数
@@ -138,9 +140,10 @@ pub async fn get_player_messages(
     request.validate().map_err(GameError::ValidationError)?;
 
     // 获取玩家消息记录
+    let limit = request.limit;
     let messages = state
         .game_log_service
-        .get_player_messages(&game_id, &player_id, &request.password)
+        .get_player_messages(&game_id, &player_id, &request.password, limit)
         .await?;
 
     Ok(Json(json!({
@@ -158,7 +161,7 @@ pub async fn get_director_messages(
     // 获取导演消息记录
     let messages = state
         .game_log_service
-        .get_director_messages(&game_id, &query.password)
+        .get_director_messages(&game_id, &query.password, query.limit)
         .await?;
 
     Ok(Json(json!({

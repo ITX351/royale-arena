@@ -3,7 +3,7 @@
     <template #header>
       <div class="card-header">
         <div class="header-left">
-          <h3>实时日志消息</h3>
+          <h3>日志消息</h3>
           <el-button
             type="primary"
             link
@@ -13,6 +13,14 @@
             aria-label="切换筛选面板"
           />
         </div>
+        <el-button
+          type="default"
+          size="small"
+          @click="requestAllMessages"
+          class="load-all-btn"
+        >
+          加载全部
+        </el-button>
         <el-button 
           type="primary" 
           size="small" 
@@ -157,7 +165,8 @@ const props = defineProps<{
 // 定义事件发射
 const emit = defineEmits<{
   (e: 'reply-to-player', playerId: string): void,
-  (e: 'show-kill-records'): void
+  (e: 'show-kill-records'): void,
+  (e: 'load-all-messages'): void
 }>()
 
 // 响应式状态
@@ -284,6 +293,10 @@ const handlePageChange = (page: number) => {
   currentPage.value = page
 }
 
+const requestAllMessages = () => {
+  emit('load-all-messages')
+}
+
 // 新增方法：检查消息是否为新消息
 const isNewMessage = (timestamp: string) => {
   const result = newMessages.value.has(timestamp);
@@ -399,8 +412,12 @@ watch(filterForm, () => {
   padding: 0;
 }
 
-.kill-records-btn {
+.load-all-btn {
   margin-left: auto;
+}
+
+.kill-records-btn {
+  margin-left: 8px;
 }
 
 .log-message {

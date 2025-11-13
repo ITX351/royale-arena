@@ -11,7 +11,7 @@
             v-model="showDeadPlayers"
                   size="small"
           >
-            显示已出局玩家
+            显示已出局
           </el-checkbox>
           <el-button 
             type="primary" 

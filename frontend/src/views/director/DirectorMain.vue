@@ -81,6 +81,7 @@
             class="shared-log-message"
             @reply-to-player="handleReplyToPlayer"
             @show-kill-records="showKillRecordsDialog"
+            @load-all-messages="handleLoadAllDirectorMessages"
           />
         </div>
       </div>
@@ -291,13 +292,14 @@ const connectWebSocket = async () => {
 }
 
 // 新增方法：获取导演消息
-const fetchDirectorMessages = async () => {
+const fetchDirectorMessages = async (limit: number | null = 100) => {
   if (!game.value || !directorPassword.value) return
   
   try {
     const response = await gameService.getDirectorMessages(
       game.value.id,
-      directorPassword.value
+      directorPassword.value,
+      limit === null ? undefined : limit
     )
     
     if (response.success && response.data) {
@@ -320,6 +322,11 @@ const fetchDirectorMessages = async () => {
   } catch (error) {
     console.error('获取导演消息失败:', error)
   }
+}
+
+const handleLoadAllDirectorMessages = async () => {
+  gameStateStore.clearLogMessages()
+  await fetchDirectorMessages(null)
 }
 
 // 新增方法：获取导演击杀记录

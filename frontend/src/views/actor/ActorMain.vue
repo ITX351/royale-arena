@@ -70,6 +70,7 @@
             :players="actorPlayerList"
             class="shared-log-message"
             @show-kill-records="showKillRecordsDialog"
+            @load-all-messages="handleLoadAllPlayerMessages"
           />
         </div>
       </div>
@@ -315,14 +316,15 @@ const connectWebSocket = async () => {
 }
 
 // 修改 fetchPlayerMessages 方法中的字段映射
-const fetchPlayerMessages = async () => {
+const fetchPlayerMessages = async (limit: number | null = 100) => {
   if (!game.value || !actorPassword.value || !playerId.value || !isAuthorized.value) return
   
   try {
     const response = await gameService.getPlayerMessages(
       game.value.id,
       playerId.value,
-      actorPassword.value
+      actorPassword.value,
+      limit === null ? undefined : limit
     )
     
     if (response.success && response.data) {
@@ -346,6 +348,11 @@ const fetchPlayerMessages = async () => {
     console.error('获取玩家消息失败:', error)
     // 即使获取失败也继续，避免阻塞页面加载
   }
+}
+
+const handleLoadAllPlayerMessages = async () => {
+  gameStateStore.clearLogMessages()
+  await fetchPlayerMessages(null)
 }
 
 // 新增方法：获取玩家击杀记录

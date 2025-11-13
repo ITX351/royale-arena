@@ -222,6 +222,9 @@ pub struct UpdateGameRequest {
 pub struct GetPlayerMessagesRequest {
     /// 玩家密码
     pub password: String,
+    /// 限制返回的消息条数
+    #[serde(default)]
+    pub limit: Option<usize>,
 }
 
 /// 消息记录类型枚举
@@ -393,6 +396,12 @@ impl GetPlayerMessagesRequest {
 
         if self.password.is_empty() || self.password.len() > 40 {
             return Err("玩家密码长度必须在1-40字符之间".to_string());
+        }
+
+        if let Some(limit) = self.limit {
+            if limit == 0 {
+                return Err("请求条数必须大于0".to_string());
+            }
         }
 
         Ok(())
