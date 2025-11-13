@@ -13,14 +13,6 @@
             aria-label="切换筛选面板"
           />
         </div>
-        <el-button
-          type="default"
-          size="small"
-          @click="requestAllMessages"
-          class="load-all-btn"
-        >
-          加载全部
-        </el-button>
         <el-button 
           type="primary" 
           size="small" 
@@ -144,6 +136,28 @@
           @current-change="handlePageChange"
         />
       </div>
+
+      <div class="log-actions">
+        <el-button
+          :type="isAllLoaded ? 'success' : 'default'"
+          size="small"
+          :disabled="pendingLoadAll || isAllLoaded"
+          :plain="!isAllLoaded && !pendingLoadAll"
+          @click="handleLoadAllClick"
+          class="load-all-btn"
+        >
+          {{ loadAllButtonLabel }}
+        </el-button>
+        <el-button
+          type="primary"
+          size="small"
+          plain
+          @click="exportMessagesToCsv"
+          class="export-btn"
+        >
+          导出 CSV
+        </el-button>
+      </div>
     </div>
   </el-card>
 </template>
@@ -184,6 +198,9 @@ const logListRef = ref<HTMLElement | null>(null)
 const newMessages = ref<Set<string>>(new Set())
 const previousMessageTimestamps = ref<Set<string>>(new Set())
 const showFilters = ref(false)
+const isAllLoaded = ref(false)
+const previousMessagesCount = ref(0)
+const pendingLoadAll = ref(false)
 
 // 计算属性
 const playerOptions = computed(() => {
@@ -196,6 +213,13 @@ const playerOptions = computed(() => {
 })
 
 const isDirectorView = computed(() => props.isDirector === true)
+
+const loadAllButtonLabel = computed(() => {
+  if (pendingLoadAll.value) {
+    return '加载中...'
+  }
+  return isAllLoaded.value ? '已全部加载' : '加载全部'
+})
 
 // 工具方法：转换时间戳为本地日期字符串（YYYY-MM-DD）
 const getLocalDateString = (timestamp: string) => {
@@ -297,6 +321,50 @@ const requestAllMessages = () => {
   emit('load-all-messages')
 }
 
+const handleLoadAllClick = () => {
+  if (pendingLoadAll.value || isAllLoaded.value) {
+    return
+  }
+  pendingLoadAll.value = true
+  requestAllMessages()
+}
+
+const sanitizeCsvValue = (value: string) => {
+  const safeValue = value.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()
+  if (/[",]/.test(safeValue)) {
+    return `"${safeValue.replace(/"/g, '""')}"`
+  }
+  return safeValue
+}
+
+const exportMessagesToCsv = () => {
+  if (filteredMessages.value.length === 0) {
+    ElMessage.warning('暂无可导出的消息')
+    return
+  }
+
+  const headers = ['消息类型', '日期时间', '消息内容']
+  const rows = filteredMessages.value.map(message => [
+    sanitizeCsvValue(getMessageTypeLabel(message.message_type)),
+    sanitizeCsvValue(formatTimestamp(message.timestamp)),
+    sanitizeCsvValue(message.log_message)
+  ])
+
+  const csvLines = [headers.join(','), ...rows.map(row => row.join(','))]
+  const csvContent = '\uFEFF' + csvLines.join('\r\n') // BOM helps spreadsheet apps detect UTF-8
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const dateSuffix = new Date().toISOString().split('T')[0]
+  link.href = url
+  link.download = `log_messages_${dateSuffix}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  ElMessage.success('CSV 导出成功')
+}
+
 // 新增方法：检查消息是否为新消息
 const isNewMessage = (timestamp: string) => {
   const result = newMessages.value.has(timestamp);
@@ -330,6 +398,12 @@ const handleReply = (message: ActionResult) => {
 watch(() => props.messages, (newMessagesList) => {
   // 如果没有消息，直接返回
   if (!newMessagesList || newMessagesList.length === 0) {
+    if (!pendingLoadAll.value) {
+      isAllLoaded.value = false
+    }
+    newMessages.value.clear()
+    previousMessageTimestamps.value = new Set()
+    previousMessagesCount.value = 0
     return;
   }
   
@@ -338,17 +412,30 @@ watch(() => props.messages, (newMessagesList) => {
   
   // 找出新增的消息（在当前消息中但不在之前的消息中的）
   const addedMessages = newMessagesList.filter(msg => !previousMessageTimestamps.value.has(msg.timestamp));
+
+  const shouldHighlight = !pendingLoadAll.value;
   
-  // 标记新增的消息为新消息
-  addedMessages.forEach(msg => {
-    newMessages.value.add(msg.timestamp);
-  });
+  // 标记新增的消息为新消息（仅在非加载全部流程中）
+  if (shouldHighlight) {
+    addedMessages.forEach(msg => {
+      newMessages.value.add(msg.timestamp);
+    });
+  } else if (addedMessages.length > 0) {
+    newMessages.value.clear();
+  }
   
   // 更新之前消息的时间戳集合
   previousMessageTimestamps.value = currentTimestamps;
+  if (pendingLoadAll.value) {
+    isAllLoaded.value = true
+    pendingLoadAll.value = false
+  } else if (newMessagesList.length < previousMessagesCount.value) {
+    isAllLoaded.value = false
+  }
+  previousMessagesCount.value = newMessagesList.length
   
   // 设置定时器在1秒后移除新消息标记（缩短一半时间）
-  if (addedMessages.length > 0) {
+  if (shouldHighlight && addedMessages.length > 0) {
     setTimeout(() => {
       addedMessages.forEach(msg => {
         newMessages.value.delete(msg.timestamp);
@@ -363,6 +450,7 @@ onMounted(() => {
   if (props.messages && props.messages.length > 0) {
     const initialTimestamps = new Set(props.messages.map(msg => msg.timestamp));
     previousMessageTimestamps.value = initialTimestamps;
+    previousMessagesCount.value = props.messages.length
   }
 });
 
@@ -413,7 +501,7 @@ watch(filterForm, () => {
 }
 
 .load-all-btn {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .kill-records-btn {
@@ -642,6 +730,21 @@ watch(filterForm, () => {
   display: flex;
   justify-content: center;
   padding: 15px 0;
+}
+
+.log-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.export-btn {
+  min-width: 110px;
+}
+
+.load-all-btn.is-disabled {
+  cursor: not-allowed;
 }
 
 .show-more-btn,
