@@ -24,6 +24,9 @@ pnpm dev
 # 后端开发
 cd backend
 cargo run
+
+# 发布前预准备编译数据
+cargo sqlx prepare
 ```
 
 ## 部署
