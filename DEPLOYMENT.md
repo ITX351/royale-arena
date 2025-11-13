@@ -106,7 +106,9 @@ server {
 
 ```nginx
 location ^~ /royale-arena/ {
-    try_files $uri $uri/ /royale-arena/index.html;
+    alias /var/www/html/royale-arena/current/;
+    index index.html;
+    try_files $uri $uri/ /index.html;
     add_header Cache-Control "public, max-age=60";
 }
 ```
@@ -117,6 +119,9 @@ location ^~ /royale-arena/ {
 cd frontend
 pnpm install --frozen-lockfile
 pnpm build
+
+# 软链接current完成更新
+ln -sfn ./v0.3.1 ./current
 ```
 
 把 `dist` 放到 NGINX 的静态目录，或在 CI 中将其打包进 NGINX 镜像。若部署在子路径，请在 `vite.config.ts` 设置 `base: '/royale-arena/'` 并重建。
