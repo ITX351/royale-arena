@@ -103,12 +103,18 @@
           <a href="https://www.mistytown.cn/forum.php" target="_blank" rel="noopener noreferrer">
             雾雨小镇
           </a>
+
           <a href="https://space.bilibili.com/522021" target="_blank" rel="noopener noreferrer">
             ITX351
           </a>
           <a href="https://github.com/ITX351/royale-arena" target="_blank" rel="noopener noreferrer">
-            RoyaleArena工程
+            GitHub
           </a>
+          <span class="footer-version">
+            <a href="https://www.mistytown.cn/forum.php?mod=viewthread&tid=13043" target="_blank" rel="noopener noreferrer">
+              v{{ appVersion }}
+            </a>
+          </span>
         </nav>
       </div>
     </footer>
@@ -126,6 +132,7 @@ import type { GameListItem } from '@/types/game'
 
 const router = useRouter()
 const gameStore = useGameStore()
+const appVersion = __APP_VERSION__
 
 // 响应式数据
 const currentPage = ref(1)
@@ -232,6 +239,10 @@ onMounted(async () => {
 
 .footer-links a:hover {
   color: #409eff;
+}
+
+.footer-version {
+  color: #909399;
 }
 
 .logo-section .logo {

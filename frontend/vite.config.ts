@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import { readFileSync } from 'fs'
+
+const { version: appVersion } = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf-8')
+)
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -9,6 +14,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(process.cwd(), 'src')
     }
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion)
   },
   base: '/royale-arena/',
   server: {
