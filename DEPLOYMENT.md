@@ -120,8 +120,8 @@ cd frontend
 pnpm install --frozen-lockfile
 pnpm build
 
-# 软链接current完成更新
-ln -sfn ./v0.3.1 ./current
+cd backend
+cargo sqlx prepare
 ```
 
 把 `dist` 放到 NGINX 的静态目录，或在 CI 中将其打包进 NGINX 镜像。若部署在子路径，请在 `vite.config.ts` 设置 `base: '/royale-arena/'` 并重建。
@@ -137,11 +137,10 @@ ln -sfn ./v0.3.1 ./current
   docker logs -f royale_arena
   ```
 3. 版本发布：
+   - `cargo sqlx prepare` 更新编译预备数据。
    - 更新代码并重新构建镜像（修改标签或覆盖旧版本）。
-   - `docker compose pull && docker compose up -d royale` 以滚动更新。
-4. 数据备份：
-   - 定期备份 MySQL 数据目录 `./mysql/data`。
-   - 备份挂载目录 `/srv/royale/game_states` 以保留历史游戏记录。
+   - `docker compose pull && docker compose up -d royale` 以滚动后端更新。
+   - `ln -sfn ./vX.X.X ./current` 更新软链接current完成前端更新。
 
 ### 常见问题
 

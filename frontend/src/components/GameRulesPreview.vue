@@ -2,12 +2,51 @@
   <div class="game-rules-preview">
     <el-alert
       v-if="parseError"
-      :title="parseError"
+      title="规则配置校验失败"
       type="error"
       show-icon
       :closable="false"
       class="parse-error"
-    />
+    >
+      <template #default>
+        <p>{{ parseError }}</p>
+      </template>
+    </el-alert>
+
+    <el-alert
+      v-if="validationErrors.length > 0"
+      title="校验错误"
+      type="error"
+      show-icon
+      :closable="false"
+      class="parser-error"
+    >
+      <template #default>
+        <ul>
+          <li v-for="error in validationErrors" :key="error">
+            {{ error }}
+          </li>
+        </ul>
+      </template>
+    </el-alert>
+
+    <el-alert
+      v-if="extraMissingSections.length > 0"
+      title="缺失的规则部分"
+      type="warning"
+      show-icon
+      :closable="false"
+      class="parser-warning"
+    >
+      <template #default>
+        <p>以下规则部分缺失或未配置：</p>
+        <ul>
+          <li v-for="section in extraMissingSections" :key="section">
+            {{ section }}
+          </li>
+        </ul>
+      </template>
+    </el-alert>
 
     <el-empty
       v-if="!hasConfig && !parseError"
@@ -15,7 +54,7 @@
       class="empty-placeholder"
     />
 
-    <template v-else>
+    <template v-else-if="parsedRules">
       <el-alert
         v-if="parsedRules.missingSections.length > 0"
         title="缺失的规则部分"
@@ -269,7 +308,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { GameRuleParser, type ParsedGameRules } from '@/utils/gameRuleParser'
+import { GameRuleParser, GameRuleParserError, type ParsedGameRules } from '@/utils/gameRuleParser'
 
 interface ParsedInputState {
   config: Record<string, unknown>
@@ -323,9 +362,72 @@ const parseState = computed<ParsedInputState>(() => {
   }
 })
 
-const parsedRules = computed<ParsedGameRules>(() => parser.parse(parseState.value.config))
+interface ParserComputedState {
+  rules: ParsedGameRules | null
+  error: string | null
+  validationErrors: string[]
+  missingSections: string[]
+}
+
+const parsedResult = computed<ParserComputedState>(() => {
+  if (parseState.value.error) {
+    return {
+      rules: null,
+      error: parseState.value.error,
+      validationErrors: [],
+      missingSections: []
+    }
+  }
+
+  if (!parseState.value.hasConfig) {
+    return {
+      rules: null,
+      error: null,
+      validationErrors: [],
+      missingSections: []
+    }
+  }
+
+  try {
+    const rules = parser.parse(parseState.value.config)
+    return {
+      rules,
+      error: null,
+      validationErrors: [],
+      missingSections: []
+    }
+  } catch (err) {
+    if (err instanceof GameRuleParserError) {
+      const detailMessages = [
+        ...(err.errors.length > 0 ? err.errors : []),
+        ...(err.missingSections.length > 0
+          ? [`缺少必需字段：${err.missingSections.join(', ')}`]
+          : [])
+      ]
+      const message = detailMessages.join('；') || '规则配置校验失败'
+      return {
+        rules: null,
+        error: message,
+        validationErrors: [...err.errors],
+        missingSections: [...err.missingSections]
+      }
+    }
+
+    const errorMessage = err instanceof Error ? err.message : '未知错误'
+    return {
+      rules: null,
+      error: errorMessage,
+      validationErrors: [],
+      missingSections: []
+    }
+  }
+})
+
+const parsedRules = computed<ParsedGameRules | null>(() => parsedResult.value.rules)
 const hasConfig = computed(() => parseState.value.hasConfig)
-const parseError = computed(() => parseState.value.error)
+const parseError = computed(() => parsedResult.value.error)
+const validationErrors = computed(() => parsedResult.value.validationErrors)
+const extraMissingSections = computed(() => parsedResult.value.missingSections)
 
 const getDispositionDisplayText = (value: string) => {
   const dispositionMap: Record<string, string> = {

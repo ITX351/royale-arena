@@ -152,7 +152,7 @@ pub async fn update_game_status(
             // 只有在运行或暂停状态才能结束
             match game.status {
                 GameStatus::Running | GameStatus::Paused => {
-                    state.director_service.end_game(&state, &game_id).await?;
+                    state.director_service.end_game(&state, &game_id, game.status == GameStatus::Running).await?;
                     Ok(UpdateGameStatusResponse {
                         success: true,
                         message: "Game ended successfully".to_string(),

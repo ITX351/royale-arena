@@ -453,7 +453,7 @@ impl DirectorService {
     }
 
     /// 结束游戏（进行中 → 结束）
-    pub async fn end_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
+    pub async fn end_game(&self, app_state: &AppState, game_id: &str, saving_stats: bool) -> Result<(), DirectorError> {
         // 更新数据库中游戏状态为 "ended"
         let result = sqlx::query!(
             "UPDATE games SET status = 'ended', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -473,14 +473,16 @@ impl DirectorService {
             .remove_game_manager(game_id.to_string())
             .await;
 
-        // 将当前游戏状态序列化并保存到磁盘文件
-        app_state
-            .game_state_manager
-            .save_game_state_to_disk(game_id)
-            .await
-            .map_err(|e| DirectorError::OtherError {
-                message: format!("Failed to save game state to disk: {}", e),
-            })?;
+        if saving_stats {
+            // 将当前游戏状态序列化并保存到磁盘文件
+            app_state
+                .game_state_manager
+                .save_game_state_to_disk(game_id)
+                .await
+                .map_err(|e| DirectorError::OtherError {
+                    message: format!("Failed to save game state to disk: {}", e),
+                })?;
+        }
 
         // 游戏已结束，清除内存中的游戏状态
         app_state.game_state_manager.remove_game_state(game_id);
