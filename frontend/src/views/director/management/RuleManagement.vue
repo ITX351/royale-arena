@@ -122,7 +122,7 @@ import type { GameWithRules } from '@/types/game'
 import type { RuleConfigSource } from '@/types/ruleTemplate'
 import { directorService } from '@/services/directorService'
 import { getBasePathUrl } from '@/utils/commonUtils'
-import { GameRuleParser } from '@/utils/gameRuleParser'
+import { GameRuleParser, GameRuleParserError } from '@/utils/gameRuleParser'
 import RuleTemplateDialog from '@/views/director/components/RuleTemplateDialog.vue'
 import GameRulesPreview from '@/components/GameRulesPreview.vue'
 
@@ -202,22 +202,13 @@ const saveRules = async () => {
     const parsedRules = JSON.parse(editableRules.value)
 
     // 使用解析器检查是否有解析错误
-    const parser = new GameRuleParser();
-    const parsedGameRules = parser.parse(parsedRules);
+    const parser = new GameRuleParser()
+    const parsedGameRules = parser.parse(parsedRules)
 
-    // 检查是否存在解析错误
-    if (parsedGameRules.parsingIssues.length > 0 || parsedGameRules.missingSections.length > 0) {
-      // 如果有解析问题或缺失部分，显示错误信息
-      const issues = parsedGameRules.parsingIssues.length > 0 
-        ? `解析问题：${parsedGameRules.parsingIssues.join('; ')}` 
-        : '';
-      const missing = parsedGameRules.missingSections.length > 0 
-        ? `缺失部分：${parsedGameRules.missingSections.join(', ')}` 
-        : '';
-      
-      const errorMessage = `${issues} ${missing}`.trim();
-      ElMessage.error(`存在规则配置错误，请修正后保存：${errorMessage}`);
-      return; // 阻止保存
+    if (parsedGameRules.parsingIssues.length > 0) {
+      const issues = parsedGameRules.parsingIssues.join('; ')
+      ElMessage.error(`存在规则配置错误，请修正后保存：解析问题：${issues}`)
+      return
     }
 
     saving.value = true
@@ -237,7 +228,16 @@ const saveRules = async () => {
   } catch (error: any) {
     console.error('保存规则失败:', error)
 
-    if (error instanceof SyntaxError) {
+    if (error instanceof GameRuleParserError) {
+      const details = [
+        ...(error.errors.length > 0 ? error.errors : []),
+        ...(error.missingSections.length > 0
+          ? [`缺少必需字段：${error.missingSections.join(', ')}`]
+          : [])
+      ]
+      const message = details.length > 0 ? details.join('；') : '规则配置校验失败'
+      ElMessage.error(`规则配置校验失败：${message}`)
+    } else if (error instanceof SyntaxError) {
       ElMessage.error('JSON格式错误，请检查配置')
     } else {
       ElMessage.error(error.message || '保存失败，请稍后重试')

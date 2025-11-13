@@ -20,4 +20,5 @@ export default defineConfig([
   pluginVue.configs["flat/essential"],
   { files: ["**/*.vue"], languageOptions: { parserOptions: { parser: tseslint.parser } } },
   { rules: { "@typescript-eslint/no-explicit-any": "off" } },
+  { languageOptions: { globals: { __APP_VERSION__: "readonly" } } },
 ]);

@@ -75,8 +75,8 @@ jobs:
         push: ${{ steps.controls.outputs.should_push == 'true' }}
         tags: |
           ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ steps.controls.outputs.image_tag }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=backend-build
+        cache-to: type=gha,mode=max,scope=backend-build
         platforms: linux/amd64
 
     - name: Print image info
