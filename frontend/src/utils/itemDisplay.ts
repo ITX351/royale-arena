@@ -12,6 +12,23 @@ export const formatItemProperty = (property: ItemDisplayProperty): string => {
   return `${property.label}: ${property.value}`
 }
 
+// 渲染物品名称，包含剩余可用次数
+export const getItemDisplayName = (item: Item): string => {
+  const properties = item.item_type?.properties ?? {}
+  const remainingUses =
+    typeof (properties as Record<string, unknown>).uses === 'number'
+      ? (properties as Record<string, number>).uses
+      : typeof (properties as Record<string, unknown>).uses_night === 'number'
+        ? (properties as Record<string, number>).uses_night
+        : undefined
+
+  if (typeof remainingUses === 'number') {
+    return `${item.name}/${remainingUses}`
+  }
+
+  return item.name
+}
+
 const RARITY_LABELS: Record<string, string> = {
   common: '普通',
   rare: '稀有',

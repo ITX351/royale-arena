@@ -1,5 +1,4 @@
 use sqlx::MySqlPool;
-use uuid::Uuid;
 
 use super::errors::GameError;
 use super::models::*;
@@ -20,8 +19,28 @@ impl GameService {
         // 验证请求参数
         request.validate().map_err(GameError::ValidationError)?;
 
+        let CreateGameRequest {
+            id,
+            name,
+            description,
+            director_password,
+            max_players,
+            rule_template_id,
+        } = request;
+
+        let normalized_id = id.trim().to_string();
+
+        let existing_id = sqlx::query("SELECT id FROM games WHERE id = ?")
+            .bind(&normalized_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        if existing_id.is_some() {
+            return Err(GameError::GameIdExists);
+        }
+
         // 检查游戏名称是否已存在
-        let existing_game = sqlx::query!("SELECT id FROM games WHERE name = ?", request.name)
+        let existing_game = sqlx::query!("SELECT id FROM games WHERE name = ?", &name)
             .fetch_optional(&self.pool)
             .await?;
 
@@ -30,11 +49,11 @@ impl GameService {
         }
 
         // 从规则模板获取配置
-        let template = self.get_rule_template(&request.rule_template_id).await?;
+        let template = self.get_rule_template(&rule_template_id).await?;
         let rules_config = template.rules_config;
 
-        // 生成新的游戏ID
-        let game_id = Uuid::new_v4().to_string();
+        let game_id_for_insert = normalized_id.clone();
+        let game_id_for_fetch = normalized_id.clone();
 
         // 插入新游戏记录
         sqlx::query!(
@@ -42,11 +61,11 @@ impl GameService {
             INSERT INTO games (id, name, description, director_password, max_players, status, rules_config)
             VALUES (?, ?, ?, ?, ?, 'waiting', ?)
             "#,
-            game_id,
-            request.name,
-            request.description,
-            request.director_password,
-            request.max_players,
+            game_id_for_insert,
+            name,
+            description,
+            director_password,
+            max_players,
             &rules_config
         )
         .execute(&self.pool)
@@ -61,7 +80,7 @@ impl GameService {
             FROM games 
             WHERE id = ?
             "#,
-            game_id
+            game_id_for_fetch
         )
         .fetch_one(&self.pool)
         .await?;
@@ -232,6 +251,23 @@ impl GameService {
             .collect();
 
         Ok(game_list)
+    }
+
+    /// 获取包含规则配置的游戏信息列表（公开接口）
+    pub async fn get_games_rules_config_view(&self) -> Result<Vec<GameRulesConfigView>, GameError> {
+        let games = sqlx::query_as!(
+            GameRulesConfigView,
+            r#"
+            SELECT id, name, description, rules_config,
+                   status as "status: GameStatus"
+            FROM games
+            ORDER BY created_at DESC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(games)
     }
 
     /// 获取游戏详情（包含规则信息）

@@ -28,34 +28,31 @@
               maxlength="500"
               show-word-limit
               ref="messageInputRef"
+              @keydown.enter.ctrl.prevent="handleCtrlEnter"
             />
           </el-form-item>
 
           <el-form-item label="发送目标" prop="targetType">
             <el-radio-group v-model="broadcastForm.targetType">
               <el-radio label="all">广播到所有玩家</el-radio>
-              <el-radio label="player">发送给特定玩家</el-radio>
+              <el-radio label="player" class="target-player-radio">
+                发送给特定玩家
+                <el-select 
+                  v-if="broadcastForm.targetType === 'player'"
+                  v-model="broadcastForm.targetPlayer" 
+                  placeholder="请选择玩家"
+                  class="target-player-select"
+                  filterable
+                >
+                  <el-option
+                    v-for="player in sortedPlayers"
+                    :key="player.id"
+                    :label="player.name"
+                    :value="player.id"
+                  />
+                </el-select>
+              </el-radio>
             </el-radio-group>
-          </el-form-item>
-
-          <el-form-item 
-            v-if="broadcastForm.targetType === 'player'" 
-            label="选择玩家" 
-            prop="targetPlayer"
-          >
-            <el-select 
-              v-model="broadcastForm.targetPlayer" 
-              placeholder="请选择玩家"
-              style="width: 100%"
-              filterable
-            >
-              <el-option
-                v-for="player in players"
-                :key="player.id"
-                :label="player.name"
-                :value="player.id"
-              />
-            </el-select>
           </el-form-item>
 
           <el-form-item>
@@ -74,8 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, nextTick } from 'vue'
 import { ElMessage, ElForm } from 'element-plus'
+import type { InputInstance } from 'element-plus'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { Player } from '@/types/gameStateTypes'
@@ -113,9 +111,16 @@ const broadcastForm = reactive({
 })
 
 // 添加对消息输入框的引用
-const messageInputRef = ref<HTMLInputElement | null>(null)
+const messageInputRef = ref<InputInstance>()
 
 const sending = ref(false)
+
+const sortedPlayers = computed(() => {
+  return [...props.players].sort((a, b) => {
+    const localeResult = a.name.localeCompare(b.name, 'zh-CN-u-co-pinyin')
+    return localeResult || a.name.localeCompare(b.name)
+  })
+})
 
 // 新增方法：设置目标玩家
 function setTargetPlayer(playerId: string) {
@@ -125,17 +130,21 @@ function setTargetPlayer(playerId: string) {
 
 // 新增方法：聚焦到消息输入框
 function focusMessageInput() {
-  // 等待DOM更新后聚焦
-  setTimeout(() => {
-    if (messageInputRef.value) {
-      messageInputRef.value.focus();
-    }
-  }, 100);
+  // 使用 nextTick 确保在 DOM 更新后再聚焦
+  nextTick(() => {
+    messageInputRef.value?.focus()
+  })
 }
 
 // 新增方法：展开面板
 function expandPanel() {
-  isCollapsed.value = false;
+  isCollapsed.value = false
+}
+
+// 新增方法：处理 Ctrl + Enter 快捷发送
+function handleCtrlEnter() {
+  if (sending.value) return
+  sendBroadcast()
 }
 
 // 方法实现
@@ -197,5 +206,15 @@ const sendBroadcast = async () => {
 
 .broadcast-content {
   padding: 20px 0;
+}
+
+.target-player-radio {
+  display: inline-flex;
+  align-items: center;
+}
+
+.target-player-select {
+  width: 140px;
+  margin-left: 20px;
 }
 </style>

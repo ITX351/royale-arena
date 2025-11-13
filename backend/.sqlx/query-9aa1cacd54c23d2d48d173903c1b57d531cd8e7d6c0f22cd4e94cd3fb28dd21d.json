@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE games SET status = 'waiting', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'paused'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9aa1cacd54c23d2d48d173903c1b57d531cd8e7d6c0f22cd4e94cd3fb28dd21d"
+}

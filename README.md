@@ -31,7 +31,7 @@ cargo run
 详细步骤参考 `DEPLOYMENT.md`，涵盖环境变量、镜像构建、Docker Compose 与 NGINX 配置。
 - 部署前端：在 `frontend` 目录运行 `pnpm build`，将生成的 `dist` 部署到 NGINX 静态目录。
 - 复制 `backend/.env.example` 为 `.env` 并配置数据库、JWT、API 前缀等关键项。
-- 通过 `docker build -t royale-arena-rust-backend:0.1.1 ./backend` 构建后端镜像，使用 Compose 挂载 `/srv/royale/game_states` 目录并注入 `.env`。
+- 通过 `docker build -t royale-arena-rust-backend:0.4.2 ./backend` 构建后端镜像，使用 Compose 挂载 `/srv/royale/game_states` 目录并注入 `.env`。
 - 在 NGINX 中创建 `location ^~ /royale-arena/api/`，将请求代理至 `royale:3000` 并保留 WebSocket 头。
 - 首次部署按顺序启动数据库与后端容器，使用 `docker logs -f royale_arena` 观察运行状态。
 

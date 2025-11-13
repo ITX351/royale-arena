@@ -1,88 +1,70 @@
 <template>
-  <el-card class="kill-record-display">
-    <template #header>
-      <div class="card-header" :class="{ 'card-header--no-title': !props.showTitle }">
-        <span v-if="props.showTitle" class="header-spacer" aria-hidden="true"></span>
-        <h3 v-if="props.showTitle">击杀记录</h3>
-        <div class="header-controls">
-          <el-select 
-            v-if="props.isDirector" 
-            v-model="filterForm.selectedKiller" 
-            placeholder="筛选击杀者"
-            clearable
-            size="small"
-            class="killer-filter"
-          >
-            <el-option label="无击杀者" value="__none__" />
-            <el-option
-              v-for="player in props.players"
-              :key="player.id"
-              :label="player.name"
-              :value="player.id"
-            />
-          </el-select>
-          <el-button-group>
-            <el-button 
-              :type="sortOrder === 'asc' ? 'primary' : 'default'" 
-              @click="changeSortOrder('asc')"
-              size="small"
-            >
-              时间正序
-            </el-button>
-            <el-button 
-              :type="sortOrder === 'desc' ? 'primary' : 'default'" 
-              @click="changeSortOrder('desc')"
-              size="small"
-            >
-              时间倒序
-            </el-button>
-          </el-button-group>
-        </div>
-      </div>
-    </template>
-    
+  <div class="kill-record-display">
+    <div v-if="props.showTitle" class="table-toolbar">
+      <h3 class="toolbar-title">击杀记录</h3>
+    </div>
+
     <el-table 
-      v-if="hasRecords"
-      :data="filteredAndSortedRecords" 
-      style="width: 100%" 
+      ref="tableRef"
+      :data="sortedRecords" 
+      class="kill-record-table"
       size="small"
       max-height="400"
+      empty-text="暂无击杀记录"
+      :default-sort="{ prop: 'kill_time', order: 'ascending' }"
+      @sort-change="handleSortChange"
     >
-      <el-table-column prop="kill_time" label="时间" width="160">
+      <el-table-column
+        prop="kill_time"
+        label="时间"
+        width="140"
+        sortable="custom"
+      >
         <template #default="scope">
           {{ formatTime(scope.row.kill_time) }}
         </template>
       </el-table-column>
-      <el-table-column prop="killer_name" label="击杀者" width="120">
+      <el-table-column
+        prop="killer_name"
+        label="击杀者"
+        width="110"
+        sortable="custom"
+      >
         <template #default="scope">
           <span v-if="scope.row.killer_name">{{ scope.row.killer_name }}</span>
           <span v-else class="no-killer">无击杀者</span>
         </template>
       </el-table-column>
-      <el-table-column prop="victim_name" label="被击杀者" width="120" />
-      <el-table-column prop="cause" label="原因" width="120" />
-      <el-table-column prop="weapon" label="武器" width="120">
-        <template #default="scope">
-          <span v-if="scope.row.weapon">{{ scope.row.weapon }}</span>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="location" label="地点" width="120">
+      <el-table-column
+        prop="victim_name"
+        label="被击杀者"
+        width="110"
+        sortable="custom"
+      />
+      <el-table-column
+        prop="cause"
+        label="原因"
+        width="110"
+        sortable="custom"
+      />
+      <el-table-column
+        prop="location"
+        label="地点"
+        width="110"
+        sortable="custom"
+      >
         <template #default="scope">
           <span v-if="scope.row.location">{{ scope.row.location }}</span>
           <span v-else>-</span>
         </template>
       </el-table-column>
     </el-table>
-    
-    <div v-else class="no-records">
-      暂无击杀记录
-    </div>
-  </el-card>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import type { TableInstance } from 'element-plus'
 import type { KillRecord } from '@/types/game'
 
 interface Props {
@@ -97,14 +79,17 @@ const props = withDefaults(defineProps<Props>(), {
   showTitle: true
 })
 
-// 响应式数据
-const filterForm = ref({
-  selectedKiller: ''
+type TableSortOrder = 'ascending' | 'descending' | null
+type SortOrder = Exclude<TableSortOrder, null>
+type SortableProp = keyof KillRecord | 'killer_name' | 'victim_name'
+
+const sortState = ref<{ prop: SortableProp; order: SortOrder }>({
+  prop: 'kill_time',
+  order: 'ascending'
 })
 
-const sortOrder = ref<'asc' | 'desc'>('asc')
+const tableRef = ref<TableInstance>()
 
-// 计算属性
 const recordsWithPlayerNames = computed(() => {
   return props.records.map(record => {
     const killer = props.players.find(p => p.id === record.killer_id)
@@ -118,88 +103,83 @@ const recordsWithPlayerNames = computed(() => {
   })
 })
 
-const filteredRecords = computed(() => {
-  if (!props.isDirector || !filterForm.value.selectedKiller) {
-    return recordsWithPlayerNames.value
+function compareByProp(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  prop: SortableProp,
+  order: SortOrder
+) {
+  if (prop === 'kill_time') {
+    const timeA = new Date(String(a[prop] ?? '')).getTime()
+    const timeB = new Date(String(b[prop] ?? '')).getTime()
+    const safeTimeA = Number.isNaN(timeA) ? 0 : timeA
+    const safeTimeB = Number.isNaN(timeB) ? 0 : timeB
+    return order === 'ascending' ? safeTimeA - safeTimeB : safeTimeB - safeTimeA
   }
-  
-  if (filterForm.value.selectedKiller === '__none__') {
-    return recordsWithPlayerNames.value.filter(record => !record.killer_id)
-  }
-  
-  return recordsWithPlayerNames.value.filter(
-    record => record.killer_id === filterForm.value.selectedKiller
-  )
-})
 
-const filteredAndSortedRecords = computed(() => {
-  const sorted = [...filteredRecords.value]
-  sorted.sort((a, b) => {
-    const timeA = new Date(a.kill_time).getTime()
-    const timeB = new Date(b.kill_time).getTime()
-    
-    if (sortOrder.value === 'asc') {
-      return timeA - timeB
-    } else {
-      return timeB - timeA
+  const toComparable = (value: unknown) => {
+    if (value === null || value === undefined || value === '') {
+      return ''
     }
-  })
-  
+    return String(value)
+  }
+
+  const valueA = toComparable(a[prop])
+  const valueB = toComparable(b[prop])
+
+  return order === 'ascending'
+    ? valueA.localeCompare(valueB)
+    : valueB.localeCompare(valueA)
+}
+
+const sortedRecords = computed(() => {
+  const { prop, order } = sortState.value
+  const sorted = [...recordsWithPlayerNames.value]
+  sorted.sort((a, b) => compareByProp(a, b, prop, order))
   return sorted
 })
-
-const hasRecords = computed(() => filteredAndSortedRecords.value.length > 0)
 
 // 方法
 const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
 }
 
-const changeSortOrder = (order: 'asc' | 'desc') => {
-  sortOrder.value = order
+const handleSortChange = ({ prop, order }: { prop: string | null; order: TableSortOrder }) => {
+  const resolvedProp = (prop as SortableProp) ?? sortState.value.prop ?? 'kill_time'
+  const currentOrder = sortState.value.order
+  const nextOrder: SortOrder = order === null
+    ? (currentOrder === 'ascending' ? 'descending' : 'ascending')
+    : order
+
+  sortState.value = {
+    prop: resolvedProp,
+    order: nextOrder
+  }
+
+  tableRef.value?.sort(resolvedProp, nextOrder)
 }
 </script>
 
 <style scoped>
 .kill-record-display {
-  margin-top: 20px;
-}
-
-.card-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 10px;
+  margin: 12px auto 0;
+  max-width: 640px;
   width: 100%;
 }
 
-.card-header--no-title {
-  grid-template-columns: 1fr;
-  justify-items: end;
-}
-
-.header-spacer {
-  height: 1px;
-}
-
-.card-header h3 {
-  margin: 0;
-  justify-self: center;
-}
-
-.header-controls {
-  justify-self: end;
+.table-toolbar {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
-.card-header--no-title .header-controls {
-  justify-self: end;
-}
-
-.killer-filter {
-  width: 150px;
+.toolbar-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .no-killer {
@@ -207,10 +187,10 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
   font-style: italic;
 }
 
-.no-records {
-  text-align: center;
-  padding: 20px;
-  color: #909399;
+.kill-record-table {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .kill-record-display :deep(.el-table__header-wrapper table),
@@ -220,17 +200,8 @@ const changeSortOrder = (order: 'asc' | 'desc') => {
 }
 
 @media (max-width: 600px) {
-  .card-header {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-
-  .header-spacer {
-    display: none;
-  }
-
-  .header-controls {
-    justify-self: center;
+  .table-toolbar {
+    justify-content: center;
   }
 }
 </style>

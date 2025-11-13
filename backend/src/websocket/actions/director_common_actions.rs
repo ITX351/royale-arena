@@ -328,7 +328,7 @@ impl GameState {
         }
 
         if current_life > 0 && life <= 0 {
-            return self.kill_player(player_id, None, "导演击杀");
+            return self.kill_player(player_id, None, None, "导演击杀");
         }
 
         let mut target_life = life;

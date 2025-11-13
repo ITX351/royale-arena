@@ -3,7 +3,7 @@
     <template #header>
       <div class="card-header">
         <div class="header-left">
-          <h3>实时日志消息</h3>
+          <h3>日志消息</h3>
           <el-button
             type="primary"
             link
@@ -60,6 +60,7 @@
             <el-select 
               v-model="filterForm.selectedPlayer" 
               placeholder="选择演员"
+              filterable
               clearable
               class="player-select"
             >
@@ -126,21 +127,35 @@
       </div>
 
       <!-- 显示控制 -->
-      <div class="log-controls" v-if="filteredMessages.length > visibleCount">
-        <el-button 
-          v-if="!showAll" 
-          type="primary" 
-          @click="showAllMessages"
-          class="show-more-btn"
+      <div class="log-controls" v-if="hasPagination">
+        <el-pagination
+          layout="prev, pager, next"
+          :current-page="currentPage"
+          :page-size="PAGE_SIZE"
+          :total="filteredMessages.length"
+          @current-change="handlePageChange"
+        />
+      </div>
+
+      <div class="log-actions">
+        <el-button
+          :type="isAllLoaded ? 'success' : 'default'"
+          size="small"
+          :disabled="pendingLoadAll || isAllLoaded"
+          :plain="!isAllLoaded && !pendingLoadAll"
+          @click="handleLoadAllClick"
+          class="load-all-btn"
         >
-          显示全部 ({{ filteredMessages.length }}条)
+          {{ loadAllButtonLabel }}
         </el-button>
-        <el-button 
-          v-else 
-          @click="hideExtraMessages"
-          class="show-less-btn"
+        <el-button
+          type="primary"
+          size="small"
+          plain
+          @click="exportMessagesToCsv"
+          class="export-btn"
         >
-          折叠消息
+          导出 CSV
         </el-button>
       </div>
     </div>
@@ -164,10 +179,13 @@ const props = defineProps<{
 // 定义事件发射
 const emit = defineEmits<{
   (e: 'reply-to-player', playerId: string): void,
-  (e: 'show-kill-records'): void
+  (e: 'show-kill-records'): void,
+  (e: 'load-all-messages'): void
 }>()
 
 // 响应式状态
+const PAGE_SIZE = 20
+
 const filterForm = ref({
   selectedDate: '',
   showOnlyUserMessages: false,
@@ -175,22 +193,33 @@ const filterForm = ref({
   keyword: ''
 })
 
-const visibleCount = ref(20)
-const showAll = ref(false)
+const currentPage = ref(1)
 const logListRef = ref<HTMLElement | null>(null)
 const newMessages = ref<Set<string>>(new Set())
 const previousMessageTimestamps = ref<Set<string>>(new Set())
 const showFilters = ref(false)
+const isAllLoaded = ref(false)
+const previousMessagesCount = ref(0)
+const pendingLoadAll = ref(false)
 
 // 计算属性
 const playerOptions = computed(() => {
-  return props.players.map(player => ({
+  const options = props.players.map(player => ({
     id: player.id,
     name: player.name
   }))
+
+  return options.sort((a, b) => a.name.localeCompare(b.name))
 })
 
 const isDirectorView = computed(() => props.isDirector === true)
+
+const loadAllButtonLabel = computed(() => {
+  if (pendingLoadAll.value) {
+    return '加载中...'
+  }
+  return isAllLoaded.value ? '已全部加载' : '加载全部'
+})
 
 // 工具方法：转换时间戳为本地日期字符串（YYYY-MM-DD）
 const getLocalDateString = (timestamp: string) => {
@@ -243,12 +272,22 @@ const filteredMessages = computed(() => {
   )
 })
 
-const displayedMessages = computed(() => {
-  if (showAll.value) {
-    return filteredMessages.value
+const totalPages = computed(() => {
+  if (filteredMessages.value.length === 0) {
+    return 1
   }
-  return filteredMessages.value.slice(0, visibleCount.value)
+  return Math.ceil(filteredMessages.value.length / PAGE_SIZE)
 })
+
+const displayedMessages = computed(() => {
+  if (filteredMessages.value.length === 0) {
+    return []
+  }
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredMessages.value.slice(start, start + PAGE_SIZE)
+})
+
+const hasPagination = computed(() => filteredMessages.value.length > PAGE_SIZE)
 
 // 方法实现
 const getMessageTypeLabel = (type: string) => {
@@ -266,20 +305,64 @@ const resetFilter = () => {
   filterForm.value.selectedPlayer = ''
   filterForm.value.keyword = ''
   ElMessage.info('筛选条件已重置')
-  // 重置显示状态
-  showAll.value = false
-}
-
-const showAllMessages = () => {
-  showAll.value = true
-}
-
-const hideExtraMessages = () => {
-  showAll.value = false
+  // 重置分页
+  currentPage.value = 1
 }
 
 const toggleFilters = () => {
   showFilters.value = !showFilters.value
+}
+
+const handlePageChange = (page: number) => {
+  currentPage.value = page
+}
+
+const requestAllMessages = () => {
+  emit('load-all-messages')
+}
+
+const handleLoadAllClick = () => {
+  if (pendingLoadAll.value || isAllLoaded.value) {
+    return
+  }
+  pendingLoadAll.value = true
+  requestAllMessages()
+}
+
+const sanitizeCsvValue = (value: string) => {
+  const safeValue = value.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()
+  if (/[",]/.test(safeValue)) {
+    return `"${safeValue.replace(/"/g, '""')}"`
+  }
+  return safeValue
+}
+
+const exportMessagesToCsv = () => {
+  if (filteredMessages.value.length === 0) {
+    ElMessage.warning('暂无可导出的消息')
+    return
+  }
+
+  const headers = ['消息类型', '日期时间', '消息内容']
+  const rows = filteredMessages.value.map(message => [
+    sanitizeCsvValue(getMessageTypeLabel(message.message_type)),
+    sanitizeCsvValue(formatTimestamp(message.timestamp)),
+    sanitizeCsvValue(message.log_message)
+  ])
+
+  const csvLines = [headers.join(','), ...rows.map(row => row.join(','))]
+  const csvContent = '\uFEFF' + csvLines.join('\r\n') // BOM helps spreadsheet apps detect UTF-8
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const dateSuffix = new Date().toISOString().split('T')[0]
+  link.href = url
+  link.download = `log_messages_${dateSuffix}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  ElMessage.success('CSV 导出成功')
 }
 
 // 新增方法：检查消息是否为新消息
@@ -315,6 +398,12 @@ const handleReply = (message: ActionResult) => {
 watch(() => props.messages, (newMessagesList) => {
   // 如果没有消息，直接返回
   if (!newMessagesList || newMessagesList.length === 0) {
+    if (!pendingLoadAll.value) {
+      isAllLoaded.value = false
+    }
+    newMessages.value.clear()
+    previousMessageTimestamps.value = new Set()
+    previousMessagesCount.value = 0
     return;
   }
   
@@ -323,17 +412,30 @@ watch(() => props.messages, (newMessagesList) => {
   
   // 找出新增的消息（在当前消息中但不在之前的消息中的）
   const addedMessages = newMessagesList.filter(msg => !previousMessageTimestamps.value.has(msg.timestamp));
+
+  const shouldHighlight = !pendingLoadAll.value;
   
-  // 标记新增的消息为新消息
-  addedMessages.forEach(msg => {
-    newMessages.value.add(msg.timestamp);
-  });
+  // 标记新增的消息为新消息（仅在非加载全部流程中）
+  if (shouldHighlight) {
+    addedMessages.forEach(msg => {
+      newMessages.value.add(msg.timestamp);
+    });
+  } else if (addedMessages.length > 0) {
+    newMessages.value.clear();
+  }
   
   // 更新之前消息的时间戳集合
   previousMessageTimestamps.value = currentTimestamps;
+  if (pendingLoadAll.value) {
+    isAllLoaded.value = true
+    pendingLoadAll.value = false
+  } else if (newMessagesList.length < previousMessagesCount.value) {
+    isAllLoaded.value = false
+  }
+  previousMessagesCount.value = newMessagesList.length
   
   // 设置定时器在1秒后移除新消息标记（缩短一半时间）
-  if (addedMessages.length > 0) {
+  if (shouldHighlight && addedMessages.length > 0) {
     setTimeout(() => {
       addedMessages.forEach(msg => {
         newMessages.value.delete(msg.timestamp);
@@ -348,12 +450,25 @@ onMounted(() => {
   if (props.messages && props.messages.length > 0) {
     const initialTimestamps = new Set(props.messages.map(msg => msg.timestamp));
     previousMessageTimestamps.value = initialTimestamps;
+    previousMessagesCount.value = props.messages.length
   }
 });
 
 watch(isDirectorView, (isDirector) => {
   if (!isDirector) {
     filterForm.value.selectedPlayer = ''
+  }
+});
+
+watch(filteredMessages, () => {
+  if (filteredMessages.value.length === 0) {
+    currentPage.value = 1
+    return
+  }
+
+  const total = totalPages.value
+  if (currentPage.value > total) {
+    currentPage.value = total
   }
 });
 
@@ -364,7 +479,7 @@ onUnmounted(() => {
 
 // 自动应用筛选条件
 watch(filterForm, () => {
-  showAll.value = false
+  currentPage.value = 1
 }, { deep: true });
 </script>
 
@@ -385,8 +500,12 @@ watch(filterForm, () => {
   padding: 0;
 }
 
+.load-all-btn {
+  margin-left: 0;
+}
+
 .kill-records-btn {
-  margin-left: auto;
+  margin-left: 8px;
 }
 
 .log-message {
@@ -553,6 +672,8 @@ watch(filterForm, () => {
   padding: 2px 6px;
   border-radius: 2px;
   font-weight: 500;
+  user-select: none; /* Keep badge out of copy selections */
+  pointer-events: none;
 }
 
 .log-type.SystemNotice {
@@ -609,6 +730,21 @@ watch(filterForm, () => {
   display: flex;
   justify-content: center;
   padding: 15px 0;
+}
+
+.log-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.export-btn {
+  min-width: 110px;
+}
+
+.load-all-btn.is-disabled {
+  cursor: not-allowed;
 }
 
 .show-more-btn,

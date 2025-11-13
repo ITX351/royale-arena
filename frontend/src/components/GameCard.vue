@@ -104,7 +104,8 @@ const loginLoading = ref(false)
 const canQuickLogin = computed(() => {
   return props.game.status === 'waiting' || 
          props.game.status === 'running' ||
-         props.game.status === 'paused'
+         props.game.status === 'paused' ||
+         props.game.status === 'ended'
 })
 
 // 快捷登录处理

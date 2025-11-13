@@ -18,7 +18,8 @@ use crate::game::global_game_state_manager::GlobalGameStateManager;
 use crate::game::{
     GameLogService, GameService, authenticate_game, create_game, delete_game,
     delete_game_kill_records, delete_game_logs, get_director_kill_records, get_director_messages,
-    get_game_with_rules, get_games, get_player_kill_records, get_player_messages, update_game,
+    get_game_with_rules, get_games, get_games_rules_config_view, get_player_kill_records,
+    get_player_messages, update_game,
 };
 use crate::rule_template::{
     RuleTemplateService, create_template, delete_template, get_templates, update_template,
@@ -70,6 +71,7 @@ pub fn create_routes(
             .route("/rule-templates", get(get_templates))
             // 公开游戏查询接口
             .route("/games", get(get_games))
+            .route("/games/rules-config", get(get_games_rules_config_view))
             .route("/games/{game_id}", get(get_game_with_rules))
             // WebSocket连接端点
             .route(

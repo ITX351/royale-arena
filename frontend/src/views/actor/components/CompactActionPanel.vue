@@ -39,12 +39,16 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
+            filterable
+            :class="{ 'safe-zone-selected': isSafePlace(selectedPlace) }"
           >
             <el-option
-              v-for="place in places.filter(p => !p.is_destroyed)"
+              v-for="place in availablePlaces"
               :key="place.name"
               :label="place.name"
               :value="place.name"
+              :class="{ 'safe-zone-option': isSafePlace(place.name) }"
+              :style="getPlaceOptionStyle(place.name)"
             />
           </el-select>
           <el-button 
@@ -64,13 +68,17 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
+            filterable
+            :class="{ 'safe-zone-selected': isSafePlace(targetPlace) }"
           >
             <el-option
-              v-for="place in places.filter(p => !p.is_destroyed)"
+              v-for="place in availablePlaces"
               :key="place.name"
               :label="place.name"
               :value="place.name"
               :disabled="place.name === player.location"
+              :class="{ 'safe-zone-option': isSafePlace(place.name) }"
+              :style="getPlaceOptionStyle(place.name)"
             />
           </el-select>
           <el-button 
@@ -149,9 +157,12 @@
           placeholder="选择玩家" 
           size="small"
           style="width: 120px;"
+          placement="bottom-start"
+          :popper-options="selectPopperOptions"
+          filterable
         >
           <el-option
-            v-for="otherPlayer in otherPlayers"
+            v-for="otherPlayer in sortedOtherPlayers"
             :key="otherPlayer.id"
             :label="otherPlayer.name"
             :value="otherPlayer.id"
@@ -162,15 +173,18 @@
           placeholder="传音内容"
           size="small"
           style="width: 150px;"
+          :maxlength="MESSAGE_MAX_LENGTH"
+          show-word-limit
           @keyup.enter="handleDeliver"
         />
         <el-button 
           size="small"
-          :disabled="!targetPlayer || !deliverMessage"
+          :disabled="!targetPlayer || !deliverMessage.trim() || deliverMessageTooLong"
           @click="handleDeliver"
         >
           传音
         </el-button>
+        <span v-if="deliverMessageTooLong" class="input-error">内容不能超过 {{ MESSAGE_MAX_LENGTH }} 字</span>
       </div>
 
       <!-- 发送给导演 -->
@@ -180,15 +194,18 @@
           placeholder="发送给导演"
           size="small"
           style="width: 200px;"
+          :maxlength="MESSAGE_MAX_LENGTH"
+          show-word-limit
           @keyup.enter="handleSendToDirector"
         />
         <el-button 
           size="small"
-          :disabled="!directorMessage"
+          :disabled="!directorMessage.trim() || directorMessageTooLong"
           @click="handleSendToDirector"
         >
           发送
         </el-button>
+        <span v-if="directorMessageTooLong" class="input-error">内容不能超过 {{ MESSAGE_MAX_LENGTH }} 字</span>
       </div>
       <div
         class="rest-status-chip rest-mobile"
@@ -233,6 +250,8 @@ const now = ref(Date.now() + serverOffsetMs.value)
 let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
+const MESSAGE_MAX_LENGTH = 100
+
 const selectPopperOptions = {
   modifiers: [
     {
@@ -242,6 +261,55 @@ const selectPopperOptions = {
       }
     }
   ]
+}
+
+const safeZoneOptionStyle: Record<string, string> = {
+  color: '#67c23a',
+  fontWeight: '600'
+}
+
+const safePlaceNames = computed<Set<string>>(() => {
+  const safePlaces = props.globalState?.rules_config?.map?.safe_places
+  if (Array.isArray(safePlaces)) {
+    return new Set<string>(safePlaces)
+  }
+  return new Set<string>()
+})
+
+const comparePlaceName = (a: ActorPlace, b: ActorPlace) => {
+  const localeResult = a.name.localeCompare(b.name, 'zh-CN-u-co-pinyin')
+  return localeResult || a.name.localeCompare(b.name)
+}
+
+const availablePlaces = computed<ActorPlace[]>(() => {
+  const validPlaces = props.places.filter(place => !place.is_destroyed)
+  if (!validPlaces.length) {
+    return []
+  }
+
+  const safe: ActorPlace[] = []
+  const regular: ActorPlace[] = []
+
+  for (const place of validPlaces) {
+    if (safePlaceNames.value.has(place.name)) {
+      safe.push(place)
+    } else {
+      regular.push(place)
+    }
+  }
+
+  safe.sort(comparePlaceName)
+  regular.sort(comparePlaceName)
+
+  return [...safe, ...regular]
+})
+
+const isSafePlace = (placeName: string) => {
+  return safePlaceNames.value.has(placeName)
+}
+
+const getPlaceOptionStyle = (placeName: string): Record<string, string> | undefined => {
+  return isSafePlace(placeName) ? safeZoneOptionStyle : undefined
 }
 
 // 计算属性
@@ -373,6 +441,13 @@ const otherPlayers = computed((): ActorPlayer[] => {
   return props.players.filter(p => p.id !== props.player.id)
 })
 
+const sortedOtherPlayers = computed(() => {
+  return [...otherPlayers.value].sort((a, b) => {
+    const localeResult = a.name.localeCompare(b.name, 'zh-CN-u-co-pinyin')
+    return localeResult || a.name.localeCompare(b.name)
+  })
+})
+
 const searchResultText = computed(() => {
   const result = props.player.last_search_result
   if (!result) {
@@ -387,6 +462,14 @@ const lifeAnimationClass = computed(() => {
     return ''
   }
   return lifeAnimation.value === 'damage' ? 'life-damage' : 'life-heal'
+})
+
+const deliverMessageTooLong = computed(() => {
+  return deliverMessage.value.length > MESSAGE_MAX_LENGTH
+})
+
+const directorMessageTooLong = computed(() => {
+  return directorMessage.value.length > MESSAGE_MAX_LENGTH
 })
 
 onMounted(() => {
@@ -482,15 +565,23 @@ const handlePick = () => {
 }
 
 const handleDeliver = () => {
-  emit('action', 'deliver', { 
-    target_player_id: targetPlayer.value, 
-    message: deliverMessage.value 
+  const trimmedMessage = deliverMessage.value.trim()
+  if (!targetPlayer.value || !trimmedMessage || trimmedMessage.length > MESSAGE_MAX_LENGTH) {
+    return
+  }
+  emit('action', 'deliver', {
+    target_player_id: targetPlayer.value,
+    message: trimmedMessage
   })
   deliverMessage.value = ''
 }
 
 const handleSendToDirector = () => {
-  emit('action', 'send', { message: directorMessage.value })
+  const trimmedMessage = directorMessage.value.trim()
+  if (!trimmedMessage || trimmedMessage.length > MESSAGE_MAX_LENGTH) {
+    return
+  }
+  emit('action', 'send', { message: trimmedMessage })
   directorMessage.value = ''
 }
 
@@ -517,6 +608,16 @@ function formatDuration(durationMs: number) {
   border-radius: 6px;
   margin-bottom: 16px;
   border: 1px solid #e1e6f0;
+}
+
+:deep(.el-select-dropdown__item.safe-zone-option) {
+  color: #67c23a;
+  font-weight: 600;
+}
+
+:deep(.el-select.safe-zone-selected .el-select__selected-item) {
+  color: #67c23a;
+  font-weight: 600;
 }
 
 .status-item {
@@ -803,6 +904,12 @@ function formatDuration(durationMs: number) {
   align-items: center;
 }
 
+.input-error {
+  color: #f56c6c;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 @media (min-width: 769px) {
   .comm-row {
     width: 100%;
@@ -905,6 +1012,22 @@ function formatDuration(durationMs: number) {
 
   .rest-status-chip.rest-mobile {
     flex: 0 0 auto;
+  }
+}
+
+:deep(.el-input__inner),
+:deep(.el-select .el-input__inner),
+:deep(.el-select__selected-item) {
+  font-size: 12px;
+}
+
+@supports (-webkit-touch-callout: none) {
+  :deep(.el-input__inner),
+  :deep(.el-select .el-input__inner),
+  :deep(.el-select__selected-item) {
+    font-size: 16px;
+    transform: scale(0.75);
+    transform-origin: left center;
   }
 }
 </style>

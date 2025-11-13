@@ -19,6 +19,9 @@ pub enum GameError {
     #[error("游戏名称已存在")]
     GameNameExists,
 
+    #[error("游戏ID已存在")]
+    GameIdExists,
+
     #[error("游戏状态不允许此操作")]
     InvalidGameState,
 
@@ -44,6 +47,7 @@ impl IntoResponse for GameError {
             GameError::GameNotFound => (StatusCode::NOT_FOUND, "游戏不存在"),
             GameError::RuleTemplateNotFound => (StatusCode::BAD_REQUEST, "规则模板不存在"),
             GameError::GameNameExists => (StatusCode::CONFLICT, "游戏名称已存在"),
+            GameError::GameIdExists => (StatusCode::CONFLICT, "游戏ID已存在"),
             GameError::InvalidGameState => (StatusCode::BAD_REQUEST, "游戏状态不允许此操作"),
             GameError::ValidationError(ref msg) => (StatusCode::BAD_REQUEST, msg.as_str()),
             GameError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "数据库操作失败"),

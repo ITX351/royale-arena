@@ -31,10 +31,13 @@ impl DeathDisposition {
 
 impl GameState {
     /// 杀死指定玩家
+    ///
+    /// `loot_recipient_id` 控制死亡后物资的归属，`record_killer_id` 用于击杀记录统计。
     pub fn kill_player(
         &mut self,
         target_player_id: &str,
-        killer_id: Option<&str>,
+        loot_recipient_id: Option<&str>,
+        record_killer_id: Option<&str>,
         reason: &str,
     ) -> Result<ActionResults, String> {
         if !self.players.contains_key(target_player_id) {
@@ -61,7 +64,10 @@ impl GameState {
             return Ok(action_result.as_results());
         }
 
-        let killer_name = killer_id.and_then(|id| self.players.get(id).map(|p| p.name.clone()));
+        let loot_recipient_name =
+            loot_recipient_id.and_then(|id| self.players.get(id).map(|p| p.name.clone()));
+        let record_killer_name =
+            record_killer_id.and_then(|id| self.players.get(id).map(|p| p.name.clone()));
 
         let (mut loot_items, previous_location) = {
             let player = self
@@ -82,6 +88,7 @@ impl GameState {
             player.strength = 0;
             player.is_alive = false;
             player.bleed_damage = 0;
+            player.bleed_inflictor = None;
 
             (items, mem::take(&mut player.location))
         };
@@ -112,7 +119,7 @@ impl GameState {
 
             let raw_rule = &self.rule_engine.death_item_disposition.description;
             let mut disposition = DeathDisposition::from_rule(raw_rule);
-            if killer_id.is_none() && matches!(disposition, DeathDisposition::KillerTakes) {
+            if loot_recipient_id.is_none() && matches!(disposition, DeathDisposition::KillerTakes) {
                 disposition = DeathDisposition::DropToGround;
             }
 
@@ -133,8 +140,8 @@ impl GameState {
                     }
                 }
                 DeathDisposition::KillerTakes => {
-                    if let Some(killer_id) = killer_id {
-                        if let Some(killer) = self.players.get_mut(killer_id) {
+                    if let Some(loot_player_id) = loot_recipient_id {
+                        if let Some(killer) = self.players.get_mut(loot_player_id) {
                             let max_backpack = self.rule_engine.player_config.max_backpack_items;
                             let current_total = killer.get_total_item_count();
                             let available_slots = max_backpack.saturating_sub(current_total);
@@ -166,13 +173,16 @@ impl GameState {
         }
 
         let mut broadcast_players = vec![target_player_id.to_string()];
-        if let Some(killer_id) = killer_id {
-            if killer_id != target_player_id {
-                broadcast_players.push(killer_id.to_string());
+        if let Some(loot_player_id) = loot_recipient_id {
+            if loot_player_id != target_player_id
+                && !broadcast_players
+                    .iter()
+                    .any(|existing| existing.as_str() == loot_player_id)
+            {
+                broadcast_players.push(loot_player_id.to_string());
             }
         }
-
-        let mut log_message = if let Some(killer_name) = killer_name.as_ref() {
+        let mut log_message = if let Some(killer_name) = record_killer_name.as_ref() {
             format!(
                 "{} 被 {} 击杀（原因：{}）",
                 player_name, killer_name, reason
@@ -196,8 +206,10 @@ impl GameState {
             "player_name": player_name,
             "is_alive": false,
             "reason": reason,
-            "killer_id": killer_id.map(|id| id.to_string()),
-            "killer_name": killer_name,
+            "killer_id": record_killer_id.map(|id| id.to_string()),
+            "killer_name": record_killer_name,
+            "loot_recipient_id": loot_recipient_id.map(|id| id.to_string()),
+            "loot_recipient_name": loot_recipient_name,
             "location_before_death": location_option.map(|loc| loc.to_string()),
             "killer_collected_items": collected_item_names,
             "dropped_items": dropped_item_names,
@@ -228,6 +240,7 @@ impl GameState {
             player.strength = player.max_strength;
             player.is_alive = true;
             player.bleed_damage = 0;
+            player.bleed_inflictor = None;
         }
 
         {
@@ -438,7 +451,7 @@ impl GameState {
             )
         } else {
             format!(
-                "{} 搜索时察觉到了附近的动静",
+                "{} 搜索发现了未知玩家",
                 self.players.get(player_id).unwrap().name
             )
         };

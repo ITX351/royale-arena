@@ -194,7 +194,7 @@
                     <el-table-column label="属性">
                       <template #default="scope">
                         <div v-if="scope.row.properties.uses !== undefined">使用次数: {{ scope.row.properties.uses }}</div>
-                        <div v-if="scope.row.properties.usesNight !== undefined">每晚使用次数: {{ scope.row.properties.usesNight }}</div>
+                        <div v-if="scope.row.properties.uses_night !== undefined">每晚使用次数: {{ scope.row.properties.uses_night }}</div>
                         <div v-if="scope.row.properties.votes !== undefined">票数: {{ scope.row.properties.votes }}</div>
                         <div v-if="scope.row.properties.targets !== undefined">目标数: {{ scope.row.properties.targets }}</div>
                         <div v-if="scope.row.properties.damage !== undefined">伤害: {{ scope.row.properties.damage }}

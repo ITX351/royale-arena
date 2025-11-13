@@ -23,6 +23,9 @@
           <el-descriptions-item label="游戏名称">
             {{ game.name }}
           </el-descriptions-item>
+          <el-descriptions-item label="玩家名称" v-if="playerName">
+            {{ playerName }}
+          </el-descriptions-item>
           <el-descriptions-item label="玩家数量">
             {{ game.player_count }} / {{ game.max_players }}
           </el-descriptions-item>
@@ -44,6 +47,7 @@ import type { GameWithRules } from '@/types/game'
 
 defineProps<{
   game: GameWithRules | null
+  playerName?: string | null
 }>()
 </script>
 

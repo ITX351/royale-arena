@@ -58,7 +58,7 @@ impl GameState {
 
         if is_destroyed {
             for player_id in players_to_kill {
-                let mut death_outcome = self.kill_player(&player_id, None, "缩圈")?;
+                let mut death_outcome = self.kill_player(&player_id, None, None, "缩圈")?;
                 results.append(&mut death_outcome.results);
             }
         }
@@ -104,7 +104,7 @@ impl GameState {
 
         // ===== 持续流血处理 =====
         let mut bleed_victim_names: Vec<String> = Vec::new();
-        let mut pending_bleed_deaths: Vec<(String, String)> = Vec::new();
+        let mut pending_bleed_deaths: Vec<(String, String, Option<String>)> = Vec::new();
 
         for (player_id, player) in self.players.iter_mut() {
             if !player.is_alive {
@@ -137,7 +137,11 @@ impl GameState {
 
             if after_life <= 0 {
                 log_message.push_str("，因流血死亡");
-                pending_bleed_deaths.push((player_id.clone(), player_name.clone()));
+                pending_bleed_deaths.push((
+                    player_id.clone(),
+                    player_name.clone(),
+                    player.bleed_inflictor.clone(),
+                ));
             }
 
             let data = serde_json::json!({
@@ -157,11 +161,12 @@ impl GameState {
 
         let bleed_death_names: Vec<String> = pending_bleed_deaths
             .iter()
-            .map(|(_, name)| name.clone())
+            .map(|(_, name, _)| name.clone())
             .collect();
 
-        for (player_id, _) in &pending_bleed_deaths {
-            let mut death_outcome = self.kill_player(player_id, None, "流血致死")?;
+        for (player_id, _, inflictor_id) in &pending_bleed_deaths {
+            let mut death_outcome =
+                self.kill_player(player_id, None, inflictor_id.as_deref(), "流血致死")?;
             results.append(&mut death_outcome.results);
         }
 

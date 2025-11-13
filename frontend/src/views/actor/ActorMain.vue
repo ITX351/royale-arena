@@ -58,9 +58,8 @@
 
           <!-- 状态页面内容 -->
           <component 
-            :is="currentStateComponent" 
-            :game="gameWithData"
-            :actor-password="actorPassword"
+            :is="currentStateComponent"
+            v-bind="currentStateProps"
           />
         </div>
 
@@ -71,6 +70,7 @@
             :players="actorPlayerList"
             class="shared-log-message"
             @show-kill-records="showKillRecordsDialog"
+            @load-all-messages="handleLoadAllPlayerMessages"
           />
         </div>
       </div>
@@ -81,7 +81,6 @@
   <el-dialog
     v-model="killRecordsDialogVisible"
     title="击杀记录"
-    width="80%"
     max-height="80%"
   >
     <KillRecordDisplay
@@ -128,6 +127,7 @@ const killRecords = ref<KillRecord[]>([])
 const killRecordsDialogVisible = ref(false)
 const initialMessagesLoaded = ref(false) // 新增状态，标记初始消息是否已加载
 const playerId = ref<string>('') // 新增状态，存储玩家ID
+const playerName = ref<string>('')
 const isAuthorized = ref(false)
 
 // 计算属性
@@ -174,6 +174,24 @@ const currentStateComponent = computed(() => {
   }
   
   return statusComponentMap[gameWithData.value.status] || OtherState
+})
+
+const playerDisplayName = computed(() => {
+  const fallbackName = gameStateStore.actorPlayer?.name?.trim() || ''
+  return playerName.value.trim() || fallbackName
+})
+
+const currentStateProps = computed(() => {
+  const props: Record<string, any> = {
+    game: gameWithData.value,
+    actorPassword: actorPassword.value
+  }
+
+  if (currentStateComponent.value === PreGameState) {
+    props.playerName = playerDisplayName.value
+  }
+
+  return props
 })
 
 // 判断是否应该显示日志消息组件
@@ -228,6 +246,7 @@ const initialize = async () => {
   }
 
   playerId.value = authResult.actorId
+  playerName.value = authResult.actorName?.trim() || ''
   isAuthorized.value = true
 
   await fetchGameDetail()
@@ -297,14 +316,15 @@ const connectWebSocket = async () => {
 }
 
 // 修改 fetchPlayerMessages 方法中的字段映射
-const fetchPlayerMessages = async () => {
+const fetchPlayerMessages = async (limit: number | null = 100) => {
   if (!game.value || !actorPassword.value || !playerId.value || !isAuthorized.value) return
   
   try {
     const response = await gameService.getPlayerMessages(
       game.value.id,
       playerId.value,
-      actorPassword.value
+      actorPassword.value,
+      limit === null ? undefined : limit
     )
     
     if (response.success && response.data) {
@@ -328,6 +348,11 @@ const fetchPlayerMessages = async () => {
     console.error('获取玩家消息失败:', error)
     // 即使获取失败也继续，避免阻塞页面加载
   }
+}
+
+const handleLoadAllPlayerMessages = async () => {
+  gameStateStore.clearLogMessages()
+  await fetchPlayerMessages(null)
 }
 
 // 新增方法：获取玩家击杀记录
@@ -357,11 +382,18 @@ watch(
       return
     }
 
-    if (newActorPlayer && newActorPlayer.id && newActorPlayer.id !== playerId.value) {
-      playerId.value = newActorPlayer.id
-      // 一旦获取到玩家ID，立即获取消息记录
-      fetchPlayerMessages()
-      fetchPlayerKillRecords()
+    if (newActorPlayer) {
+      const latestName = newActorPlayer.name?.trim() || ''
+      if (latestName && latestName !== playerName.value) {
+        playerName.value = latestName
+      }
+
+      if (newActorPlayer.id && newActorPlayer.id !== playerId.value) {
+        playerId.value = newActorPlayer.id
+        // 一旦获取到玩家ID，立即获取消息记录
+        fetchPlayerMessages()
+        fetchPlayerKillRecords()
+      }
     }
   },
   { immediate: true }  // 立即执行一次检查

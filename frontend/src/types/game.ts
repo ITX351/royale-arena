@@ -49,6 +49,15 @@ export interface GameListItem {
   // 修改：移除 rule_template 字段
 }
 
+// 游戏规则配置视图（公开接口返回）
+export interface GameRulesConfigView {
+  id: string
+  name: string
+  description?: string | null
+  status: GameStatus
+  rules_config: unknown
+}
+
 // 游戏详情（包含规则信息）
 export interface GameWithRules extends GameListItem {
   // 修改：直接包含规则配置而非模板信息
@@ -57,6 +66,7 @@ export interface GameWithRules extends GameListItem {
 
 // 创建游戏请求
 export interface CreateGameRequest {
+  id: string
   name: string
   description?: string
   director_password: string

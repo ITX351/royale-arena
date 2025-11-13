@@ -15,6 +15,8 @@ use crate::routes::AppState;
 #[derive(Debug, Deserialize)]
 pub struct DirectorPasswordQuery {
     pub password: String,
+    #[serde(default)]
+    pub limit: Option<usize>,
 }
 
 /// 删除日志的时间戳参数
@@ -63,6 +65,13 @@ pub async fn delete_game(
 ) -> Result<Json<serde_json::Value>, GameError> {
     state.game_service.delete_game(&game_id).await?;
 
+    // 删除数据库记录后，同步清理内存状态与WebSocket连接
+    state.game_state_manager.remove_game_state(&game_id);
+    state
+        .global_connection_manager
+        .remove_game_manager(game_id.clone())
+        .await;
+
     Ok(Json(json!({
         "success": true,
         "message": "Game deleted successfully"
@@ -82,6 +91,18 @@ pub async fn get_games(
         .game_service
         .get_games(&query, has_admin_privileges)
         .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": games
+    })))
+}
+
+/// 获取包含规则配置的游戏列表 (公开接口)
+pub async fn get_games_rules_config_view(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, GameError> {
+    let games = state.game_service.get_games_rules_config_view().await?;
 
     Ok(Json(json!({
         "success": true,
@@ -119,9 +140,10 @@ pub async fn get_player_messages(
     request.validate().map_err(GameError::ValidationError)?;
 
     // 获取玩家消息记录
+    let limit = request.limit;
     let messages = state
         .game_log_service
-        .get_player_messages(&game_id, &player_id, &request.password)
+        .get_player_messages(&game_id, &player_id, &request.password, limit)
         .await?;
 
     Ok(Json(json!({
@@ -139,7 +161,7 @@ pub async fn get_director_messages(
     // 获取导演消息记录
     let messages = state
         .game_log_service
-        .get_director_messages(&game_id, &query.password)
+        .get_director_messages(&game_id, &query.password, query.limit)
         .await?;
 
     Ok(Json(json!({

@@ -62,7 +62,6 @@
                 <el-input-number
                   v-model="specificSelections[item]"
                   :min="0"
-                  :max="10"
                   placeholder="数量"
                   style="width: 100%"
                 />
@@ -78,7 +77,6 @@
                 <el-input-number
                   v-model="specificSelections[item]"
                   :min="0"
-                  :max="10"
                   placeholder="数量"
                   style="width: 100%"
                 />
@@ -94,7 +92,6 @@
                 <el-input-number
                   v-model="specificSelections[item]"
                   :min="0"
-                  :max="10"
                   placeholder="数量"
                   style="width: 100%"
                 />
@@ -166,6 +163,66 @@
             </template>
           </el-table-column>
         </el-table>
+        <div v-if="placePreviews.length > 0" class="place-preview-section">
+          <h5 class="place-preview-title">地点物品预览</h5>
+          <p class="place-preview-hint">拖拽绿色标记的物品可调整投放地点</p>
+          <div class="place-preview-grid">
+            <div
+              v-for="preview in placePreviews"
+              :key="preview.name"
+              class="place-preview-card"
+            >
+              <div class="place-preview-card__header">
+                <span class="place-preview-card__name">{{ preview.name }}</span>
+                <el-tag v-if="preview.isDestroyed" size="small" type="danger">已摧毁</el-tag>
+              </div>
+              <div class="place-preview-block">
+                <span class="preview-label">已有物品</span>
+                <div class="preview-tag-container">
+                  <el-tag
+                    v-for="(item, index) in preview.existing"
+                    :key="`${preview.name}-existing-${index}`"
+                    size="small"
+                    class="existing-tag"
+                  >
+                    {{ item }}
+                  </el-tag>
+                  <span v-if="preview.existing.length === 0" class="preview-empty">无</span>
+                </div>
+              </div>
+              <div
+                class="place-preview-block place-preview-block--incoming"
+                :class="{
+                  'place-preview-block--active': dragOverPlace === preview.name,
+                  'place-preview-block--disabled': !preview.canReceiveDrop
+                }"
+                @dragenter="handleIncomingDragEnter(preview, $event)"
+                @dragover="handleIncomingDragOver(preview, $event)"
+                @dragleave="handleIncomingDragLeave(preview, $event)"
+                @drop="handleIncomingDrop(preview, $event)"
+              >
+                <span class="preview-label">即将投放</span>
+                <div class="preview-tag-container">
+                  <el-tag
+                    v-for="incoming in preview.incoming"
+                    :key="incoming.index"
+                    size="small"
+                    class="incoming-tag"
+                    type="success"
+                    draggable="true"
+                    @dragstart="handleIncomingDragStart(incoming, $event)"
+                    @dragend="handleIncomingDragEnd"
+                  >
+                    {{ incoming.itemName }}
+                  </el-tag>
+                  <span v-if="preview.incoming.length === 0" class="preview-empty">
+                    {{ preview.canReceiveDrop ? '无' : '不可投放' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -195,6 +252,8 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createItemParser, type RarityOption, type ParsedItemInfo } from '@/utils/itemParser'
+import { getItemDisplayName } from '@/utils/itemDisplay'
+import type { DirectorPlace } from '@/types/gameStateTypes'
 
 // 定义组件属性
 const props = defineProps<{
@@ -202,6 +261,7 @@ const props = defineProps<{
   rulesJson: any
   existingItems: string[]
   availablePlaces: string[]
+  places: DirectorPlace[]
 }>()
 
 // 定义事件发射
@@ -222,6 +282,8 @@ const generatedAirdrops = ref<Array<{ item_name: string, place_name: string }>>(
 const insufficientWarnings = ref<string[]>([])
 const generating = ref(false)
 const confirming = ref(false)
+const draggingItem = ref<{ index: number, itemName: string } | null>(null)
+const dragOverPlace = ref<string | null>(null)
 
 // 计算属性
 const itemParser = computed(() => {
@@ -264,6 +326,41 @@ const hasAnySelection = computed(() => {
   const hasRaritySelection = Object.values(raritySelections).some(count => count > 0)
   const hasSpecificSelection = Object.values(specificSelections).some(count => count > 0)
   return hasRaritySelection || hasSpecificSelection
+})
+
+interface IncomingPreview {
+  itemName: string
+  index: number
+}
+
+interface PlacePreview {
+  name: string
+  existing: string[]
+  incoming: IncomingPreview[]
+  isDestroyed: boolean
+  canReceiveDrop: boolean
+}
+
+const availablePlaceSet = computed(() => new Set(props.availablePlaces))
+
+const incomingGroups = computed(() => {
+  const grouped = new Map<string, IncomingPreview[]>()
+  generatedAirdrops.value.forEach((drop, index) => {
+    const list = grouped.get(drop.place_name) ?? []
+    list.push({ itemName: drop.item_name, index })
+    grouped.set(drop.place_name, list)
+  })
+  return grouped
+})
+
+const placePreviews = computed<PlacePreview[]>(() => {
+  return props.places.map(place => ({
+    name: place.name,
+    existing: (place.items || []).map(item => getItemDisplayName(item)),
+    incoming: incomingGroups.value.get(place.name) ?? [],
+    isDestroyed: place.is_destroyed,
+    canReceiveDrop: availablePlaceSet.value.has(place.name)
+  }))
 })
 
 // 监听器
@@ -381,6 +478,8 @@ const clearAll = () => {
 const clearGeneratedResults = () => {
   generatedAirdrops.value = []
   insufficientWarnings.value = []
+  draggingItem.value = null
+  dragOverPlace.value = null
 }
 
 const handleConfirm = () => {
@@ -400,6 +499,57 @@ const handleConfirm = () => {
 
 const handleClose = () => {
   emit('update:modelValue', false)
+}
+
+const handleIncomingDragStart = (incoming: IncomingPreview, event: DragEvent) => {
+  draggingItem.value = { index: incoming.index, itemName: incoming.itemName }
+  event.dataTransfer?.setData('text/plain', incoming.itemName)
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+const handleIncomingDragEnd = () => {
+  draggingItem.value = null
+  dragOverPlace.value = null
+}
+
+const handleIncomingDragEnter = (preview: PlacePreview, event: DragEvent) => {
+  if (!draggingItem.value || !preview.canReceiveDrop) return
+  event.preventDefault()
+  dragOverPlace.value = preview.name
+}
+
+const handleIncomingDragOver = (preview: PlacePreview, event: DragEvent) => {
+  if (!draggingItem.value || !preview.canReceiveDrop) return
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragOverPlace.value = preview.name
+}
+
+const handleIncomingDragLeave = (preview: PlacePreview, event: DragEvent) => {
+  if (!preview.canReceiveDrop) return
+  const currentTarget = event.currentTarget as HTMLElement | null
+  const relatedTarget = event.relatedTarget as Node | null
+  if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) {
+    return
+  }
+  if (dragOverPlace.value === preview.name) {
+    dragOverPlace.value = null
+  }
+}
+
+const handleIncomingDrop = (preview: PlacePreview, event: DragEvent) => {
+  if (!draggingItem.value || !preview.canReceiveDrop) return
+  event.preventDefault()
+  const { index } = draggingItem.value
+  if (generatedAirdrops.value[index]) {
+    generatedAirdrops.value[index].place_name = preview.name
+  }
+  draggingItem.value = null
+  dragOverPlace.value = null
 }
 </script>
 
@@ -467,6 +617,109 @@ const handleClose = () => {
   border: 1px solid #e1e6f0;
 }
 
+.place-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.place-preview-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.place-preview-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #909399;
+}
+
+.place-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+}
+
+.place-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e1e6f0;
+  border-radius: 6px;
+  background: #ffffff;
+  min-height: 150px;
+}
+
+.place-preview-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.place-preview-card__name {
+  font-weight: 600;
+  color: #303133;
+}
+
+.place-preview-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.preview-tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.incoming-tag {
+  background: #f0f9eb;
+  color: #40916c;
+  border-color: #c2e7b0;
+  cursor: grab;
+}
+
+.incoming-tag:active {
+  cursor: grabbing;
+}
+
+.place-preview-block--incoming {
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f8fbf6;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.place-preview-block--active {
+  border-color: #67c23a;
+  background: #f0f9eb;
+}
+
+.place-preview-block--disabled {
+  background: #f5f5f5;
+  border-color: #e4e7ed;
+}
+
+.preview-empty {
+  color: #909399;
+  font-size: 12px;
+  font-style: italic;
+}
+
 .dialog-footer {
   display: flex;
   gap: 10px;
@@ -485,6 +738,10 @@ const handleClose = () => {
   .dialog-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .place-preview-grid {
+    grid-template-columns: 1fr;
   }
 }
 

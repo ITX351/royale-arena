@@ -7,6 +7,7 @@ use crate::game::models::{
 };
 use chrono::{DateTime, Utc};
 use sqlx::MySqlPool;
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// 游戏日志服务
@@ -117,12 +118,15 @@ impl GameLogService {
         game_id: &str,
         player_id: &str,
         password: &str,
+        limit: Option<usize>,
     ) -> Result<Vec<MessageRecord>, GameError> {
         // 验证请求参数
         let request = GetPlayerMessagesRequest {
             password: password.to_string(),
+            limit,
         };
         request.validate().map_err(GameError::ValidationError)?;
+        let limit = request.limit;
 
         // 验证玩家是否存在且密码正确
         let actor = sqlx::query!(
@@ -142,22 +146,48 @@ impl GameLogService {
         }
 
         // 查询玩家相关的消息记录，包括所有标记为visible_to_all_players为true的记录
-        let messages = sqlx::query_as!(
-            MessageRecord,
-            r#"
-            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
-                visible_to_all_players as "visible_to_all_players: bool",
-                visible_to_director as "visible_to_director: bool"
-            FROM game_logs 
-            WHERE game_id = ? AND (player_id = ? OR visible_to_all_players = TRUE)
-            ORDER BY timestamp ASC
-            "#,
-            game_id,
-            player_id
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(GameError::DatabaseError)?;
+        let messages = if let Some(limit) = limit {
+            let limit = i64::try_from(limit).map_err(|_| {
+                GameError::ValidationError("请求条数过大".to_string())
+            })?;
+            let mut result = sqlx::query_as!(
+                MessageRecord,
+                r#"
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                    visible_to_all_players as "visible_to_all_players: bool",
+                    visible_to_director as "visible_to_director: bool"
+                FROM game_logs 
+                WHERE game_id = ? AND (player_id = ? OR visible_to_all_players = TRUE)
+                ORDER BY timestamp DESC
+                LIMIT ?
+                "#,
+                game_id,
+                player_id,
+                limit
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(GameError::DatabaseError)?;
+            result.reverse();
+            result
+        } else {
+            sqlx::query_as!(
+                MessageRecord,
+                r#"
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                    visible_to_all_players as "visible_to_all_players: bool",
+                    visible_to_director as "visible_to_director: bool"
+                FROM game_logs 
+                WHERE game_id = ? AND (player_id = ? OR visible_to_all_players = TRUE)
+                ORDER BY timestamp ASC
+                "#,
+                game_id,
+                player_id
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(GameError::DatabaseError)?
+        };
 
         Ok(messages)
     }
@@ -167,7 +197,16 @@ impl GameLogService {
         &self,
         game_id: &str,
         password: &str,
+        limit: Option<usize>,
     ) -> Result<Vec<MessageRecord>, GameError> {
+        if let Some(limit) = limit {
+            if limit == 0 {
+                return Err(GameError::ValidationError(
+                    "请求条数必须大于0".to_string(),
+                ));
+            }
+        }
+
         // 验证导演密码
         let game = sqlx::query!(
             "SELECT id FROM games WHERE id = ? AND director_password = ?",
@@ -185,21 +224,46 @@ impl GameLogService {
         }
 
         // 查询所有标记为visible_to_director为true的记录
-        let messages = sqlx::query_as!(
-            MessageRecord,
-            r#"
-            SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
-                visible_to_all_players as "visible_to_all_players: bool",
-                visible_to_director as "visible_to_director: bool"
-            FROM game_logs 
-            WHERE game_id = ? AND visible_to_director = TRUE
-            ORDER BY timestamp ASC
-            "#,
-            game_id
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(GameError::DatabaseError)?;
+        let messages = if let Some(limit) = limit {
+            let limit = i64::try_from(limit).map_err(|_| {
+                GameError::ValidationError("请求条数过大".to_string())
+            })?;
+            let mut result = sqlx::query_as!(
+                MessageRecord,
+                r#"
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                    visible_to_all_players as "visible_to_all_players: bool",
+                    visible_to_director as "visible_to_director: bool"
+                FROM game_logs 
+                WHERE game_id = ? AND visible_to_director = TRUE
+                ORDER BY timestamp DESC
+                LIMIT ?
+                "#,
+                game_id,
+                limit
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(GameError::DatabaseError)?;
+            result.reverse();
+            result
+        } else {
+            sqlx::query_as!(
+                MessageRecord,
+                r#"
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                    visible_to_all_players as "visible_to_all_players: bool",
+                    visible_to_director as "visible_to_director: bool"
+                FROM game_logs 
+                WHERE game_id = ? AND visible_to_director = TRUE
+                ORDER BY timestamp ASC
+                "#,
+                game_id
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(GameError::DatabaseError)?
+        };
 
         Ok(messages)
     }
@@ -229,7 +293,7 @@ impl GameLogService {
         Ok(rows_affected)
     }
 
-    /// 获取玩家击杀记录
+    /// 获取玩家视角击杀记录
     pub async fn get_player_kill_records(
         &self,
         game_id: &str,
@@ -272,7 +336,7 @@ impl GameLogService {
         Ok(kill_records)
     }
 
-    /// 获取导演击杀记录
+    /// 获取导演视角击杀记录
     pub async fn get_director_kill_records(
         &self,
         game_id: &str,

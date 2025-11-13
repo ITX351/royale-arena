@@ -72,7 +72,7 @@
   <div class="backpack-section">
     <!-- 空背包提示 -->
     <el-empty 
-      v-if="!player || player.inventory.length === 0" 
+      v-if="!player || sortedInventoryItems.length === 0" 
       description="背包为空" 
       :image-size="80"
     />
@@ -80,7 +80,7 @@
     <!-- 背包物品列表 -->
     <div v-else class="inventory-items">
       <div 
-        v-for="item in player.inventory" 
+        v-for="item in sortedInventoryItems" 
         :key="item.id"
         class="inventory-item"
       >
@@ -226,6 +226,12 @@ const pendingUtilityContext = ref<UtilityPendingContext | null>(null)
 
 const playerOptions = computed(() => props.players || [])
 
+const getConsumableEffectType = (item: Item): string | null => {
+  const properties = item.item_type?.properties as Record<string, any> | undefined
+  const effectType = properties?.effect_type
+  return typeof effectType === 'string' ? effectType : null
+}
+
 const extractItemProperties = (item?: Item | null): ItemDisplayProperty[] => {
   if (!item) {
     return []
@@ -236,6 +242,88 @@ const extractItemProperties = (item?: Item | null): ItemDisplayProperty[] => {
 const hasItemProperties = (item?: Item | null) => {
   return extractItemProperties(item).length > 0
 }
+
+const sortedInventoryItems = computed<Item[]>(() => {
+  const player = props.player
+  if (!player) {
+    return []
+  }
+
+  const inventory = player.inventory ?? []
+  if (!inventory.length) {
+    return []
+  }
+
+  const equippedWeaponId = player.equipped_weapon?.id ?? null
+  const equippedArmorId = player.equipped_armor?.id ?? null
+
+  const healConsumables: Item[] = []
+  const strengthConsumables: Item[] = []
+  const utilityItems: Item[] = []
+  const weaponItems: Item[] = []
+  const armorItems: Item[] = []
+  const upgraders: Item[] = []
+  const others: Item[] = []
+
+  inventory.forEach(item => {
+    const category = item.item_type?.type
+
+    if (!category) {
+      others.push(item)
+      return
+    }
+
+    if (category === 'consumable') {
+      const effectType = getConsumableEffectType(item)
+      if (effectType === 'heal') {
+        healConsumables.push(item)
+        return
+      }
+      if (effectType === 'strength') {
+        strengthConsumables.push(item)
+        return
+      }
+    }
+
+    if (category === 'utility') {
+      utilityItems.push(item)
+      return
+    }
+
+    if (category === 'weapon') {
+      if (equippedWeaponId && item.id === equippedWeaponId) {
+        return
+      }
+      weaponItems.push(item)
+      return
+    }
+
+    if (category === 'armor') {
+      if (equippedArmorId && item.id === equippedArmorId) {
+        return
+      }
+      armorItems.push(item)
+      return
+    }
+
+    if (category === 'upgrader') {
+      upgraders.push(item)
+      return
+    }
+
+    others.push(item)
+  })
+
+  return [
+    ...healConsumables,
+    ...strengthConsumables,
+    ...utilityItems,
+    ...weaponItems,
+    ...armorItems,
+    ...upgraders,
+    ...others
+  ]
+})
 
 const canUseItem = (item: Item) => {
   const type = item.item_type?.type
@@ -282,8 +370,8 @@ const isUseDisabled = (item: Item): boolean => {
     return true
   }
 
-  const usesNight = getItemUsesNight(item)
-  if (usesNight === 0) {
+  const uses_night = getItemUsesNight(item)
+  if (uses_night === 0) {
     return true
   }
 

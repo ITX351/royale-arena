@@ -39,7 +39,7 @@ export interface UtilityProperties {
   uses?: number
   targets?: number
   damage?: number
-  usesNight?: number
+  uses_night?: number
 }
 
 export interface UtilityConfig {
@@ -244,9 +244,9 @@ export function parseItemsConfig(rawItemsConfig: any): ItemsConfigParseResult {
           properties.damage = damage
         }
 
-        const usesNight = toOptionalNumber(utilityProperties.uses_night)
-        if (usesNight !== undefined) {
-          properties.usesNight = usesNight
+        const uses_night = toOptionalNumber(utilityProperties.uses_night)
+        if (uses_night !== undefined) {
+          properties.uses_night = uses_night
         }
 
         const rarity = typeof utility?.rarity === 'string' && utility.rarity.length > 0

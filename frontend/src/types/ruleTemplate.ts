@@ -8,6 +8,14 @@ export interface RuleTemplate {
   updated_at: string
 }
 
+export interface RuleConfigSource {
+  id: string
+  name: string
+  description?: string | null
+  rules_config: unknown
+  sourceType: 'template' | 'game'
+}
+
 export interface RuleTemplateQuery {
   id?: string
   is_active?: boolean

@@ -405,6 +405,53 @@ impl DirectorService {
         Ok(save_file_name)
     }
 
+    /// 回退游戏到等待状态（暂停 → 等待）
+    pub async fn reset_game_to_waiting(
+        &self,
+        app_state: &AppState,
+        game_id: &str,
+    ) -> Result<(), DirectorError> {
+        let result = sqlx::query!(
+            "UPDATE games SET status = 'waiting', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'paused'",
+            game_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DirectorError::DatabaseError(e))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DirectorError::InvalidGameStateTransition);
+        }
+
+        // 移除内存中的游戏状态，使游戏可以重新开始
+        app_state.game_state_manager.remove_game_state(game_id);
+
+        // 清理该游戏的连接管理器，确保后续连接能够重新建立
+        app_state
+            .global_connection_manager
+            .remove_game_manager(game_id.to_string())
+            .await;
+
+        // 清除回退游戏的全部日志和击杀记录，避免历史数据影响重新开始
+        app_state
+            .game_log_service
+            .delete_logs_after_timestamp(game_id, None)
+            .await
+            .map_err(|e| DirectorError::OtherError {
+                message: format!("Failed to clear game logs: {}", e),
+            })?;
+
+        app_state
+            .game_log_service
+            .delete_kill_records_after_timestamp(game_id, None)
+            .await
+            .map_err(|e| DirectorError::OtherError {
+                message: format!("Failed to clear kill records: {}", e),
+            })?;
+
+        Ok(())
+    }
+
     /// 结束游戏（进行中 → 结束）
     pub async fn end_game(&self, app_state: &AppState, game_id: &str) -> Result<(), DirectorError> {
         // 更新数据库中游戏状态为 "ended"
@@ -434,6 +481,9 @@ impl DirectorService {
             .map_err(|e| DirectorError::OtherError {
                 message: format!("Failed to save game state to disk: {}", e),
             })?;
+
+        // 游戏已结束，清除内存中的游戏状态
+        app_state.game_state_manager.remove_game_state(game_id);
 
         Ok(())
     }

@@ -101,6 +101,7 @@
 
     <RuleTemplateDialog
       v-model="templateDialogVisible"
+      :current-game-id="game.id"
       @select="applyTemplate"
     />
   </div>
@@ -118,7 +119,7 @@ import 'prismjs/themes/prism-tomorrow.css'
 import MarkdownIt from 'markdown-it'
 
 import type { GameWithRules } from '@/types/game'
-import type { RuleTemplate } from '@/types/ruleTemplate'
+import type { RuleConfigSource } from '@/types/ruleTemplate'
 import { directorService } from '@/services/directorService'
 import { getBasePathUrl } from '@/utils/commonUtils'
 import { GameRuleParser } from '@/utils/gameRuleParser'
@@ -250,11 +251,11 @@ const resetRules = () => {
   editableRules.value = originalRules.value
 }
 
-const applyTemplate = (template: RuleTemplate) => {
+const applyTemplate = (source: RuleConfigSource) => {
   try {
     const templateConfig =
-      template.rules_config && typeof template.rules_config === 'object'
-        ? template.rules_config
+      source.rules_config && typeof source.rules_config === 'object'
+        ? source.rules_config
         : {}
     const formattedRules = JSON.stringify(templateConfig, null, 2)
 
@@ -263,10 +264,12 @@ const applyTemplate = (template: RuleTemplate) => {
     if (rulesCollapsed.value) {
       rulesCollapsed.value = false
     }
-    ElMessage.success(`已加载规则模版：${template.template_name}`)
+    const messagePrefix =
+      source.sourceType === 'template' ? '已加载规则模版：' : '已从游戏加载规则：'
+    ElMessage.success(`${messagePrefix}${source.name}`)
   } catch (error) {
-    console.error('应用规则模版失败:', error)
-    ElMessage.error('应用规则模版失败')
+    console.error('应用规则配置失败:', error)
+    ElMessage.error('应用规则配置失败')
   }
 }
 
