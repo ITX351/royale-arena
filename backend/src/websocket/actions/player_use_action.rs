@@ -2,7 +2,9 @@
 
 use crate::game::game_rule_engine::{ConsumableProperties, Item, ItemType, UtilityProperties};
 use crate::websocket::actions::player_action_scheduler::ActionParams;
-use crate::websocket::actions::utils::{UseMode, UseOutcome, decrement_uses, format_delta};
+use crate::websocket::actions::utils::{
+    UseOutcome, decrement_uses, format_delta, format_use_remaining_suffix,
+};
 use crate::websocket::models::{ActionResult, ActionResults, GameState};
 use rand::seq::{IteratorRandom, SliceRandom};
 use serde_json::json;
@@ -43,8 +45,9 @@ impl ItemUseOutcome {
             if let Some(remaining) = outcome.remaining_total {
                 return remaining > 0;
             }
+            return true;
         }
-        false
+        true
     }
 }
 
@@ -317,7 +320,7 @@ impl GameState {
         strength_before: i32,
         use_cost: i32,
     ) -> Result<ItemUseOutcome, String> {
-        let use_outcome = decrement_uses(properties, UseMode::Night)?;
+        let use_outcome = decrement_uses(properties)?;
 
         let occupant_ids = self
             .places
@@ -375,8 +378,8 @@ impl GameState {
             log_message.push_str(&bound_names.join("、"));
             log_message.push_str(" 被捆绑");
         }
-        if let Some(remaining) = use_outcome.remaining_night {
-            log_message.push_str(&format!("（本晚剩余 {} 次）", remaining));
+        if let Some(suffix) = format_use_remaining_suffix(&use_outcome) {
+            log_message.push_str(&suffix);
         }
 
         let data = json!({
@@ -384,6 +387,7 @@ impl GameState {
             "strength": strength_after,
             "strength_delta": strength_delta,
             "uses_night_remaining": use_outcome.remaining_night,
+            "uses_remaining": use_outcome.remaining_total,
         });
 
         results.push(ActionResult::new_system_message(
@@ -393,9 +397,7 @@ impl GameState {
             true,
         ));
 
-        Ok(ItemUseOutcome::new(results)
-            .with_use_outcome(use_outcome)
-            .with_reinsert(true))
+        Ok(ItemUseOutcome::new(results).with_use_outcome(use_outcome))
     }
 
     fn handle_utility_locator_heartbeat_detector(
@@ -416,7 +418,7 @@ impl GameState {
             .ok_or_else(|| "缺少目标道具名称".to_string())?
             .to_string();
 
-        let use_outcome = decrement_uses(properties, UseMode::Night)?;
+        let use_outcome = decrement_uses(properties)?;
 
         let mut locations: Vec<String> = Vec::new();
         // Collect every occurrence to guarantee uniform sampling across all copies found.
@@ -486,8 +488,8 @@ impl GameState {
                 player_name, item_display_name, target_name
             )
         };
-        if let Some(remaining) = use_outcome.remaining_night {
-            log_message.push_str(&format!("（本晚剩余 {} 次）", remaining));
+        if let Some(suffix) = format_use_remaining_suffix(&use_outcome) {
+            log_message.push_str(&suffix);
         }
 
         let data = json!({
@@ -497,14 +499,13 @@ impl GameState {
             "strength": strength_after,
             "strength_delta": strength_delta,
             "uses_night_remaining": use_outcome.remaining_night,
+            "uses_remaining": use_outcome.remaining_total,
         });
 
         let result =
             ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
 
-        Ok(ItemUseOutcome::new(vec![result])
-            .with_use_outcome(use_outcome)
-            .with_reinsert(true))
+        Ok(ItemUseOutcome::new(vec![result]).with_use_outcome(use_outcome))
     }
 
     fn handle_utility_revealer_radar(
@@ -582,7 +583,7 @@ impl GameState {
             }));
         }
 
-        let use_outcome = decrement_uses(properties, UseMode::Night)?;
+        let use_outcome = decrement_uses(properties)?;
 
         let strength_after = self.predict_strength_after_use(player_id, use_cost);
         let strength_delta = strength_after - strength_before;
@@ -594,8 +595,8 @@ impl GameState {
             log_message.push_str("，侦查结果 ");
             log_message.push_str(&log_segments.join("；"));
         }
-        if let Some(remaining) = use_outcome.remaining_night {
-            log_message.push_str(&format!("（本晚剩余 {} 次）", remaining));
+        if let Some(suffix) = format_use_remaining_suffix(&use_outcome) {
+            log_message.push_str(&suffix);
         }
 
         let data = json!({
@@ -603,14 +604,13 @@ impl GameState {
             "strength": strength_after,
             "strength_delta": strength_delta,
             "uses_night_remaining": use_outcome.remaining_night,
+            "uses_remaining": use_outcome.remaining_total,
         });
 
         let result =
             ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
 
-        Ok(ItemUseOutcome::new(vec![result])
-            .with_use_outcome(use_outcome)
-            .with_reinsert(true))
+        Ok(ItemUseOutcome::new(vec![result]).with_use_outcome(use_outcome))
     }
 
     fn handle_utility_trap_remote_mine(
@@ -623,13 +623,7 @@ impl GameState {
         strength_before: i32,
         use_cost: i32,
     ) -> Result<ItemUseOutcome, String> {
-        if let Some(uses) = properties.uses {
-            if uses <= 0 {
-                return Err("遥控地雷已失效，无法使用".to_string());
-            }
-        }
-
-        let use_outcome = decrement_uses(properties, UseMode::Total)?;
+        let use_outcome = decrement_uses(properties)?;
 
         let damage = properties.damage.unwrap_or(0);
         if damage <= 0 {
@@ -727,10 +721,8 @@ impl GameState {
             //log_message.push_str("，影响了 ");
             log_message.push_str(&segments.join("，"));
         }
-        if let Some(remaining) = use_outcome.remaining_total {
-            log_message.push_str(&format!("（剩余可用次数 {}）", remaining));
-        } else {
-            log_message.push_str("（道具已耗尽）");
+        if let Some(suffix) = format_use_remaining_suffix(&use_outcome) {
+            log_message.push_str(&suffix);
         }
 
         let impacts_json: Vec<serde_json::Value> = impact_records
@@ -746,19 +738,13 @@ impl GameState {
             })
             .collect();
 
-        let inventory_snapshot = if use_outcome.remaining_total.unwrap_or(0) <= 0 {
-            Some(self.players.get(player_id).unwrap().inventory.clone())
-        } else {
-            None
-        };
-
         results.push(ActionResult::new_system_message(
             json!({
                 "impacts": impacts_json,
                 "strength": strength_after,
                 "strength_delta": strength_delta,
                 "uses_remaining": use_outcome.remaining_total,
-                "inventory": inventory_snapshot,
+                "uses_night_remaining": use_outcome.remaining_night,
             }),
             vec![player_id.to_string()],
             log_message,
@@ -767,14 +753,7 @@ impl GameState {
 
         results.extend(death_results);
 
-        let reinsert = use_outcome
-            .remaining_total
-            .map(|value| value > 0)
-            .unwrap_or(false);
-
-        Ok(ItemUseOutcome::new(results)
-            .with_use_outcome(use_outcome)
-            .with_reinsert(reinsert))
+        Ok(ItemUseOutcome::new(results).with_use_outcome(use_outcome))
     }
 
     fn reinsert_inventory_item(&mut self, player_id: &str, item_index: usize, item: Item) {

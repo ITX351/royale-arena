@@ -141,6 +141,7 @@ cargo sqlx prepare
    - 更新代码并重新构建镜像（修改标签或覆盖旧版本）。
    - `docker compose pull && docker compose up -d royale` 以滚动后端更新。
    - `ln -sfn ./vX.X.X ./current` 更新软链接current完成前端更新。
+   - `docker exec discuz_nginx nginx -s reload` 以更新可能变动的服务器IP。
 
 ### 常见问题
 

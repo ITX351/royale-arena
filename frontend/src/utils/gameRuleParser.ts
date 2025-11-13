@@ -181,6 +181,10 @@ export class GameRuleParser {
 			'display_names',
 			'death_item_disposition'
 		]
+		const unexpectedRootFields = this.findUnexpectedKeys(config, requiredFields)
+		if (unexpectedRootFields.length > 0) {
+			errors.push(`规则JSON中包含未知字段: ${unexpectedRootFields.join(', ')}`)
+		}
 
 		for (const field of requiredFields) {
 			if (!Object.prototype.hasOwnProperty.call(config, field)) {
@@ -193,6 +197,10 @@ export class GameRuleParser {
 			if (!config.map || typeof config.map !== 'object') {
 				errors.push('map 必须是对象')
 			} else {
+				const mapUnexpected = this.findUnexpectedKeys(config.map, ['places', 'safe_places'])
+				if (mapUnexpected.length > 0) {
+					errors.push(`map 包含未知字段: ${mapUnexpected.join(', ')}`)
+				}
 				if (!Object.prototype.hasOwnProperty.call(config.map, 'places')) {
 					errors.push('map.places 为必填字段')
 				} else if (!Array.isArray(config.map.places)) {
@@ -243,6 +251,18 @@ export class GameRuleParser {
 			if (!config.player || typeof config.player !== 'object') {
 				errors.push('player 必须是对象')
 			} else {
+				const playerUnexpected = this.findUnexpectedKeys(config.player, [
+					'max_life',
+					'max_strength',
+					'daily_life_recovery',
+					'daily_strength_recovery',
+					'search_cooldown',
+					'max_backpack_items',
+					'unarmed_damage'
+				])
+				if (playerUnexpected.length > 0) {
+					errors.push(`player 包含未知字段: ${playerUnexpected.join(', ')}`)
+				}
 				const playerFields: Array<[string, string]> = [
 					['max_life', '玩家最大生命值'],
 					['max_strength', '玩家最大体力值'],
@@ -270,6 +290,19 @@ export class GameRuleParser {
 			if (!config.action_costs || typeof config.action_costs !== 'object') {
 				errors.push('action_costs 必须是对象')
 			} else {
+				const actionUnexpected = this.findUnexpectedKeys(config.action_costs, [
+					'move',
+					'search',
+					'pick',
+					'attack',
+					'equip',
+					'use',
+					'throw',
+					'deliver'
+				])
+				if (actionUnexpected.length > 0) {
+					errors.push(`action_costs 包含未知字段: ${actionUnexpected.join(', ')}`)
+				}
 				const actionFields: Array<[string, string]> = [
 					['move', '移动体力消耗'],
 					['search', '搜索体力消耗'],
@@ -298,6 +331,14 @@ export class GameRuleParser {
 			if (!config.rest_mode || typeof config.rest_mode !== 'object') {
 				errors.push('rest_mode 必须是对象')
 			} else {
+				const restUnexpected = this.findUnexpectedKeys(config.rest_mode, [
+					'life_recovery',
+					'strength_recovery',
+					'max_moves'
+				])
+				if (restUnexpected.length > 0) {
+					errors.push(`rest_mode 包含未知字段: ${restUnexpected.join(', ')}`)
+				}
 				const restFields: Array<[string, string]> = [
 					['life_recovery', '静养生命恢复值'],
 					['strength_recovery', '静养体力恢复值'],
@@ -338,11 +379,35 @@ export class GameRuleParser {
 				errors.push('items_config 必须是对象')
 			} else {
 				const itemsConfig = config.items_config
+				const itemsConfigUnexpected = this.findUnexpectedKeys(itemsConfig, [
+					'rarity_levels',
+					'items',
+					'upgrade_recipes'
+				])
+				if (itemsConfigUnexpected.length > 0) {
+					errors.push(`items_config 包含未知字段: ${itemsConfigUnexpected.join(', ')}`)
+				}
 
 				if (!Object.prototype.hasOwnProperty.call(itemsConfig, 'rarity_levels')) {
 					errors.push('items_config.rarity_levels 为必填字段')
 				} else if (!Array.isArray(itemsConfig.rarity_levels)) {
 					errors.push('items_config.rarity_levels 必须是数组')
+				} else {
+					itemsConfig.rarity_levels.forEach((level: any, index: number) => {
+						if (!level || typeof level !== 'object') {
+							errors.push(`稀有度配置[${index}]必须是对象`)
+							return
+						}
+						const rarityUnexpected = this.findUnexpectedKeys(level as Record<string, unknown>, [
+							'internal_name',
+							'display_name',
+							'prefix',
+							'is_airdropped'
+						])
+						if (rarityUnexpected.length > 0) {
+							errors.push(`items_config.rarity_levels[${index}] 包含未知字段: ${rarityUnexpected.join(', ')}`)
+						}
+					})
 				}
 
 				if (!Object.prototype.hasOwnProperty.call(itemsConfig, 'items')) {
@@ -351,6 +416,16 @@ export class GameRuleParser {
 					errors.push('items_config.items 必须存在且为对象')
 				} else {
 					const categories = itemsConfig.items
+					const itemsUnexpected = this.findUnexpectedKeys(categories, [
+						'weapons',
+						'armors',
+						'utilities',
+						'consumables',
+						'upgraders'
+					])
+					if (itemsUnexpected.length > 0) {
+						errors.push(`items_config.items 包含未知字段: ${itemsUnexpected.join(', ')}`)
+					}
 
 					if (!Array.isArray(categories.weapons)) {
 						errors.push('items_config.items.weapons 必须是数组')
@@ -359,6 +434,15 @@ export class GameRuleParser {
 							if (!weapon || typeof weapon !== 'object') {
 								errors.push(`武器[${index}]配置必须是对象`)
 								return
+							}
+							const weaponUnexpected = this.findUnexpectedKeys(weapon as Record<string, unknown>, [
+								'internal_name',
+								'display_names',
+								'rarity',
+								'properties'
+							])
+							if (weaponUnexpected.length > 0) {
+								errors.push(`items_config.items.weapons[${index}] 包含未知字段: ${weaponUnexpected.join(', ')}`)
 							}
 							if (!weapon.internal_name || typeof weapon.internal_name !== 'string' || weapon.internal_name.trim().length === 0) {
 								errors.push(`武器[${index}]缺少内部名称`)
@@ -370,6 +454,16 @@ export class GameRuleParser {
 								errors.push(`武器[${index}]缺少属性配置`)
 							} else {
 								const properties = weapon.properties
+								const weaponPropUnexpected = this.findUnexpectedKeys(properties, [
+									'damage',
+									'uses',
+									'votes',
+									'aoe_damage',
+									'bleed_damage'
+								])
+								if (weaponPropUnexpected.length > 0) {
+									errors.push(`items_config.items.weapons[${index}].properties 包含未知字段: ${weaponPropUnexpected.join(', ')}`)
+								}
 								if (typeof properties.damage !== 'number' || !Number.isFinite(properties.damage)) {
 									errors.push(`武器[${index}]伤害值必须是数字`)
 								}
@@ -397,6 +491,15 @@ export class GameRuleParser {
 								errors.push(`防具[${index}]配置必须是对象`)
 								return
 							}
+							const armorUnexpected = this.findUnexpectedKeys(armor as Record<string, unknown>, [
+								'internal_name',
+								'display_names',
+								'rarity',
+								'properties'
+							])
+							if (armorUnexpected.length > 0) {
+								errors.push(`items_config.items.armors[${index}] 包含未知字段: ${armorUnexpected.join(', ')}`)
+							}
 							if (!armor.internal_name || typeof armor.internal_name !== 'string' || armor.internal_name.trim().length === 0) {
 								errors.push(`防具[${index}]缺少内部名称`)
 							}
@@ -407,6 +510,10 @@ export class GameRuleParser {
 								errors.push(`防具[${index}]缺少属性配置`)
 							} else {
 								const properties = armor.properties
+								const armorPropUnexpected = this.findUnexpectedKeys(properties, ['defense', 'uses', 'votes'])
+								if (armorPropUnexpected.length > 0) {
+									errors.push(`items_config.items.armors[${index}].properties 包含未知字段: ${armorPropUnexpected.join(', ')}`)
+								}
 								if (typeof properties.defense !== 'number' || !Number.isFinite(properties.defense)) {
 									errors.push(`防具[${index}]防御值必须是数字`)
 								}
@@ -428,6 +535,15 @@ export class GameRuleParser {
 								errors.push(`功能物品[${index}]配置必须是对象`)
 								return
 							}
+							const utilityUnexpected = this.findUnexpectedKeys(utility as Record<string, unknown>, [
+								'name',
+								'internal_name',
+								'rarity',
+								'properties'
+							])
+							if (utilityUnexpected.length > 0) {
+								errors.push(`items_config.items.utilities[${index}] 包含未知字段: ${utilityUnexpected.join(', ')}`)
+							}
 							if (!utility.name || typeof utility.name !== 'string' || utility.name.trim().length === 0) {
 								errors.push(`功能物品[${index}]缺少名称`)
 							}
@@ -435,6 +551,17 @@ export class GameRuleParser {
 								errors.push(`功能物品[${index}]缺少属性配置`)
 							} else {
 								const properties = utility.properties
+								const utilityPropUnexpected = this.findUnexpectedKeys(properties, [
+									'category',
+									'votes',
+									'uses',
+									'targets',
+									'damage',
+									'uses_night'
+								])
+								if (utilityPropUnexpected.length > 0) {
+									errors.push(`items_config.items.utilities[${index}].properties 包含未知字段: ${utilityPropUnexpected.join(', ')}`)
+								}
 								if (!properties.category || typeof properties.category !== 'string' || properties.category.trim().length === 0) {
 									errors.push(`功能物品[${index}]缺少分类`)
 								}
@@ -465,6 +592,15 @@ export class GameRuleParser {
 								errors.push(`消耗品[${index}]配置必须是对象`)
 								return
 							}
+							const consumableUnexpected = this.findUnexpectedKeys(consumable as Record<string, unknown>, [
+								'name',
+								'internal_name',
+								'rarity',
+								'properties'
+							])
+							if (consumableUnexpected.length > 0) {
+								errors.push(`items_config.items.consumables[${index}] 包含未知字段: ${consumableUnexpected.join(', ')}`)
+							}
 							if (!consumable.name || typeof consumable.name !== 'string' || consumable.name.trim().length === 0) {
 								errors.push(`消耗品[${index}]缺少名称`)
 							}
@@ -472,6 +608,14 @@ export class GameRuleParser {
 								errors.push(`消耗品[${index}]缺少属性配置`)
 							} else {
 								const properties = consumable.properties
+								const consumablePropUnexpected = this.findUnexpectedKeys(properties, [
+									'effect_type',
+									'effect_value',
+									'cure_bleed'
+								])
+								if (consumablePropUnexpected.length > 0) {
+									errors.push(`items_config.items.consumables[${index}].properties 包含未知字段: ${consumablePropUnexpected.join(', ')}`)
+								}
 								if (!properties.effect_type || typeof properties.effect_type !== 'string' || properties.effect_type.trim().length === 0) {
 									errors.push(`消耗品[${index}]缺少效果类型`)
 								}
@@ -493,6 +637,14 @@ export class GameRuleParser {
 								errors.push(`升级器[${index}]配置必须是对象`)
 								return
 							}
+							const upgraderUnexpected = this.findUnexpectedKeys(upgrader as Record<string, unknown>, [
+								'internal_name',
+								'display_names',
+								'rarity'
+							])
+							if (upgraderUnexpected.length > 0) {
+								errors.push(`items_config.items.upgraders[${index}] 包含未知字段: ${upgraderUnexpected.join(', ')}`)
+							}
 							if (!upgrader.internal_name || typeof upgrader.internal_name !== 'string' || upgrader.internal_name.trim().length === 0) {
 								errors.push(`升级器[${index}]缺少内部名称`)
 							}
@@ -506,6 +658,23 @@ export class GameRuleParser {
 				if (Object.prototype.hasOwnProperty.call(itemsConfig, 'upgrade_recipes')) {
 					if (!itemsConfig.upgrade_recipes || typeof itemsConfig.upgrade_recipes !== 'object') {
 						errors.push('items_config.upgrade_recipes 必须是对象')
+					} else {
+						for (const [recipeKey, recipeEntries] of Object.entries(itemsConfig.upgrade_recipes)) {
+							if (!Array.isArray(recipeEntries)) {
+								errors.push(`升级配方 ${recipeKey} 必须是数组`)
+								continue
+							}
+							recipeEntries.forEach((recipe: any, recipeIndex: number) => {
+								if (!recipe || typeof recipe !== 'object') {
+									errors.push(`升级配方 ${recipeKey}[${recipeIndex}] 必须是对象`)
+									return
+								}
+								const recipeUnexpected = this.findUnexpectedKeys(recipe as Record<string, unknown>, ['result', 'ingredients'])
+								if (recipeUnexpected.length > 0) {
+									errors.push(`items_config.upgrade_recipes.${recipeKey}[${recipeIndex}] 包含未知字段: ${recipeUnexpected.join(', ')}`)
+								}
+							})
+						}
 					}
 				}
 			}
@@ -515,6 +684,27 @@ export class GameRuleParser {
 			if (!config.display_names || typeof config.display_names !== 'object') {
 				errors.push('display_names 必须是对象')
 			} else {
+				const displayUnexpected = this.findUnexpectedKeys(config.display_names, [
+					'player_max_life',
+					'player_max_strength',
+					'player_daily_life_recovery',
+					'player_daily_strength_recovery',
+					'player_search_cooldown',
+					'action_move',
+					'action_search',
+					'action_pick',
+					'action_attack',
+					'action_equip',
+					'action_use',
+					'action_throw',
+					'action_deliver',
+					'player_unarmed_damage',
+					'rest_life_recovery',
+					'rest_max_moves'
+				])
+				if (displayUnexpected.length > 0) {
+					errors.push(`display_names 包含未知字段: ${displayUnexpected.join(', ')}`)
+				}
 				const displayFields: Array<[string, string]> = [
 					['player_max_life', '玩家最大生命值显示名称'],
 					['player_max_strength', '玩家最大体力值显示名称'],
@@ -579,5 +769,13 @@ export class GameRuleParser {
 	private findMissingSafePlaces(safePlaces: string[], places: string[]): string[] {
 		const placeSet = new Set(places)
 		return safePlaces.filter(place => !placeSet.has(place))
+	}
+
+	private findUnexpectedKeys(obj: Record<string, unknown>, allowedKeys: readonly string[]): string[] {
+		if (!obj || typeof obj !== 'object') {
+			return []
+		}
+		const allowedSet = new Set(allowedKeys)
+		return Object.keys(obj).filter(key => !allowedSet.has(key))
 	}
 }

@@ -11,18 +11,6 @@ pub fn format_delta(value: i32) -> String {
     }
 }
 
-/// Use decrement mode for utility items.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UseMode {
-    /// Decrement total remaining uses.
-    Total,
-    /// Decrement nightly remaining uses.
-    Night,
-    #[allow(dead_code)]
-    /// Decrement both total and nightly uses.
-    Both,
-}
-
 /// Outcome when decrementing a utility's use counters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UseOutcome {
@@ -32,37 +20,26 @@ pub struct UseOutcome {
     pub night_exhausted: bool,
 }
 
-/// Decrements the appropriate usage counters for a utility item.
-pub fn decrement_uses(
-    properties: &mut UtilityProperties,
-    mode: UseMode,
-) -> Result<UseOutcome, String> {
-    if matches!(mode, UseMode::Night | UseMode::Both) {
-        if let Some(uses_night) = properties.uses_night {
-            if uses_night <= 0 {
-                return Err("该物品今晚使用次数已用尽".to_string());
-            }
+/// Decrements the usage counters for a utility item, requiring positive counts when present.
+pub fn decrement_uses(properties: &mut UtilityProperties) -> Result<UseOutcome, String> {
+    if let Some(uses_night) = properties.uses_night {
+        if uses_night <= 0 {
+            return Err("该物品今晚使用次数已用尽".to_string());
         }
     }
 
-    if matches!(mode, UseMode::Total | UseMode::Both) {
-        if let Some(uses) = properties.uses {
-            if uses <= 0 {
-                return Err("该物品使用次数已用尽".to_string());
-            }
+    if let Some(uses) = properties.uses {
+        if uses <= 0 {
+            return Err("该物品使用次数已用尽".to_string());
         }
     }
 
-    if matches!(mode, UseMode::Night | UseMode::Both) {
-        if let Some(uses_night) = properties.uses_night {
-            properties.uses_night = Some(uses_night - 1);
-        }
+    if let Some(uses_night) = properties.uses_night {
+        properties.uses_night = Some(uses_night - 1);
     }
 
-    if matches!(mode, UseMode::Total | UseMode::Both) {
-        if let Some(uses) = properties.uses {
-            properties.uses = Some(uses - 1);
-        }
+    if let Some(uses) = properties.uses {
+        properties.uses = Some(uses - 1);
     }
 
     let remaining_total = properties.uses;
@@ -74,4 +51,27 @@ pub fn decrement_uses(
         total_exhausted: remaining_total.map(|value| value <= 0).unwrap_or(false),
         night_exhausted: remaining_night.map(|value| value <= 0).unwrap_or(false),
     })
+}
+
+/// Formats a suffix describing remaining uses for logging.
+pub fn format_use_remaining_suffix(use_outcome: &UseOutcome) -> Option<String> {
+    let mut segments: Vec<String> = Vec::new();
+
+    if let Some(remaining) = use_outcome.remaining_total {
+        if remaining > 0 {
+            segments.push(format!("累计剩余 {} 次", remaining));
+        } else {
+            segments.push("道具已耗尽".to_string());
+        }
+    }
+
+    if let Some(remaining) = use_outcome.remaining_night {
+        segments.push(format!("本晚剩余 {} 次", remaining.max(0)));
+    }
+
+    if segments.is_empty() {
+        None
+    } else {
+        Some(format!("（{}）", segments.join("，")))
+    }
 }
