@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # ---------- Build stage ----------
 FROM rust:1.90.0-slim-bookworm AS builder
 
@@ -14,9 +12,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 
 # 仅抓取依赖，避免源代码改动导致的全量重编
-RUN --mount=type=cache,id=backend-cargo-registry,target=/usr/local/cargo/registry \
-    --mount=type=cache,id=backend-cargo-git,target=/usr/local/cargo/git \
-    cargo fetch
+RUN cargo fetch
 
 # SQLX 离线元数据与迁移（编译期宏可能需要），先拷贝提升缓存命中
 COPY .sqlx ./.sqlx
@@ -29,11 +25,7 @@ COPY migrations ./migrations
 ENV SQLX_OFFLINE=true
 
 # 构建 release 二进制
-RUN --mount=type=cache,id=backend-cargo-registry,target=/usr/local/cargo/registry \
-    --mount=type=cache,id=backend-cargo-git,target=/usr/local/cargo/git \
-    --mount=type=cache,id=backend-target,target=/app/target \
-    cargo build --release \
- && cp target/release/royale-arena-backend /app/royale-arena-backend
+RUN cargo build --release
 
 # ---------- Runtime stage ----------
 FROM debian:bookworm-slim
@@ -50,7 +42,7 @@ RUN mkdir -p /srv/app && chown appuser:appuser /srv/app
 WORKDIR /srv/app
 
 # 拷贝二进制到 /srv/app（以便 current_exe 的 parent 在 /srv/app）
-COPY --from=builder /app/royale-arena-backend /srv/app/royale-arena-backend
+COPY --from=builder /app/target/release/royale-arena-backend /srv/app/royale-arena-backend
 RUN chown appuser:appuser /srv/app/royale-arena-backend
 
 USER appuser
