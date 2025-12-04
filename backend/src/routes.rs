@@ -1,9 +1,8 @@
 use axum::{
-    Router,
-    extract::ws::WebSocketUpgrade,
-    middleware,
+    Router, middleware,
     routing::{delete, get, post, put},
 };
+use yawc::IncomingUpgrade;
 
 use crate::admin::service::AdminService;
 use crate::admin::{
@@ -77,7 +76,7 @@ pub fn create_routes(
             .route(
                 "/ws/{game_id}",
                 get(
-                    |ws: WebSocketUpgrade,
+                    |ws: IncomingUpgrade,
                      state: axum::extract::State<AppState>,
                      path: axum::extract::Path<String>,
                      query: axum::extract::Query<

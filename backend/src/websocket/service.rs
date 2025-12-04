@@ -1,20 +1,20 @@
 //! WebSocket服务实现
 
 use axum::{
-    extract::{
-        Path, Query, State,
-        ws::{Message, WebSocket, WebSocketUpgrade},
-    },
-    response::Response,
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
 };
 use futures::{sink::SinkExt, stream::StreamExt};
 use serde_json::json;
+use std::str;
 use std::sync::Arc;
+use tracing::{debug, error, warn};
+use yawc::{CompressionLevel, IncomingUpgrade, Options, WebSocket, frame::OpCode};
 
 use super::models::*;
 use crate::game::models::{GameStatus, NewKillRecord};
 use crate::routes::AppState;
-use tracing::debug;
 
 use crate::websocket::actions::director_action_scheduler::{
     DirectorActionParams, DirectorActionScheduler,
@@ -49,7 +49,7 @@ impl WebSocketService {
 
     /// 处理WebSocket连接升级
     pub async fn handle_websocket_upgrade(
-        ws: WebSocketUpgrade,
+        ws: IncomingUpgrade,
         State(state): State<AppState>,
         Path(game_id): Path<String>,
         Query(query): Query<WebSocketAuthRequest>,
@@ -58,8 +58,34 @@ impl WebSocketService {
         let game_connection_manager = state.global_connection_manager.get_manager(game_id.clone());
         // 创建WebSocket服务实例
         let ws_service = WebSocketService::new(state, game_connection_manager);
-        // 升级WebSocket连接
-        ws.on_upgrade(move |socket| ws_service.handle_websocket_connection(socket, game_id, query))
+
+        let options = Options::default()
+            .with_compression_level(CompressionLevel::fast())
+            .server_no_context_takeover()
+            .client_no_context_takeover()
+            .with_utf8();
+
+        match ws.upgrade(options) {
+            Ok((response, fut)) => {
+                tokio::spawn(async move {
+                    match fut.await {
+                        Ok(socket) => {
+                            ws_service
+                                .handle_websocket_connection(socket, game_id, query)
+                                .await;
+                        }
+                        Err(err) => {
+                            error!("WebSocket upgrade future failed: {}", err);
+                        }
+                    }
+                });
+                response.into_response()
+            }
+            Err(err) => {
+                warn!("WebSocket upgrade negotiation failed: {}", err);
+                (StatusCode::BAD_REQUEST, "WebSocket upgrade failed").into_response()
+            }
+        }
     }
 
     /// 处理WebSocket连接
@@ -225,23 +251,33 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                // debug!("Player WS sending message: {:?}", &message);
                 let websocket_message = super::message_formatter::game_state_message(message);
                 if sender.send(websocket_message).await.is_err() {
                     break;
                 }
             }
+            let _ = sender.close().await;
         });
 
         // 处理玩家消息
-        while let Some(Ok(msg)) = receiver.next().await {
-            if let Message::Text(text) = msg {
-                debug!("Player WS received message: {}", &text);
-                if let Err(error_msg) = self.handle_player_message(&game_id, &actor.id, &text).await
-                {
-                    // 记录错误日志，方便后续排查调试
-                    eprintln!("[WebSocket] Player message processing error: {}", error_msg);
+        while let Some(frame) = receiver.next().await {
+            let opcode = frame.opcode;
+            let payload = frame.payload;
+            match opcode {
+                OpCode::Text => {
+                    if let Ok(text) = str::from_utf8(payload.as_ref()) {
+                        debug!("Player WS received message: {}", text);
+                        if let Err(error_msg) =
+                            self.handle_player_message(&game_id, &actor.id, text).await
+                        {
+                            eprintln!("[WebSocket] Player message processing error: {}", error_msg);
+                        }
+                    }
                 }
+                OpCode::Close => {
+                    break;
+                }
+                _ => {}
             }
         }
 
@@ -295,25 +331,34 @@ impl WebSocketService {
         // 处理来自连接管理器的消息
         let handle_messages = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                // debug!("Director WS sending message: {:?}", &message);
                 let websocket_message = super::message_formatter::game_state_message(message);
                 if sender.send(websocket_message).await.is_err() {
                     break;
                 }
             }
+            let _ = sender.close().await;
         });
 
         // 处理导演消息
-        while let Some(Ok(msg)) = receiver.next().await {
-            if let Message::Text(text) = msg {
-                debug!("Director WS received message: {}", &text);
-                if let Err(error_msg) = self.handle_director_message(&game_id, &text).await {
-                    // 记录错误日志，方便后续排查调试
-                    eprintln!(
-                        "[WebSocket] Director message processing error: {}",
-                        error_msg
-                    );
+        while let Some(frame) = receiver.next().await {
+            let opcode = frame.opcode;
+            let payload = frame.payload;
+            match opcode {
+                OpCode::Text => {
+                    if let Ok(text) = str::from_utf8(payload.as_ref()) {
+                        debug!("Director WS received message: {}", text);
+                        if let Err(error_msg) = self.handle_director_message(&game_id, text).await {
+                            eprintln!(
+                                "[WebSocket] Director message processing error: {}",
+                                error_msg
+                            );
+                        }
+                    }
                 }
+                OpCode::Close => {
+                    break;
+                }
+                _ => {}
             }
         }
 
