@@ -56,13 +56,16 @@
           </el-form-item>
 
           <el-form-item>
-            <el-button 
-              type="primary" 
-              @click="sendBroadcast"
-              :loading="sending"
-            >
-              发送消息
-            </el-button>
+            <div class="send-row">
+              <el-button 
+                type="primary" 
+                @click="sendBroadcast"
+                :loading="sending"
+              >
+                发送消息
+              </el-button>
+              <span class="shortcut-hint">Ctrl + Enter 快速发送</span>
+            </div>
           </el-form-item>
         </el-form>
       </div>
@@ -216,5 +219,17 @@ const sendBroadcast = async () => {
 .target-player-select {
   width: 140px;
   margin-left: 20px;
+}
+
+.shortcut-hint {
+  margin-left: 12px;
+  color: #909399;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.send-row {
+  display: inline-flex;
+  align-items: center;
 }
 </style>

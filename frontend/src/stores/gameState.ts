@@ -293,8 +293,8 @@ export const useGameStateStore = defineStore('gameState', () => {
   }
 
   // 夜晚结算
-  const triggerNightSettlement = () => {
-    sendDirectorAction('night_settlement')
+  const triggerNightSettlement = (restEnabled: boolean = true) => {
+    sendDirectorAction('night_settlement', { rest_enabled: restEnabled })
   }
 
   const handleWebSocketEvent = (event: WebSocketEvent) => {

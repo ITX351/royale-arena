@@ -1,6 +1,6 @@
 //! Shared utilities for websocket actions.
 
-use crate::game::game_rule_engine::UtilityProperties;
+use crate::game::game_rule_engine::{GameRuleEngine, Item, ItemType, UtilityProperties};
 
 /// Formats numeric deltas with a leading sign when non-negative.
 pub fn format_delta(value: i32) -> String {
@@ -73,5 +73,20 @@ pub fn format_use_remaining_suffix(use_outcome: &UseOutcome) -> Option<String> {
         None
     } else {
         Some(format!("（{}）", segments.join("，")))
+    }
+}
+
+/// Restores nightly-use counters for utility items based on their template defaults.
+pub fn restore_item_nightly_uses(item: &mut Item, rule_engine: &GameRuleEngine) {
+    if let ItemType::Utility(ref mut properties) = item.item_type {
+        if properties.uses_night.is_some() {
+            if let Ok(template) = rule_engine.create_item_from_name(&item.name) {
+                if let ItemType::Utility(default_properties) = template.item_type {
+                    if let Some(default) = default_properties.uses_night {
+                        properties.uses_night = Some(default);
+                    }
+                }
+            }
+        }
     }
 }

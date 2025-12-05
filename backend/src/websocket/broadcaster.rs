@@ -160,10 +160,10 @@ impl GameState {
     /// 生成玩家视角的全局状态信息
     pub fn to_player_client_json(&self) -> JsonValue {
         json!({
-            // "weather": self.weather,
+            "weather": self.weather,
             "night_start_time": self.night_start_time,
             "night_end_time": self.night_end_time,
-            // "next_night_destroyed_places": self.next_night_destroyed_places,
+            "next_night_destroyed_places": self.next_night_destroyed_places,
             "rules_config": self.rules_config,
             "server_now": Utc::now(),
         })

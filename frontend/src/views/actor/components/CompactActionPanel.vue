@@ -40,14 +40,20 @@
             placement="bottom-start"
             :popper-options="selectPopperOptions"
             filterable
-            :class="{ 'safe-zone-selected': isSafePlace(selectedPlace) }"
+            :class="{
+              'safe-zone-selected': isSafePlace(selectedPlace) && !isNextNightDestroyedPlace(selectedPlace),
+              'next-destroy-selected': isNextNightDestroyedPlace(selectedPlace)
+            }"
           >
             <el-option
               v-for="place in availablePlaces"
               :key="place.name"
               :label="place.name"
               :value="place.name"
-              :class="{ 'safe-zone-option': isSafePlace(place.name) }"
+              :class="{
+                'safe-zone-option': isSafePlace(place.name) && !isNextNightDestroyedPlace(place.name),
+                'next-destroy-option': isNextNightDestroyedPlace(place.name)
+              }"
               :style="getPlaceOptionStyle(place.name)"
             />
           </el-select>
@@ -69,7 +75,10 @@
             placement="bottom-start"
             :popper-options="selectPopperOptions"
             filterable
-            :class="{ 'safe-zone-selected': isSafePlace(targetPlace) }"
+            :class="{
+              'safe-zone-selected': isSafePlace(targetPlace) && !isNextNightDestroyedPlace(targetPlace),
+              'next-destroy-selected': isNextNightDestroyedPlace(targetPlace)
+            }"
           >
             <el-option
               v-for="place in availablePlaces"
@@ -77,7 +86,10 @@
               :label="place.name"
               :value="place.name"
               :disabled="place.name === player.location"
-              :class="{ 'safe-zone-option': isSafePlace(place.name) }"
+              :class="{
+                'safe-zone-option': isSafePlace(place.name) && !isNextNightDestroyedPlace(place.name),
+                'next-destroy-option': isNextNightDestroyedPlace(place.name)
+              }"
               :style="getPlaceOptionStyle(place.name)"
             />
           </el-select>
@@ -268,10 +280,23 @@ const safeZoneOptionStyle: Record<string, string> = {
   fontWeight: '600'
 }
 
+const dangerZoneOptionStyle: Record<string, string> = {
+  color: '#f56c6c',
+  fontWeight: '600'
+}
+
 const safePlaceNames = computed<Set<string>>(() => {
   const safePlaces = props.globalState?.rules_config?.map?.safe_places
   if (Array.isArray(safePlaces)) {
     return new Set<string>(safePlaces)
+  }
+  return new Set<string>()
+})
+
+const nextNightDestroyedPlaces = computed<Set<string>>(() => {
+  const upcoming = props.globalState?.next_night_destroyed_places
+  if (Array.isArray(upcoming)) {
+    return new Set<string>(upcoming)
   }
   return new Set<string>()
 })
@@ -308,8 +333,18 @@ const isSafePlace = (placeName: string) => {
   return safePlaceNames.value.has(placeName)
 }
 
+const isNextNightDestroyedPlace = (placeName: string) => {
+  return nextNightDestroyedPlaces.value.has(placeName)
+}
+
 const getPlaceOptionStyle = (placeName: string): Record<string, string> | undefined => {
-  return isSafePlace(placeName) ? safeZoneOptionStyle : undefined
+  if (isNextNightDestroyedPlace(placeName)) {
+    return dangerZoneOptionStyle
+  }
+  if (isSafePlace(placeName)) {
+    return safeZoneOptionStyle
+  }
+  return undefined
 }
 
 // 计算属性
@@ -617,6 +652,16 @@ function formatDuration(durationMs: number) {
 
 :deep(.el-select.safe-zone-selected .el-select__selected-item) {
   color: #67c23a;
+  font-weight: 600;
+}
+
+:deep(.el-select-dropdown__item.next-destroy-option) {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+:deep(.el-select.next-destroy-selected .el-select__selected-item) {
+  color: #f56c6c;
   font-weight: 600;
 }
 
