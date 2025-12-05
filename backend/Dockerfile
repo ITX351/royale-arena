@@ -1,5 +1,5 @@
 # ---------- Build stage ----------
-FROM rust:1.90.0-slim-bookworm AS builder
+FROM rust:1.91.0-slim-bookworm AS builder
 
 # 常见原生依赖（有些 crates 需要 C 编译器/headers）
 RUN apt-get update && apt-get install -y --no-install-recommends \

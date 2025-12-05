@@ -49,6 +49,12 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" />
+
+        <el-table-column prop="id" label="游戏ID" min-width="140">
+          <template #default="{ row }">
+            <span class="game-id">{{ row.id }}</span>
+          </template>
+        </el-table-column>
         
         <el-table-column prop="name" label="游戏名称" min-width="150">
           <template #default="{ row }">
@@ -194,7 +200,12 @@
         </el-form-item>
 
         <!-- 创建游戏时显示规则模板选择 -->
-        <el-form-item v-if="!editingGame" label="规则模版" prop="rule_template_id">
+        <el-form-item 
+          v-if="!editingGame" 
+          label="规则模版" 
+          prop="rule_template_id"
+          :required="!editingGame"
+        >
           <el-select 
             v-model="gameForm.rule_template_id" 
             placeholder="请选择规则模版"
@@ -258,14 +269,16 @@ const editingGame = ref<GameListItem | null>(null)
 
 // 表单引用和数据
 const gameFormRef = ref<FormInstance>()
-const gameForm = reactive<CreateGameRequest>({
+const defaultGameFormState: CreateGameRequest = {
   id: '',
   name: '',
   description: '',
   director_password: '',
   max_players: 100,
   rule_template_id: ''
-})
+}
+
+const gameForm = reactive<CreateGameRequest>({ ...defaultGameFormState })
 
 const PASSWORD_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
@@ -283,6 +296,10 @@ const generateRandomPassword = (length = 14) => {
 const generateDirectorPassword = () => {
   gameForm.director_password = generateRandomPassword()
   nextTick(() => gameFormRef.value?.validateField('director_password'))
+}
+
+const resetGameForm = () => {
+  Object.assign(gameForm, defaultGameFormState)
 }
 
 // 表单验证规则
@@ -414,9 +431,7 @@ const editGame = (game: GameListItem) => {
 
 const createGame = () => {
   editingGame.value = null
-  gameFormRef.value?.resetFields()
-  gameForm.rule_template_id = ''
-  gameForm.id = ''
+  resetGameForm()
   showCreateDialog.value = true
   nextTick(() => gameFormRef.value?.clearValidate())
 }
@@ -519,7 +534,8 @@ const saveGame = async () => {
     await loadGames()
   } catch (error) {
     console.error('保存游戏失败:', error)
-    ElMessage.error(editingGame.value ? '游戏更新失败' : '游戏创建失败')
+    const serverMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error
+    ElMessage.error(serverMessage || (editingGame.value ? '游戏更新失败' : '游戏创建失败'))
   } finally {
     saving.value = false
   }
@@ -527,8 +543,8 @@ const saveGame = async () => {
 
 const cancelEdit = () => {
   showCreateDialog.value = false
-  gameFormRef.value?.resetFields()
-  gameForm.id = ''
+  resetGameForm()
+  nextTick(() => gameFormRef.value?.clearValidate())
 }
 
 // 生命周期
@@ -610,5 +626,11 @@ onMounted(async () => {
 .batch-actions {
   display: flex;
   gap: 8px;
+}
+
+.game-id {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #909399;
 }
 </style>
