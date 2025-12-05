@@ -58,7 +58,7 @@
               <div class="player-name-cell">
                 <el-tooltip
                   effect="dark"
-                  :content="scope.row.password ? `密码：${scope.row.password}` : '暂无密码'"
+                  :content="getPlayerTooltipContent(scope.row)"
                   placement="right"
                 >
                   <span
@@ -330,6 +330,25 @@ const filteredPlayers = computed<Player[]>(() => {
   return playerList.value.filter(player => player.is_alive)
 })
 
+// Tooltip string that surfaces bleed info ahead of password when applicable
+const getPlayerTooltipContent = (player: Player): string => {
+  const parts: string[] = []
+
+  if (player.bleed_damage > 0) {
+    parts.push(`流血：${player.bleed_damage}, `)
+  }
+
+  if (player.password) {
+    parts.push(`密码：${player.password}`)
+  } else if (!parts.length) {
+    return '暂无密码'
+  } else {
+    parts.push('暂无密码')
+  }
+
+  return parts.join('\n')
+}
+
 const getSortValue = (player: Player, key: SortKey): string | number => {
   switch (key) {
     case 'votes':
@@ -531,17 +550,20 @@ const removeItem = (playerId: string, itemName: string) => {
 // 显示纯文本对话框
 const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'player') {
-    // 创建玩家状态的表格文本表示（包含票数列）
-    let statusText = '玩家\t票数\t位置\t生命值\t体力值\t物品\n'
-    // statusText += '----\t----\t----\t------\t------\t----\n'
+    // 创建玩家状态的表格文本表示（按名称升序且包含装备信息）
+    let statusText = '玩家\t票数\t位置\t生命值\t体力值\t武器\t防具\t物品\n'
 
-    playerList.value
+    const alivePlayersByName = playerList.value
       .filter(player => player.is_alive)
-      .forEach(player => {
-      const items = player.inventory.map(item => getItemDisplayName(item)).join(', ')
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    alivePlayersByName.forEach(player => {
+      const items = player.inventory.map(item => getItemDisplayName(item)).join(', ') || '无'
       const votes = calculatePlayerVotes(player)
-      statusText += `${player.name}\t${votes}\t${player.location}\t${player.life}\t${player.strength}\t${items || '无'}\n`
-      })
+      const weaponName = player.equipped_weapon ? getItemDisplayName(player.equipped_weapon) : '无'
+      const armorName = player.equipped_armor ? getItemDisplayName(player.equipped_armor) : '无'
+      statusText += `${player.name}\t${votes}\t${player.location}\t${player.life}\t${player.strength}\t${weaponName}\t${armorName}\t${items}\n`
+    })
 
     plainTextContent.value = statusText
     dialogTitle.value = '玩家状态'

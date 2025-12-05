@@ -67,7 +67,7 @@ impl GameState {
     }
 
     /// 夜晚结算：缩圈、流血、恢复、休养与每日重置
-    pub fn handle_night_settlement(&mut self) -> Result<ActionResults, String> {
+    pub fn handle_night_settlement(&mut self, rest_enabled: bool) -> Result<ActionResults, String> {
         let mut results: Vec<ActionResult> = Vec::new();
 
         // ===== 缩圈处理 =====
@@ -177,7 +177,7 @@ impl GameState {
 
         if life_recover != 0 || strength_recover != 0 {
             for (player_id, player) in self.players.iter_mut() {
-                if !player.is_alive {
+                if !player.is_alive || player.location.is_empty() {
                     continue;
                 }
 
@@ -244,9 +244,9 @@ impl GameState {
         let rest_life = self.rule_engine.rest_mode.life_recovery;
         let rest_strength = self.rule_engine.rest_mode.strength_recovery;
 
-        if rest_life != 0 || rest_strength != 0 {
+        if rest_enabled && (rest_life != 0 || rest_strength != 0) {
             for (player_id, player) in self.players.iter_mut() {
-                if !player.is_alive || !player.rest_mode {
+                if !player.is_alive || player.location.is_empty() || !player.rest_mode {
                     continue;
                 }
 
@@ -314,6 +314,10 @@ impl GameState {
             if let Some(player) = self.players.get_mut(&player_id) {
                 player.daily_reset(&self.rule_engine);
             }
+        }
+
+        for place in self.places.values_mut() {
+            place.reset_nightly_item_uses(&self.rule_engine);
         }
         self.next_night_destroyed_places.clear();
 

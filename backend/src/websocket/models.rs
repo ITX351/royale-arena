@@ -1,7 +1,8 @@
 //! WebSocket相关模型定义
 
-use crate::game::game_rule_engine::{GameRuleEngine, Item, ItemType};
+use crate::game::game_rule_engine::{GameRuleEngine, Item};
 use crate::game::models::MessageType;
+use crate::websocket::actions::utils::restore_item_nightly_uses;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value as JsonValue;
@@ -246,30 +247,16 @@ impl Player {
     }
 
     fn reset_nightly_uses(&mut self, rule_engine: &GameRuleEngine) {
-        fn restore_uses(item: &mut Item, rule_engine: &GameRuleEngine) {
-            if let ItemType::Utility(ref mut properties) = item.item_type {
-                if properties.uses_night.is_some() {
-                    if let Ok(template) = rule_engine.create_item_from_name(&item.name) {
-                        if let ItemType::Utility(default_properties) = template.item_type {
-                            if let Some(default) = default_properties.uses_night {
-                                properties.uses_night = Some(default);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         for item in &mut self.inventory {
-            restore_uses(item, rule_engine);
+            restore_item_nightly_uses(item, rule_engine);
         }
 
         if let Some(weapon) = self.equipped_weapon.as_mut() {
-            restore_uses(weapon, rule_engine);
+            restore_item_nightly_uses(weapon, rule_engine);
         }
 
         if let Some(armor) = self.equipped_armor.as_mut() {
-            restore_uses(armor, rule_engine);
+            restore_item_nightly_uses(armor, rule_engine);
         }
     }
 }
@@ -295,6 +282,13 @@ impl Place {
             players: Vec::new(),
             items: Vec::new(),
             is_destroyed: false,
+        }
+    }
+
+    /// 恢复地点所有物品的夜晚使用次数
+    pub fn reset_nightly_item_uses(&mut self, rule_engine: &GameRuleEngine) {
+        for item in &mut self.items {
+            restore_item_nightly_uses(item, rule_engine);
         }
     }
 }

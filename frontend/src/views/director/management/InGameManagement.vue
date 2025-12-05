@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <h3>游戏中管理</h3>
-          <el-button type="danger" size="small" @click="handleNightSettlement">
-            夜晚结算
-          </el-button>
+          <div class="night-settlement-controls">
+            <el-checkbox v-model="restModeEnabled" size="small">
+              静养加成
+            </el-checkbox>
+            <el-button type="danger" size="small" @click="handleNightSettlement">
+              夜晚结算
+            </el-button>
+          </div>
         </div>
       </template>
       
@@ -67,7 +72,7 @@
               style="flex: 1"
             >
               <el-option
-                v-for="place in placeList.filter(p => !p.is_destroyed)"
+                v-for="place in destroyPlaceOptions"
                 :key="place.name"
                 :label="place.name"
                 :value="place.name"
@@ -139,6 +144,9 @@ const broadcastMessageRef = ref<any>(null)
 // 天气控制相关
 const weatherText = ref('1.0')
 
+// 夜晚结算静养开关
+const restModeEnabled = ref(true)
+
 // 夜晚时间表单
 const nightTimeForm = reactive({
   startTime: null as string | null,
@@ -155,6 +163,14 @@ const directorPlayerList = computed<Player[]>(() => {
 
 const placeList = computed<Place[]>(() => {
   return store.directorPlaceList
+})
+
+// Sort available destroy locations alphabetically for a stable dropdown order
+const destroyPlaceOptions = computed<Place[]>(() => {
+  return placeList.value
+    .filter((place) => !place.is_destroyed)
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans', { numeric: true, sensitivity: 'base' }))
 })
 
 const gameIdRef = computed(() => props.game.id)
@@ -278,7 +294,7 @@ const handleNightSettlement = async () => {
     return
   }
 
-  store.triggerNightSettlement()
+  store.triggerNightSettlement(restModeEnabled.value)
   ElMessage.success('夜晚结算指令已发送')
 }
 
@@ -319,6 +335,12 @@ function clampWeather(value: number) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.night-settlement-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .card-header h4 {

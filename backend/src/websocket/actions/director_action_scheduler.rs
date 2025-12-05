@@ -26,6 +26,7 @@ pub struct DirectorActionParams {
     pub strength: Option<i32>, // 玩家体力值
     pub target_place: Option<String>,
     pub action_type: Option<String>, // rope/unrope
+    pub rest_enabled: Option<bool>,  // 夜晚结算时静养是否生效
 
     /// 道具操作
     pub target_type: Option<String>,
@@ -183,7 +184,10 @@ impl DirectorActionScheduler {
                 game_state.handle_director_message_to_player(&player_id, &message)
             }
 
-            "night_settlement" => game_state.handle_night_settlement(),
+            "night_settlement" => {
+                let rest_enabled = action_params.rest_enabled.unwrap_or(true);
+                game_state.handle_night_settlement(rest_enabled)
+            }
 
             _ => Err(format!("Unknown director action type: {}", action_type)),
         }

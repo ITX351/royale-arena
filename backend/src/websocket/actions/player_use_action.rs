@@ -712,14 +712,14 @@ impl GameState {
         } else {
             let mut segments: Vec<String> = Vec::new();
             for record in &impact_records {
-                let mut segment = format!("{} 受到 {} 点伤害", record.1, record.2);
+                let mut segment = format!("，{} 受到 {} 点伤害", record.1, record.2);
                 if !record.4 {
                     segment.push_str("（阵亡）");
                 }
                 segments.push(segment);
             }
             //log_message.push_str("，影响了 ");
-            log_message.push_str(&segments.join("，"));
+            log_message.push_str(&segments.join(""));
         }
         if let Some(suffix) = format_use_remaining_suffix(&use_outcome) {
             log_message.push_str(&suffix);
