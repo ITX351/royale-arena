@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE games SET max_players = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "a6404df60e4c7691d982ee38b40aebb0683cb7773ba9fa7235f45fe03c34f53f"
+}

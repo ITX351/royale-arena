@@ -1,0 +1,24 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT director_password FROM games WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "director_password",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "max_size": 200
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9b4b0e735a48bb521d35ba6b74d78d851bbce177c44aede2457748be4bd0ccaf"
+}

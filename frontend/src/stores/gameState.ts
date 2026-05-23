@@ -1,0 +1,443 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { ElNotification } from 'element-plus'
+import type { NotificationHandle } from 'element-plus'
+import type {
+  DirectorGameState,
+  ActorGameState,
+  GlobalState,
+  DirectorGameData,
+  ActorGameData,
+  Player,
+  DirectorPlace,
+  ActorPlayer,
+  ActorPlace,
+  ActionResult,
+  ShopListing,
+  ShopBuyItem
+} from '@/types/gameStateTypes'
+import { webSocketService, type WebSocketEvent } from '@/services/webSocketService'
+
+function isDirectorState(state: DirectorGameState | ActorGameState | null): state is DirectorGameState {
+  const data = (state as DirectorGameState | ActorGameState | null)?.game_data as Record<string, unknown> | undefined
+  return Boolean(state && data && typeof data === 'object' && 'players' in data)
+}
+
+function isActorState(state: DirectorGameState | ActorGameState | null): state is ActorGameState {
+  const data = (state as DirectorGameState | ActorGameState | null)?.game_data as Record<string, unknown> | undefined
+  return Boolean(state && data && typeof data === 'object' && 'player' in data)
+}
+
+export const useGameStateStore = defineStore('gameState', () => {
+  // 状态
+  const gameState = ref<DirectorGameState | ActorGameState | null>(null)
+  const connected = ref(false)
+  const connecting = ref(false)
+  const error = ref<string | null>(null)
+  const logMessages = ref<ActionResult[]>([])
+  const maxLogMessages = ref(10000) // 最多保存日志消息条数
+  const serverOffsetMs = ref(0)
+  let activeInfoNotification: NotificationHandle | null = null
+
+  // 计算属性
+  const globalState = computed<GlobalState | null>(() => {
+    return gameState.value?.global_state || null
+  })
+
+  const gameData = computed<DirectorGameData | ActorGameData | null>(() => {
+    return gameState.value?.game_data || null
+  })
+
+  // 导演视角的计算属性
+  const directorPlayers = computed<Record<string, Player>>(() => {
+    if (!isDirectorState(gameState.value)) return {}
+    return gameState.value.game_data.players || {}
+  })
+
+  const directorPlaces = computed<Record<string, DirectorPlace>>(() => {
+    if (!isDirectorState(gameState.value)) return {}
+    return gameState.value.game_data.places || {}
+  })
+
+  // 玩家视角的计算属性
+  const actorPlayer = computed<Player | null>(() => {
+    if (!isActorState(gameState.value)) return null
+    return gameState.value.game_data.player || null
+  })
+
+  const actorPlayers = computed<Record<string, ActorPlayer>>(() => {
+    if (!isActorState(gameState.value)) return {}
+    return gameState.value.game_data.actor_players || {}
+  })
+
+  const actorPlaces = computed<Record<string, ActorPlace>>(() => {
+    if (!isActorState(gameState.value)) return {}
+    return gameState.value.game_data.actor_places || {}
+  })
+
+  const actionResult = computed<ActionResult | null>(() => {
+    return gameState.value?.action_result || null
+  })
+
+  const directorPlayerList = computed<Player[]>(() => {
+    return Object.values(directorPlayers.value)
+  })
+
+  const directorPlaceList = computed<DirectorPlace[]>(() => {
+    return Object.values(directorPlaces.value)
+  })
+
+  const actorPlayerList = computed<ActorPlayer[]>(() => {
+    return Object.values(actorPlayers.value)
+  })
+
+  const actorPlaceList = computed<ActorPlace[]>(() => {
+    return Object.values(actorPlaces.value)
+  })
+
+  const shopListings = computed<ShopListing[]>(() => {
+    return globalState.value?.shop || []
+  })
+
+  // 操作
+  const connect = async (gameId: string, password: string, userType: string) => {
+    connecting.value = true
+    error.value = null
+    
+    try {
+      // 添加WebSocket事件监听器
+      webSocketService.addEventListener(handleWebSocketEvent)
+      
+      // 连接到WebSocket，传递用户类型参数
+      await webSocketService.connect(gameId, password, userType)
+      connected.value = true
+    } catch (err) {
+      console.error('连接WebSocket失败:', err)
+      error.value = err instanceof Error ? err.message : '连接失败'
+      connected.value = false
+      gameState.value = null
+      webSocketService.removeEventListener(handleWebSocketEvent)
+    } finally {
+      connecting.value = false
+    }
+  }
+
+  const disconnect = () => {
+    webSocketService.removeEventListener(handleWebSocketEvent)
+    webSocketService.disconnect()
+    connected.value = false
+    connecting.value = false
+    gameState.value = null
+    if (activeInfoNotification) {
+      activeInfoNotification.close()
+      activeInfoNotification = null
+    }
+  }
+
+  const updateServerOffset = (serverTimestamp?: string | null, receivedAt?: number) => {
+    if (!serverTimestamp) {
+      return
+    }
+
+    const serverMs = Date.parse(serverTimestamp)
+    if (Number.isNaN(serverMs)) {
+      return
+    }
+
+    const reference = typeof receivedAt === 'number' ? receivedAt : Date.now()
+    serverOffsetMs.value = serverMs - reference
+  }
+
+  const updateGameState = (newState: DirectorGameState | ActorGameState) => {
+    if (!newState || !newState.game_data) {
+      console.warn('忽略无效的游戏状态更新', newState)
+      return
+    }
+
+    updateServerOffset(newState.global_state?.server_now, undefined)
+    if (newState.action_result?.timestamp) {
+      updateServerOffset(newState.action_result.timestamp, undefined)
+    }
+
+    gameState.value = newState
+    
+    // 如果有动作结果，只有非Info类型的消息才添加到日志消息中
+    if (newState.action_result && newState.action_result.message_type !== 'Info') {
+      // 如果消息没有ID，为WebSocket消息添加UUID
+      const resultWithId = newState.action_result.id 
+        ? newState.action_result 
+        : { ...newState.action_result, id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(36).substr(2, 9) };
+      addLogMessage(resultWithId)
+    }
+  }
+
+  const addLogMessage = (message: ActionResult) => {
+    // 添加到日志消息列表开头
+    logMessages.value.unshift(message);
+    
+    // 如果超过最大数量，移除最旧的消息
+    if (logMessages.value.length > maxLogMessages.value) {
+      logMessages.value = logMessages.value.slice(0, maxLogMessages.value)
+    }
+  }
+
+  const clearLogMessages = () => {
+    logMessages.value = []
+  }
+
+  const sendDirectorAction = (action: string, params: Record<string, any> = {}) => {
+    webSocketService.sendDirectorAction(action, params)
+  }
+
+  const sendPlayerAction = (action: string, params: Record<string, any> = {}) => {
+    const message = {
+      type: 'player_action',
+      data: {
+        action,
+        ...params
+      }
+    }
+    webSocketService.sendMessage(message)
+  }
+
+  // 天气调节
+  const updateWeather = (weather: number) => {
+    // 验证天气值在有效范围内(0-2)
+    if (weather < 0 || weather > 2) {
+      console.error('天气值必须在0-2之间')
+      return
+    }
+    // 根据后端要求使用正确的参数格式
+    sendDirectorAction('weather', { weather: weather })
+  }
+
+  // 夜晚时间设置
+  const setNightTime = (startTime: string | null, endTime: string | null) => {
+    // 根据后端要求使用正确的参数格式
+    if (startTime !== null) {
+      sendDirectorAction('set_night_start_time', { timestamp: startTime })
+    }
+    if (endTime !== null) {
+      sendDirectorAction('set_night_end_time', { timestamp: endTime })
+    }
+  }
+
+  // 缩圈地点设置
+  const setDestroyPlaces = (places: string[]) => {
+    // 根据后端要求使用正确的参数格式
+    sendDirectorAction('set_destroy_places', { places: places })
+  }
+
+  // 地点状态调整
+  const togglePlaceStatus = (placeName: string, isDestroyed: boolean) => {
+    // 根据后端要求使用正确的参数格式
+    sendDirectorAction('modify_place', { 
+      place_name: placeName, 
+      is_destroyed: isDestroyed 
+    })
+  }
+
+  // 设置玩家生命值（绝对值）
+  const setPlayerLife = (playerId: string, life: number) => {
+    sendDirectorAction('life', { player_id: playerId, life: life })
+  }
+
+  // 设置玩家体力值（绝对值）
+  const setPlayerStrength = (playerId: string, strength: number) => {
+    sendDirectorAction('strength', { player_id: playerId, strength: strength })
+  }
+
+  // 设置玩家货币（绝对值）
+  const setPlayerCoins = (playerId: string, coins: number) => {
+    sendDirectorAction('coins', { player_id: playerId, coins: coins })
+  }
+
+  // 移动玩家到指定地点
+  const movePlayer = (playerId: string, targetPlace: string) => {
+    sendDirectorAction('move_player', { player_id: playerId, target_place: targetPlace })
+  }
+
+  // 玩家捆绑/松绑
+  const togglePlayerBinding = (playerId: string) => {
+    // 先获取玩家当前状态来决定是捆绑还是松绑
+    const player = directorPlayers.value[playerId]
+    if (player) {
+      if (player.is_bound) {
+        // 松绑
+        sendDirectorAction('unrope', { 
+          player_id: playerId
+        })
+      } else {
+        // 捆绑
+        sendDirectorAction('rope', { 
+          player_id: playerId
+        })
+      }
+    }
+  }
+
+  const destroyPlace = (placeName: string) => {
+    sendDirectorAction('destroy', { place: placeName })
+  }
+
+  const sendBroadcast = (message: string) => {
+    sendDirectorAction('broadcast', { message })
+  }
+
+  const sendDirectorMessageToPlayer = (playerId: string, message: string) => {
+    sendDirectorAction('message_to_player', { player_id: playerId, message })
+  }
+
+  // 批量空投（统一接口，支持单次和批量）
+  const sendBatchAirdrop = (airdrops: Array<{ item_name: string, place_name: string }>) => {
+    sendDirectorAction('batch_airdrop', { airdrops })
+  }
+
+  // 批量物品删除（统一接口，支持单个删除、地点清空和全场清空）
+  const sendBatchItemDeletion = (deletions: Array<{ place_name: string, item_name?: string }>, clearAll: boolean = false) => {
+    sendDirectorAction('batch_item_deletion', { deletions, clear_all: clearAll })
+  }
+
+  // 新增方法：向玩家添加物品（使用物品名称）
+  const addPlayerItem = (playerId: string, itemName: string) => {
+    sendDirectorAction('add_player_item', { player_id: playerId, item_name: itemName })
+  }
+
+  // 新增方法：从玩家移除物品（使用物品名称）
+  const removePlayerItem = (playerId: string, itemName: string) => {
+    sendDirectorAction('remove_player_item', { player_id: playerId, item_name: itemName })
+  }
+
+  // 夜晚结算
+  const triggerNightSettlement = (restEnabled: boolean = true) => {
+    sendDirectorAction('night_settlement', { rest_enabled: restEnabled })
+  }
+
+  // 商店上架物品
+  const shopListItem = (itemName: string, price: number, quantity: number = 1) => {
+    sendDirectorAction('shop_list_item', { item_name: itemName, price, quantity })
+  }
+
+  // 商店下架物品
+  const shopDelistItem = (listingId: string) => {
+    sendDirectorAction('shop_delist_item', { shop_listing_id: listingId })
+  }
+
+  // 玩家购买商品
+  const shopBuy = (items: ShopBuyItem[]) => {
+    sendPlayerAction('shop_buy', { shop_buy_items: items })
+  }
+
+  const handleWebSocketEvent = (event: WebSocketEvent) => {
+    switch (event.type) {
+      case 'state_update':
+        console.log('游戏状态更新:', event.data)
+        if (event.data?.global_state?.server_now) {
+          updateServerOffset(event.data.global_state.server_now, event.timestamp.getTime())
+        }
+        if (event.data?.action_result?.timestamp) {
+          updateServerOffset(event.data.action_result.timestamp, event.timestamp.getTime())
+        }
+        updateGameState(event.data)
+        break
+      case 'action_result':
+        console.log('追加日志:', event.data)
+        if (event.data?.timestamp) {
+          updateServerOffset(event.data.timestamp, event.timestamp.getTime())
+        }
+        //addLogMessage(event.data)
+        break
+      case 'system_message':
+        // 处理系统消息
+        console.log('系统消息:', event.data)
+        break
+      case 'info_notification': {
+        // 处理Info类型的轻量提示
+        console.log('Info提示:', event.data)
+        if (activeInfoNotification) {
+          activeInfoNotification.close()
+          activeInfoNotification = null
+        }
+        const notification = ElNotification({
+          title: '提示',
+          message: event.data.message,
+          type: 'info',
+          position: 'top-right',
+          duration: 3000,
+          showClose: true,
+          onClose: () => {
+            if (activeInfoNotification === notification) {
+              activeInfoNotification = null
+            }
+          }
+        })
+        activeInfoNotification = notification
+        break
+      }
+      case 'error':
+        error.value = event.data.message || 'WebSocket错误'
+        console.error('WebSocket错误:', event.data)
+        disconnect()
+        break
+    }
+  }
+
+  // 清理函数
+  const clearError = () => {
+    error.value = null
+  }
+
+  return {
+    // 状态
+    gameState,
+    connected,
+    connecting,
+    error,
+    logMessages,
+    
+    // 计算属性
+    globalState,
+    gameData,
+    directorPlayers,
+    directorPlaces,
+    actorPlayer,
+    actorPlaces,
+    actionResult,
+    directorPlayerList,
+    directorPlaceList,
+    actorPlayerList,
+    actorPlaceList,
+    shopListings,
+    serverOffsetMs,
+    
+    // 操作
+    connect,
+    disconnect,
+    updateGameState,
+    addLogMessage,
+    clearLogMessages,
+    sendDirectorAction,
+    sendPlayerAction,
+    updateWeather,
+    setNightTime,
+    setDestroyPlaces,
+    togglePlaceStatus,
+    setPlayerLife,
+    setPlayerStrength,
+    setPlayerCoins,
+    movePlayer,
+    togglePlayerBinding,
+    destroyPlace,
+    sendBroadcast,
+    sendDirectorMessageToPlayer,
+    sendBatchAirdrop,
+    sendBatchItemDeletion,
+    addPlayerItem, // 新增导出
+    removePlayerItem, // 新增导出
+    triggerNightSettlement,
+    shopListItem,
+    shopDelistItem,
+    shopBuy,
+    clearError
+  }
+})

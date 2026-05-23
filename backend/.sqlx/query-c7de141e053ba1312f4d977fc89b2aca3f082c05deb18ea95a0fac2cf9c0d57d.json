@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            INSERT INTO games (id, name, description, director_password, max_players, status, rules_config)\n            VALUES (?, ?, ?, ?, ?, 'waiting', ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "c7de141e053ba1312f4d977fc89b2aca3f082c05deb18ea95a0fac2cf9c0d57d"
+}

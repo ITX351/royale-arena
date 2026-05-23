@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            INSERT INTO kill_records (id, game_id, killer_id, victim_id, kill_time, cause, weapon, location)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "1fd03baeef534eb52b3fe7f04acddc395223f922111cf80f1b8759207f518639"
+}
