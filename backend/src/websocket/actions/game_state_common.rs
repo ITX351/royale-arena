@@ -69,7 +69,7 @@ impl GameState {
         let record_killer_name =
             record_killer_id.and_then(|id| self.players.get(id).map(|p| p.name.clone()));
 
-        let (mut loot_items, previous_location) = {
+        let (mut loot_items, previous_location, victim_coins) = {
             let player = self
                 .players
                 .get_mut(target_player_id)
@@ -84,13 +84,16 @@ impl GameState {
             }
             items.extend(player.inventory.drain(..));
 
+            let coins = player.coins;
+
             player.life = 0;
             player.strength = 0;
             player.is_alive = false;
             player.bleed_damage = 0;
             player.bleed_inflictor = None;
+            player.coins = 0;
 
-            (items, mem::take(&mut player.location))
+            (items, mem::take(&mut player.location), coins)
         };
 
         if let Some(player) = self.players.get_mut(target_player_id) {
@@ -112,51 +115,35 @@ impl GameState {
         let mut collected_item_names: Vec<String> = Vec::new();
         let mut dropped_item_names: Vec<String> = Vec::new();
         let mut vanished_item_names: Vec<String> = Vec::new();
+        let mut transferred_coins: i32 = 0;
 
-        if !loot_items.is_empty() {
-            let mut rng = rng();
-            loot_items.shuffle(&mut rng);
-
+        {
             let raw_rule = &self.rule_engine.death_item_disposition.description;
             let mut disposition = DeathDisposition::from_rule(raw_rule);
             if loot_recipient_id.is_none() && matches!(disposition, DeathDisposition::KillerTakes) {
                 disposition = DeathDisposition::DropToGround;
             }
 
-            match disposition {
-                DeathDisposition::Vanish => {
-                    vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
+            // 货币处理：仅被玩家攻击致死时击杀者缴获全部货币，其余死因货币直接消失
+            if victim_coins > 0 {
+                if let Some(loot_player_id) = loot_recipient_id {
+                    if let Some(killer) = self.players.get_mut(loot_player_id) {
+                        killer.coins += victim_coins;
+                        transferred_coins = victim_coins;
+                    }
                 }
-                DeathDisposition::DropToGround => {
-                    if let Some(location) = location_option {
-                        if self.places.contains_key(location) {
-                            dropped_item_names
-                                .extend(self.drop_remaining_items(location, &mut loot_items));
-                        } else {
-                            vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
-                        }
-                    } else {
+                // 非 PVP 击杀：货币直接消失（victim_coins 已在上方清零，无需额外操作）
+            }
+
+            if !loot_items.is_empty() {
+                let mut rng = rng();
+                loot_items.shuffle(&mut rng);
+
+                match disposition {
+                    DeathDisposition::Vanish => {
                         vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
                     }
-                }
-                DeathDisposition::KillerTakes => {
-                    if let Some(loot_player_id) = loot_recipient_id {
-                        if let Some(killer) = self.players.get_mut(loot_player_id) {
-                            let max_backpack = self.rule_engine.player_config.max_backpack_items;
-                            let current_total = killer.get_total_item_count();
-                            let available_slots = max_backpack.saturating_sub(current_total);
-                            if available_slots > 0 {
-                                let take_count = available_slots.min(loot_items.len());
-                                let taken_items: Vec<Item> =
-                                    loot_items.drain(..take_count).collect();
-                                collected_item_names
-                                    .extend(taken_items.iter().map(|item| item.name.clone()));
-                                killer.inventory.extend(taken_items);
-                            }
-                        }
-                    }
-
-                    if !loot_items.is_empty() {
+                    DeathDisposition::DropToGround => {
                         if let Some(location) = location_option {
                             if self.places.contains_key(location) {
                                 dropped_item_names
@@ -166,6 +153,36 @@ impl GameState {
                             }
                         } else {
                             vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
+                        }
+                    }
+                    DeathDisposition::KillerTakes => {
+                        if let Some(loot_player_id) = loot_recipient_id {
+                            if let Some(killer) = self.players.get_mut(loot_player_id) {
+                                let max_backpack = self.rule_engine.player_config.max_backpack_items;
+                                let current_total = killer.get_total_item_count();
+                                let available_slots = max_backpack.saturating_sub(current_total);
+                                if available_slots > 0 {
+                                    let take_count = available_slots.min(loot_items.len());
+                                    let taken_items: Vec<Item> =
+                                        loot_items.drain(..take_count).collect();
+                                    collected_item_names
+                                        .extend(taken_items.iter().map(|item| item.name.clone()));
+                                    killer.inventory.extend(taken_items);
+                                }
+                            }
+                        }
+
+                        if !loot_items.is_empty() {
+                            if let Some(location) = location_option {
+                                if self.places.contains_key(location) {
+                                    dropped_item_names
+                                        .extend(self.drop_remaining_items(location, &mut loot_items));
+                                } else {
+                                    vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
+                                }
+                            } else {
+                                vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
+                            }
                         }
                     }
                 }
@@ -193,8 +210,15 @@ impl GameState {
 
         let mut detail_segments: Vec<String> = Vec::new();
         Self::push_segment(&mut detail_segments, "缴获", &collected_item_names);
+        if transferred_coins > 0 {
+            detail_segments.push(format!("缴获货币: {}", transferred_coins));
+        }
         Self::push_segment(&mut detail_segments, "掉落", &dropped_item_names);
         Self::push_segment(&mut detail_segments, "消失", &vanished_item_names);
+        // 非 PVP 击杀时货币直接消失
+        if victim_coins > 0 && transferred_coins == 0 {
+            detail_segments.push(format!("消失货币: {}", victim_coins));
+        }
 
         if !detail_segments.is_empty() {
             log_message.push_str("; ");
@@ -212,6 +236,7 @@ impl GameState {
             "loot_recipient_name": loot_recipient_name,
             "location_before_death": location_option.map(|loc| loc.to_string()),
             "killer_collected_items": collected_item_names,
+            "transferred_coins": transferred_coins,
             "dropped_items": dropped_item_names,
             "vanished_items": vanished_item_names,
         });

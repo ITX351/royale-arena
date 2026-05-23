@@ -628,4 +628,147 @@ impl GameState {
             }
         }
     }
+
+    /// 商店购买处理
+    pub fn handle_shop_buy_action(
+        &mut self,
+        player_id: &str,
+        buy_items: &[crate::websocket::models::ShopBuyItem],
+    ) -> Result<ActionResults, String> {
+        if buy_items.is_empty() {
+            let data = serde_json::json!({});
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "未选择任何商品".to_string(),
+                false,
+            )
+            .as_results());
+        }
+
+        // 验证并收集购买信息：(listing_id, item_name, price, buy_qty)
+        let mut purchase_plan: Vec<(String, String, i32, i32)> = Vec::new();
+        let mut total_cost: i32 = 0;
+        let mut total_items: usize = 0;
+
+        for buy in buy_items {
+            if buy.quantity < 1 {
+                continue;
+            }
+            let listing = match self.shop.iter().find(|l| l.id == buy.listing_id) {
+                Some(l) => l.clone(),
+                None => {
+                    let data = serde_json::json!({});
+                    return Ok(ActionResult::new_info_message(
+                        data,
+                        vec![player_id.to_string()],
+                        format!("商品 {} 不存在或已被下架", buy.listing_id),
+                        false,
+                    )
+                    .as_results());
+                }
+            };
+
+            let buy_qty = buy.quantity.min(listing.quantity);
+            if buy_qty == 0 {
+                continue;
+            }
+
+            total_cost += listing.price * buy_qty;
+            total_items += buy_qty as usize;
+            purchase_plan.push((listing.id.clone(), listing.item_name.clone(), listing.price, buy_qty));
+        }
+
+        if purchase_plan.is_empty() {
+            let data = serde_json::json!({});
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                "未选择任何商品".to_string(),
+                false,
+            )
+            .as_results());
+        }
+
+        // 检查玩家货币是否足够
+        let player = self.players.get(player_id).ok_or("Player not found")?;
+        if player.coins < total_cost {
+            let data = serde_json::json!({});
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                format!("货币不足，需要 {} 但只有 {}", total_cost, player.coins),
+                false,
+            )
+            .as_results());
+        }
+
+        // 检查背包空间
+        let max_inventory_size = self.rule_engine.player_config.max_backpack_items as usize;
+        let current_items = player.get_total_item_count();
+        if current_items + total_items > max_inventory_size {
+            let data = serde_json::json!({});
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![player_id.to_string()],
+                format!(
+                    "背包空间不足，需要 {} 个空位但只有 {} 个",
+                    total_items,
+                    max_inventory_size.saturating_sub(current_items)
+                ),
+                false,
+            )
+            .as_results());
+        }
+
+        // 创建物品并加入背包
+        let player = self.players.get_mut(player_id).unwrap();
+        let player_name = player.name.clone();
+        let mut created_items = Vec::new();
+
+        for (_id, item_name, _price, qty) in &purchase_plan {
+            for _ in 0..*qty {
+                match self.rule_engine.create_item_from_name(item_name) {
+                    Ok(item) => {
+                        created_items.push(item.name.clone());
+                        player.inventory.push(item);
+                    }
+                    Err(err) => {
+                        eprintln!("商店购买创建物品失败: {}, 错误: {}", item_name, err);
+                    }
+                }
+            }
+        }
+
+        // 扣除货币
+        player.coins -= total_cost;
+
+        // 扣减库存或移除售罄商品
+        for (listing_id, _, _, buy_qty) in &purchase_plan {
+            if let Some(listing) = self.shop.iter_mut().find(|l| l.id == *listing_id) {
+                listing.quantity -= buy_qty;
+            }
+        }
+        self.shop.retain(|l| l.quantity > 0);
+
+        let data = serde_json::json!({
+            "purchased_items": created_items,
+            "total_cost": total_cost,
+            "remaining_coins": player.coins,
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "{} 从商店购买了 {} 件物品，花费 {} 货币",
+                player_name,
+                created_items.len(),
+                total_cost
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
 }

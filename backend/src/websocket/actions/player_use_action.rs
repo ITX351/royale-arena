@@ -1,6 +1,6 @@
 //! 玩家使用道具行动处理（重构版）
 
-use crate::game::game_rule_engine::{ConsumableProperties, Item, ItemType, UtilityProperties};
+use crate::game::game_rule_engine::{ConsumableProperties, CurrencyProperties, Item, ItemType, UtilityProperties};
 use crate::websocket::actions::player_action_scheduler::ActionParams;
 use crate::websocket::actions::utils::{
     UseOutcome, decrement_uses, format_delta, format_use_remaining_suffix,
@@ -96,6 +96,14 @@ impl GameState {
                 &player_name,
                 &item.name,
                 effect,
+                strength_before,
+                use_cost,
+            ),
+            ItemType::Currency(properties) => self.handle_currency_use(
+                player_id,
+                &player_name,
+                &item.name,
+                properties,
                 strength_before,
                 use_cost,
             ),
@@ -256,6 +264,51 @@ impl GameState {
             }
             _ => Err(format!("消耗品 {} 没有定义效果", item_display_name)),
         }
+    }
+
+    fn handle_currency_use(
+        &mut self,
+        player_id: &str,
+        player_name: &str,
+        item_display_name: &str,
+        properties: &CurrencyProperties,
+        strength_before: i32,
+        use_cost: i32,
+    ) -> Result<ItemUseOutcome, String> {
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.coins += properties.value;
+        }
+
+        let coins_after = self.players.get(player_id).unwrap().coins;
+        let strength_after = self.predict_strength_after_use(player_id, use_cost);
+        let strength_delta = strength_after - strength_before;
+
+        let log_message = format!(
+            "{} 使用了 {}，货币总数{} (+{})，体力{} ({})",
+            player_name,
+            item_display_name,
+            coins_after,
+            properties.value,
+            strength_after,
+            format_delta(strength_delta)
+        );
+
+        let data = json!({
+            "coins": coins_after,
+            "coins_delta": properties.value,
+            "strength": strength_after,
+            "strength_delta": strength_delta,
+        });
+
+        let result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            log_message,
+            true,
+        );
+
+        Ok(ItemUseOutcome::new(vec![result]).with_reinsert(false))
     }
 
     fn handle_utility_use(

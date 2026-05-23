@@ -2,7 +2,7 @@
 //!
 //! 负责玩家行动的权限验证和分发调度
 
-use crate::websocket::models::{ActionResult, ActionResults, GameState, Player};
+use crate::websocket::models::{ActionResult, ActionResults, GameState, Player, ShopBuyItem};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -32,6 +32,9 @@ pub struct ActionParams {
 
     /// 消息内容
     pub message: Option<String>,
+
+    /// 商店购买请求列表
+    pub shop_buy_items: Option<Vec<ShopBuyItem>>,
 }
 
 impl ActionParams {
@@ -298,6 +301,22 @@ impl PlayerActionScheduler {
                     .ok_or("Missing message parameter")?;
                 game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_deliver_action(player_id, target_player_id, message);
+            }
+            "shop_buy" => {
+                validate_or_return!(
+                    game_state,
+                    player_id,
+                    vec![
+                        ValidationType::Alive,
+                        ValidationType::Born,
+                        ValidationType::NotBound,
+                    ]
+                );
+                let buy_items = action_params
+                    .shop_buy_items
+                    .as_ref()
+                    .ok_or("Missing shop_buy_items parameter")?;
+                return game_state.handle_shop_buy_action(player_id, buy_items);
             }
             "send" => {
                 let message = action_params

@@ -24,6 +24,7 @@ pub struct DirectorActionParams {
     pub player_id: Option<String>,
     pub life: Option<i32>,     // 玩家生命值
     pub strength: Option<i32>, // 玩家体力值
+    pub coins: Option<i32>,    // 玩家货币
     pub target_place: Option<String>,
     pub action_type: Option<String>, // rope/unrope
     pub rest_enabled: Option<bool>,  // 夜晚结算时静养是否生效
@@ -39,6 +40,11 @@ pub struct DirectorActionParams {
     pub airdrops: Option<Vec<AirdropItem>>,
     pub deletions: Option<Vec<ItemDeletionItem>>,
     pub clear_all: Option<bool>,
+
+    /// 商店操作
+    pub shop_listing_id: Option<String>,
+    pub price: Option<i32>,
+    pub quantity: Option<i32>,
 }
 
 impl DirectorActionParams {
@@ -140,6 +146,26 @@ impl DirectorActionScheduler {
                 game_state.handle_set_player_strength(&player_id, strength)
             }
 
+            "coins" => {
+                let player_id = action_params
+                    .player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let coins = action_params
+                    .coins
+                    .ok_or_else(|| "Missing coins parameter".to_string())?;
+                game_state.handle_set_player_coins(&player_id, coins)
+            }
+
+            "move_player" => {
+                let player_id = action_params
+                    .player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let target_place = action_params
+                    .target_place
+                    .ok_or_else(|| "Missing target_place parameter".to_string())?;
+                game_state.handle_move_player(&player_id, &target_place)
+            }
+
             "add_player_item" => {
                 let player_id = action_params
                     .player_id
@@ -187,6 +213,24 @@ impl DirectorActionScheduler {
             "night_settlement" => {
                 let rest_enabled = action_params.rest_enabled.unwrap_or(true);
                 game_state.handle_night_settlement(rest_enabled)
+            }
+
+            "shop_list_item" => {
+                let item_name = action_params
+                    .item_name
+                    .ok_or_else(|| "Missing item_name parameter".to_string())?;
+                let price = action_params
+                    .price
+                    .ok_or_else(|| "Missing price parameter".to_string())?;
+                let quantity = action_params.quantity.unwrap_or(1);
+                game_state.handle_shop_list_item(item_name, price, quantity)
+            }
+
+            "shop_delist_item" => {
+                let listing_id = action_params
+                    .shop_listing_id
+                    .ok_or_else(|| "Missing shop_listing_id parameter".to_string())?;
+                game_state.handle_shop_delist_item(&listing_id)
             }
 
             _ => Err(format!("Unknown director action type: {}", action_type)),

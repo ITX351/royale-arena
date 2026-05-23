@@ -62,6 +62,17 @@ export interface ConsumableConfig {
   properties: ConsumableProperties
 }
 
+export interface CurrencyProperties {
+  value: number
+}
+
+export interface CurrencyConfig {
+  name: string
+  internalName?: string
+  rarity?: string
+  properties: CurrencyProperties
+}
+
 export interface UpgraderConfig {
   internalName: string
   displayNames: string[]
@@ -78,6 +89,7 @@ export interface ItemsByCategoryConfig {
   armors: ArmorConfig[]
   utilities: UtilityConfig[]
   consumables: ConsumableConfig[]
+  currencies: CurrencyConfig[]
   upgraders: UpgraderConfig[]
 }
 
@@ -99,6 +111,7 @@ const createEmptyItemsConfig = (): NormalizedItemsConfig => ({
     armors: [],
     utilities: [],
     consumables: [],
+    currencies: [],
     upgraders: []
   },
   upgradeRecipes: {}
@@ -149,7 +162,7 @@ export function parseItemsConfig(rawItemsConfig: any): ItemsConfigParseResult {
       issues.push('items_config.items 应为对象')
     }
   } else {
-    const { weapons, armors, utilities, consumables, upgraders } = itemsSection
+    const { weapons, armors, utilities, consumables, currencies, upgraders } = itemsSection
 
     if (Array.isArray(weapons)) {
       parsed.items.weapons = weapons.map((weapon: any) => {
@@ -292,6 +305,28 @@ export function parseItemsConfig(rawItemsConfig: any): ItemsConfigParseResult {
       issues.push('items_config.items.consumables 应为数组')
     }
 
+    if (Array.isArray(currencies)) {
+      parsed.items.currencies = currencies.map((currency: any) => {
+        const currencyProperties = currency?.properties ?? {}
+        const properties: CurrencyProperties = {
+          value: toNumberWithDefault(currencyProperties.value, 0)
+        }
+
+        const rarity = typeof currency?.rarity === 'string' && currency.rarity.length > 0
+          ? currency.rarity
+          : undefined
+
+        return {
+          name: typeof currency?.name === 'string' ? currency.name : '',
+          internalName: typeof currency?.internal_name === 'string' ? currency.internal_name : undefined,
+          rarity,
+          properties
+        }
+      })
+    } else if (currencies !== undefined) {
+      issues.push('items_config.items.currencies 应为数组')
+    }
+
     if (Array.isArray(upgraders)) {
       parsed.items.upgraders = upgraders.map((upgrader: any) => {
         const rarity = typeof upgrader?.rarity === 'string' && upgrader.rarity.length > 0
@@ -364,6 +399,10 @@ export function findDuplicateItemNames(itemsConfig: NormalizedItemsConfig): stri
 
   for (const consumable of itemsConfig.items.consumables) {
     trackName(consumable.name)
+  }
+
+  for (const currency of itemsConfig.items.currencies) {
+    trackName(currency.name)
   }
 
   for (const upgrader of itemsConfig.items.upgraders) {

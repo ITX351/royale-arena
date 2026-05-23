@@ -421,7 +421,8 @@ export class GameRuleParser {
 						'armors',
 						'utilities',
 						'consumables',
-						'upgraders'
+						'upgraders',
+						'currencies'
 					])
 					if (itemsUnexpected.length > 0) {
 						errors.push(`items_config.items 包含未知字段: ${itemsUnexpected.join(', ')}`)
@@ -650,6 +651,41 @@ export class GameRuleParser {
 							}
 							if (!Array.isArray(upgrader.display_names) || upgrader.display_names.length === 0) {
 								errors.push(`升级器[${index}]显示名称必须是非空数组`)
+							}
+						})
+					}
+
+					if (categories.currencies !== undefined && !Array.isArray(categories.currencies)) {
+						errors.push('items_config.items.currencies 必须是数组')
+					} else if (Array.isArray(categories.currencies)) {
+						categories.currencies.forEach((currency: any, index: number) => {
+							if (!currency || typeof currency !== 'object') {
+								errors.push(`货币[${index}]配置必须是对象`)
+								return
+							}
+							const currencyUnexpected = this.findUnexpectedKeys(currency as Record<string, unknown>, [
+								'name',
+								'internal_name',
+								'rarity',
+								'properties'
+							])
+							if (currencyUnexpected.length > 0) {
+								errors.push(`items_config.items.currencies[${index}] 包含未知字段: ${currencyUnexpected.join(', ')}`)
+							}
+							if (!currency.name || typeof currency.name !== 'string' || currency.name.trim().length === 0) {
+								errors.push(`货币[${index}]缺少名称`)
+							}
+							if (!currency.properties || typeof currency.properties !== 'object') {
+								errors.push(`货币[${index}]缺少属性配置`)
+							} else {
+								const properties = currency.properties
+								const currencyPropUnexpected = this.findUnexpectedKeys(properties, ['value'])
+								if (currencyPropUnexpected.length > 0) {
+									errors.push(`items_config.items.currencies[${index}].properties 包含未知字段: ${currencyPropUnexpected.join(', ')}`)
+								}
+								if (typeof properties.value !== 'number' || !Number.isFinite(properties.value)) {
+									errors.push(`货币[${index}]数值必须是数字`)
+								}
 							}
 						})
 					}

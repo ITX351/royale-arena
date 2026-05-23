@@ -2,7 +2,7 @@
 
 use crate::websocket::actions::utils::format_delta;
 use crate::websocket::models::{
-    ActionResult, ActionResults, AirdropItem, GameState, ItemDeletionItem,
+    ActionResult, ActionResults, AirdropItem, GameState, ItemDeletionItem, ShopListing,
 };
 
 impl GameState {
@@ -418,6 +418,143 @@ impl GameState {
         Ok(action_result.as_results())
     }
 
+    /// 设置玩家货币
+    pub fn handle_set_player_coins(
+        &mut self,
+        player_id: &str,
+        coins: i32,
+    ) -> Result<ActionResults, String> {
+        let (player_name, final_coins, coins_change) = {
+            let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+
+            if player.coins == coins {
+                let data = serde_json::json!({
+                    "player_id": player_id,
+                    "coins": player.coins,
+                    "message": "货币未发生变化"
+                });
+
+                let log_message = format!(
+                    "导演尝试设置 {} 货币为 {}，但未发生变化",
+                    player.name, coins
+                );
+
+                return Ok(
+                    ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+                );
+            }
+
+            let player_name = player.name.clone();
+            let previous_coins = player.coins;
+            player.coins = coins;
+            let final_coins = player.coins;
+            let coins_change = final_coins - previous_coins;
+
+            (player_name, final_coins, coins_change)
+        };
+
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "coins": final_coins
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "导演设置 {} 货币为 {} ({})",
+                player_name,
+                final_coins,
+                format_delta(coins_change)
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
+
+    /// 移动玩家到指定地点
+    pub fn handle_move_player(
+        &mut self,
+        player_id: &str,
+        target_place: &str,
+    ) -> Result<ActionResults, String> {
+        let player = self
+            .players
+            .get(player_id)
+            .ok_or("Player not found")?;
+
+        let current_location = player.location.clone();
+        let player_name = player.name.clone();
+
+        if current_location == target_place {
+            let data = serde_json::json!({
+                "player_id": player_id,
+                "location": current_location,
+                "message": "位置未发生变化"
+            });
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![],
+                format!("导演尝试移动 {}，但位置未发生变化", player_name),
+                true,
+            )
+            .as_results());
+        }
+
+        // 验证目标地点是否存在
+        if !self.places.contains_key(target_place) {
+            return Err(format!("目标地点 {} 不存在", target_place));
+        }
+
+        // 验证目标地点是否被摧毁
+        if self.places[target_place].is_destroyed {
+            let data = serde_json::json!({
+                "message_type": "Info",
+                "log_message": format!("无法移动到 {}: 地点已被摧毁", target_place),
+            });
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![],
+                format!("无法移动 {} 到 {}：地点已被摧毁", player_name, target_place),
+                false,
+            )
+            .as_results());
+        }
+
+        // 从旧地点移除玩家
+        if !current_location.is_empty() {
+            if let Some(place) = self.places.get_mut(&current_location) {
+                place.players.retain(|id| id != player_id);
+            }
+        }
+
+        // 更新玩家位置
+        let player = self.players.get_mut(player_id).unwrap();
+        player.location = target_place.to_string();
+
+        // 将玩家添加到新地点
+        let place = self.places.get_mut(target_place).unwrap();
+        place.players.push(player_id.to_string());
+
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "location": target_place
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "导演移动 {} 从 {} 到 {}",
+                player_name, current_location, target_place
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
+
     /// 向玩家添加物品
     pub fn handle_add_player_item(
         &mut self,
@@ -618,6 +755,77 @@ impl GameState {
             format!("导演向 {} 发送消息: {}", player_name, message),
             true,
         );
+
+        Ok(action_result.as_results())
+    }
+
+    /// 商店上架物品
+    pub fn handle_shop_list_item(
+        &mut self,
+        item_name: String,
+        price: i32,
+        quantity: i32,
+    ) -> Result<ActionResults, String> {
+        // 验证物品名称是否存在于规则配置中
+        self.rule_engine
+            .create_item_from_name(&item_name)
+            .map_err(|err| format!("物品 {} 不存在于规则配置中: {}", item_name, err))?;
+
+        let qty = quantity.max(1);
+
+        let listing = ShopListing {
+            id: uuid::Uuid::new_v4().to_string(),
+            item_name,
+            price,
+            quantity: qty,
+        };
+
+        self.shop.push(listing.clone());
+
+        let data = serde_json::json!({
+            "shop_listing": listing,
+        });
+
+        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
+        let mut action_result = ActionResult::new_system_message(
+            data,
+            broadcast_players,
+            format!(
+                "导演上架物品: {} x{} (单价: {})",
+                listing.item_name, listing.quantity, listing.price
+            ),
+            true,
+        );
+        action_result.broadcast_to_all = true;
+
+        Ok(action_result.as_results())
+    }
+
+    /// 商店下架物品
+    pub fn handle_shop_delist_item(
+        &mut self,
+        listing_id: &str,
+    ) -> Result<ActionResults, String> {
+        let pos = self
+            .shop
+            .iter()
+            .position(|l| l.id == listing_id)
+            .ok_or("商品未找到".to_string())?;
+
+        let removed = self.shop.remove(pos);
+
+        let data = serde_json::json!({
+            "shop_listing_id": listing_id,
+        });
+
+        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
+        let mut action_result = ActionResult::new_system_message(
+            data,
+            broadcast_players,
+            format!("导演下架物品: {}", removed.item_name),
+            true,
+        );
+        action_result.broadcast_to_all = true;
 
         Ok(action_result.as_results())
     }

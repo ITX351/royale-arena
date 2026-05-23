@@ -259,6 +259,7 @@ const sortedInventoryItems = computed<Item[]>(() => {
 
   const healConsumables: Item[] = []
   const strengthConsumables: Item[] = []
+  const currencyItems: Item[] = []
   const utilityItems: Item[] = []
   const weaponItems: Item[] = []
   const armorItems: Item[] = []
@@ -283,6 +284,11 @@ const sortedInventoryItems = computed<Item[]>(() => {
         strengthConsumables.push(item)
         return
       }
+    }
+
+    if (category === 'currency') {
+      currencyItems.push(item)
+      return
     }
 
     if (category === 'utility') {
@@ -317,6 +323,7 @@ const sortedInventoryItems = computed<Item[]>(() => {
   return [
     ...healConsumables,
     ...strengthConsumables,
+    ...currencyItems,
     ...utilityItems,
     ...weaponItems,
     ...armorItems,
@@ -329,6 +336,7 @@ const canUseItem = (item: Item) => {
   const type = item.item_type?.type
   if (type === 'consumable') return true
   if (type === 'utility') return true
+  if (type === 'currency') return true
   return false
 }
 

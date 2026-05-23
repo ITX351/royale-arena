@@ -84,6 +84,21 @@
             </div>
           </div>
 
+          <!-- 货币 -->
+          <div class="item-category">
+            <h5>货币</h5>
+            <div v-for="item in parsedItems?.currencies || []" :key="item" class="item-option">
+              <el-form-item :label="item">
+                <el-input-number
+                  v-model="specificSelections[item]"
+                  :min="0"
+                  placeholder="数量"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </div>
+          </div>
+
           <!-- 升级器 -->
           <div class="item-category">
             <h5>升级器</h5>
@@ -405,7 +420,7 @@ const initializeSelections = () => {
   
   // 初始化具体物品选择
   if (parsedItems.value) {
-  [...parsedItems.value.utilities, ...parsedItems.value.consumables, ...parsedItems.value.upgraders]
+  [...parsedItems.value.utilities, ...parsedItems.value.consumables, ...parsedItems.value.currencies, ...parsedItems.value.upgraders]
       .forEach(item => {
         specificSelections[item] = 0
       })

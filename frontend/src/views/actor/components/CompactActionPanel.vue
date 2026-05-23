@@ -13,6 +13,10 @@
       <span class="status-value strength">{{ player.strength }}</span>
     </div>
     <div class="status-item">
+      <span class="status-label">货币:</span>
+      <span class="status-value coins">{{ player.coins }}</span>
+    </div>
+    <div class="status-item">
       <span class="status-label">位置:</span>
       <span class="status-value location">{{ locationDisplay }}</span>
     </div>
@@ -106,30 +110,85 @@
 
       <div class="action-buttons" v-if="hasSpawned">
         <div class="primary-actions">
-          <el-button 
-            type="success" 
+          <el-button
+            type="success"
             size="small"
             :disabled="actionsDisabled"
             @click="handleSearch"
           >
             搜索
           </el-button>
-          <el-button 
-            type="danger" 
+          <el-button
+            type="danger"
             size="small"
             :disabled="actionsDisabled || !hasValidTarget"
             @click="handleAttack"
           >
             攻击
           </el-button>
-          <el-button 
-            type="warning" 
+          <el-button
+            type="warning"
             size="small"
             :disabled="actionsDisabled || !hasItemTarget"
             @click="handlePick"
           >
             捡拾
           </el-button>
+          <el-popover
+            placement="bottom"
+            :width="380"
+            trigger="click"
+            :disabled="actionsDisabled"
+            @before-enter="shopPopoverVisible = true"
+            @after-leave="onShopPopoverClose"
+          >
+            <template #reference>
+              <el-button
+                type="primary"
+                size="small"
+                :disabled="actionsDisabled"
+              >
+                商店
+              </el-button>
+            </template>
+            <div class="shop-popover" v-if="shopPopoverVisible">
+              <div v-if="shopListings.length === 0" class="shop-empty">
+                当前没有可购买的商品
+              </div>
+              <template v-else>
+                <div class="shop-item-list">
+                  <div v-for="listing in shopListings" :key="listing.id" class="shop-item-row">
+                    <span class="shop-item-name">{{ listing.item_name }}</span>
+                    <span class="shop-item-meta">
+                      <span class="shop-item-price">{{ listing.price }} 币</span>
+                      <span class="shop-item-stock">库存 {{ listing.quantity }}</span>
+                    </span>
+                    <el-input-number
+                      v-model="shopQuantities[listing.id]"
+                      :min="0"
+                      :max="listing.quantity"
+                      size="small"
+                      class="shop-qty-input"
+                    />
+                  </div>
+                </div>
+                <div class="shop-footer">
+                  <span class="shop-total">
+                    合计: <strong>{{ shopTotalCost }}</strong> 币
+                    (持有: {{ player.coins }})
+                  </span>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="shopTotalCost === 0 || shopTotalCost > player.coins"
+                    @click="handleShopBuy"
+                  >
+                    购买 ({{ shopTotalCount }})
+                  </el-button>
+                </div>
+              </template>
+            </div>
+          </el-popover>
         </div>
         <div class="rest-status-chip rest-desktop" :class="restStatusClass">
           <span class="rest-status-text">{{ restStatusLabel }}</span>
@@ -232,7 +291,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { Player, ActorPlayer,ActorPlace, GlobalState } from '@/types/gameStateTypes'
+import type { Player, ActorPlayer,ActorPlace, GlobalState, ShopListing, ShopBuyItem } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 import { useGameStateStore } from '@/stores/gameState'
 
@@ -241,6 +300,7 @@ const props = withDefaults(defineProps<{
   places: ActorPlace[]
   players: ActorPlayer[]
   globalState: GlobalState | null
+  shopListings: ShopListing[]
   communicationVisible?: boolean
 }>(), {
   communicationVisible: true
@@ -248,6 +308,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   action: [action: string, params: Record<string, any>]
+  'shop-buy': [items: ShopBuyItem[]]
 }>()
 
 // 响应式数据
@@ -263,6 +324,35 @@ let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
 const MESSAGE_MAX_LENGTH = 100
+const shopPopoverVisible = ref(false)
+const shopQuantities = ref<Record<string, number>>({})
+
+const shopTotalCost = computed(() => {
+  return props.shopListings.reduce((sum, l) => {
+    const qty = shopQuantities.value[l.id] || 0
+    return sum + l.price * qty
+  }, 0)
+})
+
+const shopTotalCount = computed(() => {
+  return props.shopListings.reduce((sum, l) => {
+    return sum + (shopQuantities.value[l.id] || 0)
+  }, 0)
+})
+
+const onShopPopoverClose = () => {
+  shopPopoverVisible.value = false
+  shopQuantities.value = {}
+}
+
+const handleShopBuy = () => {
+  const items: ShopBuyItem[] = props.shopListings
+    .map(l => ({ listing_id: l.id, quantity: shopQuantities.value[l.id] || 0 }))
+    .filter(item => item.quantity > 0)
+  if (items.length === 0 || shopTotalCost.value > props.player.coins) return
+  emit('shop-buy', items)
+  shopQuantities.value = {}
+}
 
 const selectPopperOptions = {
   modifiers: [
@@ -700,6 +790,11 @@ function formatDuration(durationMs: number) {
   color: #67c23a;
 }
 
+.status-value.coins {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
 .status-value.location {
   color: #409eff;
 }
@@ -1064,6 +1159,89 @@ function formatDuration(durationMs: number) {
 :deep(.el-select .el-input__inner),
 :deep(.el-select__selected-item) {
   font-size: 12px;
+}
+
+.shop-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shop-empty {
+  text-align: center;
+  color: #909399;
+  padding: 20px 0;
+  font-size: 13px;
+}
+
+.shop-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.shop-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shop-item-name {
+  font-size: 13px;
+  color: #303133;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.shop-item-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.shop-item-price {
+  font-size: 12px;
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.shop-item-stock {
+  font-size: 11px;
+  color: #909399;
+}
+
+.shop-qty-input {
+  width: 90px !important;
+  flex-shrink: 0;
+}
+
+.shop-qty-input :deep(.el-input__inner) {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.shop-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid #ebeef5;
+}
+
+.shop-total {
+  font-size: 13px;
+  color: #606266;
+}
+
+.shop-total strong {
+  color: #e6a23c;
 }
 
 @supports (-webkit-touch-callout: none) {
