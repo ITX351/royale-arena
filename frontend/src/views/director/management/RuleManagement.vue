@@ -120,7 +120,7 @@ import MarkdownIt from 'markdown-it'
 
 import type { GameWithRules } from '@/types/game'
 import type { RuleConfigSource } from '@/types/ruleTemplate'
-import { DEFAULT_RULES_CONFIG, DEFAULT_RULES_JSON } from '@/constants/defaultRulesConfig'
+import { DEFAULT_RULES_JSON } from '@/constants/defaultRulesConfig'
 import { directorService } from '@/services/directorService'
 import { getBasePathUrl } from '@/utils/commonUtils'
 import { GameRuleParser, GameRuleParserError } from '@/utils/gameRuleParser'
@@ -173,41 +173,12 @@ const renderedExamples = computed(() => {
   return md.render(examples.value)
 })
 
-const mergeMissingDefaults = (baseValue: unknown, currentValue: unknown): unknown => {
-  if (Array.isArray(baseValue)) {
-    return currentValue === undefined ? baseValue : currentValue
-  }
-
-  if (baseValue && typeof baseValue === 'object') {
-    if (!currentValue || typeof currentValue !== 'object' || Array.isArray(currentValue)) {
-      return baseValue
-    }
-
-    const baseRecord = baseValue as Record<string, unknown>
-    const currentRecord = currentValue as Record<string, unknown>
-    const merged: Record<string, unknown> = { ...currentRecord }
-
-    for (const key of Object.keys(baseRecord)) {
-      merged[key] = mergeMissingDefaults(baseRecord[key], currentRecord[key])
-    }
-
-    return merged
-  }
-
-  return currentValue === undefined ? baseValue : currentValue
-}
-
-const normalizeRulesConfig = (rulesConfig: unknown) => {
-  return mergeMissingDefaults(DEFAULT_RULES_CONFIG, rulesConfig) as Record<string, unknown>
-}
-
 
 
 // 监听器
 watch(() => props.game.rules_config, (newRules) => {
   if (newRules) {
-    const normalizedRules = normalizeRulesConfig(newRules)
-    editableRules.value = JSON.stringify(normalizedRules, null, 2)
+    editableRules.value = JSON.stringify(newRules, null, 2)
     originalRules.value = editableRules.value
   } else {
     editableRules.value = DEFAULT_RULES_JSON
@@ -288,8 +259,7 @@ const applyTemplate = (source: RuleConfigSource) => {
       source.rules_config && typeof source.rules_config === 'object'
         ? source.rules_config
         : {}
-    const normalizedTemplate = normalizeRulesConfig(templateConfig)
-    const formattedRules = JSON.stringify(normalizedTemplate, null, 2)
+    const formattedRules = JSON.stringify(templateConfig, null, 2)
 
     editableRules.value = formattedRules
     activeTab.value = 'editor'
