@@ -42,7 +42,8 @@
       "armors": [],
       "utilities": [],
       "consumables": [],
-      "upgraders": []
+      "upgraders": [],
+      "currencies": []
     },
     "upgrade_recipes": {}
   },
@@ -53,6 +54,7 @@
     "player_daily_life_recovery": "每日生命恢复",
     "player_daily_strength_recovery": "每日体力恢复",
     "player_search_cooldown": "搜索冷却时间",
+    "player_unarmed_damage": "挥拳伤害",
     "action_move": "移动",
     "action_search": "搜索",
     "action_pick": "拾取",
@@ -61,8 +63,8 @@
     "action_use": "使用",
     "action_throw": "丢弃",
     "action_deliver": "传音",
-    "rest_life_recovery": "生命恢复",
-    "rest_max_moves": "最大移动次数"
+    "rest_life_recovery": "静养生命恢复",
+    "rest_max_moves": "静养允许移动次数"
   }
 }
 ```
@@ -215,7 +217,7 @@
           "display_names": ["[橙]自然之力.晓", "[橙]自然之力.午", "[橙]自然之力.夜", "[橙]自然之力.日", "[橙]自然之力.月", "[橙]自然之力.星", "[橙]自然之力.水", "[橙]自然之力.火", "[橙]自然之力.风"],
           "rarity": "legendary",
           "properties": {
-            "damage": 40,
+            "damage": 50,
             "uses": 5,
             "votes": 0,
             "aoe_damage": 40,
@@ -416,6 +418,48 @@
 2. 体力恢复类消耗品
    - 矿泉水：使用后恢复指定体力值
 
+### 货币 (currencies)
+
+定义可被玩家直接“使用”并转换为货币余额的物品。货币物品会显示在背包中，使用后会增加玩家的 `coins` 数值，并从背包中消耗。
+
+```json
+{
+  "items_config": {
+    "items": {
+      "currencies": [
+        {
+          "name": "金币",
+          "internal_name": "gold_coin",
+          "rarity": "common",
+          "properties": {
+            "value": 1
+          }
+        },
+        {
+          "name": "古代钱币",
+          "internal_name": "ancient_coin",
+          "rarity": "rare",
+          "properties": {
+            "value": 10
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+字段说明：
+- `name`: 货币道具的显示名称
+- `internal_name`: 可选，货币道具的内部名称
+- `rarity`: 可选，货币道具的稀有度
+- `properties.value`: 使用该货币后增加的货币数量
+
+货币规则说明：
+1. 货币属于独立物品分类，可参与空投和背包展示。
+2. 玩家使用货币物品后，会立即增加玩家的货币余额，并消耗该物品。
+3. 玩家被其他玩家击杀时，击杀者会缴获死者全部货币；若死于非玩家击杀原因，货币会直接消失。
+
 ### 合成系统 (upgraders & upgrade_recipes)
 
 定义物品的合成配方。
@@ -474,6 +518,7 @@
     "player_daily_life_recovery": "每日生命恢复",
     "player_daily_strength_recovery": "每日体力恢复",
     "player_search_cooldown": "搜索冷却时间",
+    "player_unarmed_damage": "挥拳伤害",
     "action_move": "移动",
     "action_search": "搜索",
     "action_pick": "拾取",
@@ -482,8 +527,8 @@
     "action_use": "使用",
     "action_throw": "丢弃",
     "action_deliver": "传音",
-    "rest_life_recovery": "生命恢复",
-    "rest_max_moves": "最大移动次数"
+    "rest_life_recovery": "静养生命恢复",
+    "rest_max_moves": "静养允许移动次数"
   }
 }
 ```
@@ -494,6 +539,7 @@
 - `player_daily_life_recovery`: 每日生命恢复显示名称
 - `player_daily_strength_recovery`: 每日体力恢复显示名称
 - `player_search_cooldown`: 搜索冷却时间显示名称
+- `player_unarmed_damage`: 挥拳伤害显示名称
 - `action_move`: 移动显示名称
 - `action_search`: 搜索显示名称
 - `action_pick`: 拾取显示名称
@@ -502,9 +548,8 @@
 - `action_use`: 使用显示名称
 - `action_throw`: 丢弃显示名称
 - `action_deliver`: 传音显示名称
-- `action_unarmed_damage`: 挥拳伤害显示名称
-- `rest_life_recovery`: 生命恢复显示名称
-- `rest_max_moves`: 最大移动次数显示名称
+- `rest_life_recovery`: 静养生命恢复显示名称
+- `rest_max_moves`: 静养允许移动次数显示名称
 
 ## 5. 高级设置
 
@@ -529,7 +574,7 @@
 
 ### 死亡后物品去向 (death_item_disposition)
 
-定义玩家死亡后其物品的处理方式。
+定义玩家死亡后其物品的处理方式。该配置只影响物品掉落，不影响玩家已有货币的转移规则。
 
 ```json
 {
@@ -542,3 +587,5 @@
   - `"killer_takes_loot"`: 如果有击杀者，则物品由击杀者获得；如果没有击杀者（如因环境因素死亡），则物品掉落在原地
   - `"drop_to_ground"`: 玩家死亡后，其所有物品均掉落在死亡地点
   - `"vanish_completely"`: 玩家死亡后，其所有物品直接消失，不留下任何物品
+
+> 说明：玩家已有货币不受 `death_item_disposition` 影响。被玩家击杀时，击杀者总是获得死者全部货币；非玩家击杀时，货币会直接消失。
