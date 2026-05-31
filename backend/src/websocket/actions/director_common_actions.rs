@@ -766,6 +766,18 @@ impl GameState {
         price: i32,
         quantity: i32,
     ) -> Result<ActionResults, String> {
+        // 验证价格合法性
+        if price < 1 {
+            let data = serde_json::json!({});
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![],
+                format!("上架价格必须 >= 1，当前值为 {}", price),
+                false,
+            )
+            .as_results());
+        }
+
         // 验证物品名称是否存在于规则配置中
         self.rule_engine
             .create_item_from_name(&item_name)

@@ -669,7 +669,20 @@ impl GameState {
                 }
             };
 
-            let buy_qty = buy.quantity.min(listing.quantity);
+            if buy.quantity > listing.quantity {
+                let data = serde_json::json!({});
+                return Ok(ActionResult::new_info_message(
+                    data,
+                    vec![player_id.to_string()],
+                    format!(
+                        "商品 {} 库存不足，请求 {} 但仅剩 {}",
+                        listing.item_name, buy.quantity, listing.quantity
+                    ),
+                    false,
+                )
+                .as_results());
+            }
+            let buy_qty = buy.quantity;
             if buy_qty == 0 {
                 continue;
             }
@@ -721,24 +734,31 @@ impl GameState {
             .as_results());
         }
 
-        // 创建物品并加入背包
-        let player = self.players.get_mut(player_id).unwrap();
-        let player_name = player.name.clone();
+        // 预先创建所有物品（原子性检查），任何一个失败则中止整笔交易
+        let player_name = self.players.get(player_id).unwrap().name.clone();
         let mut created_items = Vec::new();
-
         for (_id, item_name, _price, qty) in &purchase_plan {
             for _ in 0..*qty {
                 match self.rule_engine.create_item_from_name(item_name) {
-                    Ok(item) => {
-                        created_items.push(item.name.clone());
-                        player.inventory.push(item);
-                    }
+                    Ok(item) => created_items.push(item),
                     Err(err) => {
-                        eprintln!("商店购买创建物品失败: {}, 错误: {}", item_name, err);
+                        let data = serde_json::json!({});
+                        return Ok(ActionResult::new_info_message(
+                            data,
+                            vec![player_id.to_string()],
+                            format!("创建物品 {} 失败，交易取消: {}", item_name, err),
+                            false,
+                        )
+                        .as_results());
                     }
                 }
             }
         }
+
+        // 所有物品创建成功后，一次性加入背包、扣除货币、减少库存
+        let player = self.players.get_mut(player_id).unwrap();
+        let item_names: Vec<String> = created_items.iter().map(|i| i.name.clone()).collect();
+        player.inventory.extend(created_items);
 
         // 扣除货币
         player.coins -= total_cost;
@@ -752,22 +772,24 @@ impl GameState {
         self.shop.retain(|l| l.quantity > 0);
 
         let data = serde_json::json!({
-            "purchased_items": created_items,
+            "purchased_items": item_names,
             "total_cost": total_cost,
             "remaining_coins": player.coins,
         });
 
-        let action_result = ActionResult::new_system_message(
+        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
+        let mut action_result = ActionResult::new_system_message(
             data,
-            vec![player_id.to_string()],
+            broadcast_players,
             format!(
                 "{} 从商店购买了 {} 件物品，花费 {} 货币",
                 player_name,
-                created_items.len(),
+                item_names.len(),
                 total_cost
             ),
             true,
         );
+        action_result.broadcast_to_all = true;
 
         Ok(action_result.as_results())
     }

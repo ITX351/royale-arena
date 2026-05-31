@@ -126,11 +126,7 @@ const itemGroups = computed<ItemGroup[]>(() => {
   const groups: ItemGroup[] = []
   const p = parsedItems.value
 
-  if (p.allItems.filter(name => {
-    const weaponNames = Object.values(p.rarityItems.weapons).flat()
-    const armorNames = Object.values(p.rarityItems.armors).flat()
-    return weaponNames.includes(name)
-  }).length > 0) {
+  if (Object.values(p.rarityItems.weapons).flat().length > 0) {
     groups.push({ label: '武器', items: Object.values(p.rarityItems.weapons).flat() })
   }
   if (Object.values(p.rarityItems.armors).flat().length > 0) {
