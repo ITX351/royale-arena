@@ -457,3 +457,123 @@ const movePlayer = (playerId: string, targetPlace: string) => {
 | `views/actor/components/InventoryPanel.vue` | 修改 | 货币物品排序 + 可使用标记 |
 | `views/director/components/BatchAirdropDialog.vue` | 修改 | 货币空投选项 |
 | `views/director/components/PlayerStatusCard.vue` | 修改 | 位置下拉选择器 + 货币可编辑列 |
+
+---
+
+## 六、增量更新（2026-06-07）
+
+> 本节记录在上述改造基础上新增的“规则一致性 + 经济安全 + 可见性边界”增强，属于后端行为修复与回归测试补齐。
+
+### 6.1 商店购买（shop_buy）增强
+
+涉及文件：`backend/src/websocket/actions/player_common_actions.rs`
+
+#### 6.1.1 重复 listing 合并校验（防超卖）
+
+原逻辑按请求逐条校验库存：
+- 每条 `buy.quantity <= listing.quantity` 都可能通过
+- 但同一 `listing_id` 多条请求的合计数量可能超过库存
+
+当前逻辑：
+- 先按 `listing_id` 聚合购买数量
+- 再进行统一库存校验与统一扣减
+- 阻断“拆单绕过库存”的路径
+
+#### 6.1.2 总价计算溢出保护
+
+原逻辑：
+- `total_cost += listing.price * buy_qty`（`i32`）
+
+当前逻辑：
+- 对单项总价使用 `checked_mul`
+- 对累计总价使用 `checked_add`
+- 任何溢出直接取消交易并返回 Info 提示
+
+同时对数量聚合与数量累计也做了边界保护，避免异常大数量导致内部状态异常。
+
+#### 6.1.3 购买结果广播策略拆分
+
+为满足“全体只同步商店状态；购买明细仅购买者+导演可见”的要求，`shop_buy` 返回拆分为两条结果：
+
+1. **全体同步结果（Info）**
+    - 广播对象：全体玩家 + 导演
+    - 目的：触发前端商店库存刷新
+    - 不作为全员可见购买明细日志
+
+2. **定向购买明细（SystemNotice）**
+    - 广播对象：购买者 + 导演
+    - 内容：购买件数、花费、购买物品明细、剩余货币
+    - 不对其他玩家公开明细
+
+#### 6.1.4 扣款与库存扣减安全性
+
+在交易提交阶段增加检查式运算：
+- 玩家扣款使用 `checked_sub`
+- 库存扣减使用 `checked_sub`
+
+确保即使出现边界输入，也不会发生回绕式错误扣减。
+
+### 6.2 货币道具使用溢出保护
+
+涉及文件：`backend/src/websocket/actions/player_use_action.rs`
+
+`handle_currency_use` 的货币累加从直接加法改为：
+- `player.coins.checked_add(properties.value)`
+
+行为语义：
+- 溢出时拒绝使用（返回 Info）
+- 且不消耗道具（保持失败原子性）
+
+### 6.3 击杀货币转移溢出保护
+
+涉及文件：`backend/src/websocket/actions/game_state_common.rs`
+
+`kill_player` 中击杀者货币缴获改为检查式加法：
+- `killer.coins.checked_add(victim_coins)`
+
+当发生溢出风险时：
+- 不执行回绕累加
+- `transferred_coins` 保持 0
+- 货币按“未成功转移”路径处理（日志体现为消失货币）
+
+### 6.4 新增回归测试覆盖
+
+涉及文件：`backend/tests/currency_and_movement_integration.rs`
+
+本次新增并通过的测试覆盖点：
+
+1. **商店交易正确性与原子性**
+    - 重复 `listing_id` 合并后超库存拦截
+    - 余额不足不应修改库存/背包/货币
+    - 物品创建失败整笔交易回滚
+
+2. **金额计算安全性**
+    - 单项乘法溢出（`price * qty`）
+    - 累计加法溢出（`total_cost`）
+
+3. **广播可见性边界**
+    - `shop_buy` 结果拆分为“全体库存同步 + 定向购买明细”
+    - 校验消息类型与广播范围符合设计
+
+4. **货币使用边界与原子性**
+    - 正常边界值使用成功
+    - 溢出时失败且道具不消耗
+
+5. **死亡货币处理路径**
+    - PVP / 流血致死：货币可转移
+    - 缩圈 / 导演击杀：货币消失
+    - 击杀转移溢出：不回绕、不中毒经济状态
+
+6. **旧存档兼容**
+    - `coins` 缺失默认值
+    - `shop` 缺失默认空数组
+    - `shop.quantity` 缺失默认值
+
+### 6.5 本次增量修改文件（后端）
+
+| 文件 | 修改类型 | 说明 |
+|------|---------|------|
+| `backend/src/websocket/actions/player_common_actions.rs` | 修改 | `shop_buy` 聚合校验、溢出防护、广播拆分、扣减安全 |
+| `backend/src/websocket/actions/player_use_action.rs` | 修改 | 货币使用 `checked_add` + 失败原子性 |
+| `backend/src/websocket/actions/game_state_common.rs` | 修改 | 击杀货币转移 `checked_add` 防回绕 |
+| `backend/tests/currency_and_movement_integration.rs` | 修改 | 新增商店/货币/死亡/兼容性回归测试 |

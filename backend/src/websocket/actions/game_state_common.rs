@@ -128,8 +128,10 @@ impl GameState {
             if victim_coins > 0 {
                 if let Some(loot_player_id) = loot_recipient_id {
                     if let Some(killer) = self.players.get_mut(loot_player_id) {
-                        killer.coins += victim_coins;
-                        transferred_coins = victim_coins;
+                        if let Some(updated_coins) = killer.coins.checked_add(victim_coins) {
+                            killer.coins = updated_coins;
+                            transferred_coins = victim_coins;
+                        }
                     }
                 }
                 // 非 PVP 击杀：货币直接消失（victim_coins 已在上方清零，无需额外操作）
@@ -158,7 +160,8 @@ impl GameState {
                     DeathDisposition::KillerTakes => {
                         if let Some(loot_player_id) = loot_recipient_id {
                             if let Some(killer) = self.players.get_mut(loot_player_id) {
-                                let max_backpack = self.rule_engine.player_config.max_backpack_items;
+                                let max_backpack =
+                                    self.rule_engine.player_config.max_backpack_items;
                                 let current_total = killer.get_total_item_count();
                                 let available_slots = max_backpack.saturating_sub(current_total);
                                 if available_slots > 0 {
@@ -175,10 +178,12 @@ impl GameState {
                         if !loot_items.is_empty() {
                             if let Some(location) = location_option {
                                 if self.places.contains_key(location) {
-                                    dropped_item_names
-                                        .extend(self.drop_remaining_items(location, &mut loot_items));
+                                    dropped_item_names.extend(
+                                        self.drop_remaining_items(location, &mut loot_items),
+                                    );
                                 } else {
-                                    vanished_item_names.extend(Self::drain_item_names(&mut loot_items));
+                                    vanished_item_names
+                                        .extend(Self::drain_item_names(&mut loot_items));
                                 }
                             } else {
                                 vanished_item_names.extend(Self::drain_item_names(&mut loot_items));

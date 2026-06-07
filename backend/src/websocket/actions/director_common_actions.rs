@@ -479,10 +479,7 @@ impl GameState {
         player_id: &str,
         target_place: &str,
     ) -> Result<ActionResults, String> {
-        let player = self
-            .players
-            .get(player_id)
-            .ok_or("Player not found")?;
+        let player = self.players.get(player_id).ok_or("Player not found")?;
 
         let current_location = player.location.clone();
         let player_name = player.name.clone();
@@ -814,10 +811,7 @@ impl GameState {
     }
 
     /// 商店下架物品
-    pub fn handle_shop_delist_item(
-        &mut self,
-        listing_id: &str,
-    ) -> Result<ActionResults, String> {
+    pub fn handle_shop_delist_item(&mut self, listing_id: &str) -> Result<ActionResults, String> {
         let pos = self
             .shop
             .iter()

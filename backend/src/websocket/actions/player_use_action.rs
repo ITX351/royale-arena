@@ -1,6 +1,8 @@
 //! 玩家使用道具行动处理（重构版）
 
-use crate::game::game_rule_engine::{ConsumableProperties, CurrencyProperties, Item, ItemType, UtilityProperties};
+use crate::game::game_rule_engine::{
+    ConsumableProperties, CurrencyProperties, Item, ItemType, UtilityProperties,
+};
 use crate::websocket::actions::player_action_scheduler::ActionParams;
 use crate::websocket::actions::utils::{
     UseOutcome, decrement_uses, format_delta, format_use_remaining_suffix,
@@ -277,7 +279,10 @@ impl GameState {
     ) -> Result<ItemUseOutcome, String> {
         {
             let player = self.players.get_mut(player_id).unwrap();
-            player.coins += properties.value;
+            player.coins = player
+                .coins
+                .checked_add(properties.value)
+                .ok_or_else(|| format!("使用 {} 会导致货币总数溢出", item_display_name))?;
         }
 
         let coins_after = self.players.get(player_id).unwrap().coins;
@@ -301,12 +306,8 @@ impl GameState {
             "strength_delta": strength_delta,
         });
 
-        let result = ActionResult::new_system_message(
-            data,
-            vec![player_id.to_string()],
-            log_message,
-            true,
-        );
+        let result =
+            ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
 
         Ok(ItemUseOutcome::new(vec![result]).with_reinsert(false))
     }

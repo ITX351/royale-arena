@@ -1,5 +1,7 @@
 //! 玩家普通行动处理
 
+use std::collections::HashMap;
+
 use crate::websocket::models::{
     ActionResult, ActionResults, GameState, SearchResultType, SearchTarget,
 };
@@ -646,50 +648,93 @@ impl GameState {
             .as_results());
         }
 
+        let info_message = |message: String| {
+            ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![player_id.to_string()],
+                message,
+                false,
+            )
+            .as_results()
+        };
+
+        let mut aggregated_quantities: HashMap<String, i32> = HashMap::new();
+        let mut listing_order: Vec<String> = Vec::new();
+        for buy in buy_items {
+            if buy.quantity < 1 {
+                continue;
+            }
+
+            if let Some(existing_qty) = aggregated_quantities.get_mut(&buy.listing_id) {
+                *existing_qty = match existing_qty.checked_add(buy.quantity) {
+                    Some(quantity) => quantity,
+                    None => {
+                        return Ok(info_message("购买数量过大，交易已取消".to_string()));
+                    }
+                };
+            } else {
+                listing_order.push(buy.listing_id.clone());
+                aggregated_quantities.insert(buy.listing_id.clone(), buy.quantity);
+            }
+        }
+
         // 验证并收集购买信息：(listing_id, item_name, price, buy_qty)
         let mut purchase_plan: Vec<(String, String, i32, i32)> = Vec::new();
         let mut total_cost: i32 = 0;
         let mut total_items: usize = 0;
 
-        for buy in buy_items {
-            if buy.quantity < 1 {
-                continue;
-            }
-            let listing = match self.shop.iter().find(|l| l.id == buy.listing_id) {
+        for listing_id in listing_order {
+            let buy_qty = aggregated_quantities[&listing_id];
+            let listing = match self.shop.iter().find(|l| l.id == listing_id) {
                 Some(l) => l.clone(),
                 None => {
-                    let data = serde_json::json!({});
-                    return Ok(ActionResult::new_info_message(
-                        data,
-                        vec![player_id.to_string()],
-                        format!("商品 {} 不存在或已被下架", buy.listing_id),
-                        false,
-                    )
-                    .as_results());
+                    return Ok(info_message(format!(
+                        "商品 {} 不存在或已被下架",
+                        listing_id
+                    )));
                 }
             };
 
-            if buy.quantity > listing.quantity {
-                let data = serde_json::json!({});
-                return Ok(ActionResult::new_info_message(
-                    data,
-                    vec![player_id.to_string()],
-                    format!(
-                        "商品 {} 库存不足，请求 {} 但仅剩 {}",
-                        listing.item_name, buy.quantity, listing.quantity
-                    ),
-                    false,
-                )
-                .as_results());
-            }
-            let buy_qty = buy.quantity;
-            if buy_qty == 0 {
-                continue;
+            if buy_qty > listing.quantity {
+                return Ok(info_message(format!(
+                    "商品 {} 库存不足，请求 {} 但仅剩 {}",
+                    listing.item_name, buy_qty, listing.quantity
+                )));
             }
 
-            total_cost += listing.price * buy_qty;
-            total_items += buy_qty as usize;
-            purchase_plan.push((listing.id.clone(), listing.item_name.clone(), listing.price, buy_qty));
+            let line_cost = match listing.price.checked_mul(buy_qty) {
+                Some(cost) => cost,
+                None => {
+                    return Ok(info_message(format!(
+                        "商品 {} 的总价计算溢出，交易已取消",
+                        listing.item_name
+                    )));
+                }
+            };
+            total_cost = match total_cost.checked_add(line_cost) {
+                Some(cost) => cost,
+                None => {
+                    return Ok(info_message("本次购买总价过大，交易已取消".to_string()));
+                }
+            };
+            let buy_qty_usize = match usize::try_from(buy_qty) {
+                Ok(quantity) => quantity,
+                Err(_) => {
+                    return Ok(info_message("购买数量无效，交易已取消".to_string()));
+                }
+            };
+            total_items = match total_items.checked_add(buy_qty_usize) {
+                Some(quantity) => quantity,
+                None => {
+                    return Ok(info_message("购买数量过大，交易已取消".to_string()));
+                }
+            };
+            purchase_plan.push((
+                listing.id.clone(),
+                listing.item_name.clone(),
+                listing.price,
+                buy_qty,
+            ));
         }
 
         if purchase_plan.is_empty() {
@@ -761,26 +806,40 @@ impl GameState {
         player.inventory.extend(created_items);
 
         // 扣除货币
-        player.coins -= total_cost;
+        player.coins = player
+            .coins
+            .checked_sub(total_cost)
+            .expect("validated shop purchase should not underflow player coins");
 
         // 扣减库存或移除售罄商品
         for (listing_id, _, _, buy_qty) in &purchase_plan {
             if let Some(listing) = self.shop.iter_mut().find(|l| l.id == *listing_id) {
-                listing.quantity -= buy_qty;
+                listing.quantity = listing
+                    .quantity
+                    .checked_sub(*buy_qty)
+                    .expect("validated shop purchase should not underflow listing quantity");
             }
         }
         self.shop.retain(|l| l.quantity > 0);
 
-        let data = serde_json::json!({
+        let detail_data = serde_json::json!({
             "purchased_items": item_names,
             "total_cost": total_cost,
             "remaining_coins": player.coins,
         });
 
-        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
-        let mut action_result = ActionResult::new_system_message(
-            data,
-            broadcast_players,
+        let shop_sync_result = ActionResult::new_info_message(
+            serde_json::json!({
+                "shop_updated": true,
+            }),
+            self.players.keys().cloned().collect(),
+            "商店库存已更新".to_string(),
+            true,
+        );
+
+        let detail_result = ActionResult::new_system_message(
+            detail_data,
+            vec![player_id.to_string()],
             format!(
                 "{} 从商店购买了 {} 件物品，花费 {} 货币",
                 player_name,
@@ -789,8 +848,9 @@ impl GameState {
             ),
             true,
         );
-        action_result.broadcast_to_all = true;
 
-        Ok(action_result.as_results())
+        Ok(ActionResults {
+            results: vec![shop_sync_result, detail_result],
+        })
     }
 }
