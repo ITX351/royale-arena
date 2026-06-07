@@ -514,7 +514,7 @@ impl GameState {
                 data,
                 vec![],
                 format!("无法移动 {} 到 {}：地点已被摧毁", player_name, target_place),
-                false,
+                true,
             )
             .as_results());
         }
@@ -770,7 +770,7 @@ impl GameState {
                 data,
                 vec![],
                 format!("上架价格必须 >= 1，当前值为 {}", price),
-                false,
+                true,
             )
             .as_results());
         }
