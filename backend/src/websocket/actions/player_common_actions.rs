@@ -702,6 +702,14 @@ impl GameState {
                 )));
             }
 
+            // 校验商品价格为正值，防止数据篡改导致的经济漏洞
+            if listing.price < 1 {
+                return Ok(info_message(format!(
+                    "商品 {} 价格异常（{}），交易已取消",
+                    listing.item_name, listing.price
+                )));
+            }
+
             let line_cost = match listing.price.checked_mul(buy_qty) {
                 Some(cost) => cost,
                 None => {
