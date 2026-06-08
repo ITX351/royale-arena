@@ -350,7 +350,7 @@ const showDeadPlayers = ref(true)
 
 // 可用地点列表（从 store 获取）
 const availablePlaces = computed<string[]>(() => {
-  return store.directorPlaceList.map(place => place.name)
+  return store.directorPlaceList.filter(place => !place.is_destroyed).map(place => place.name)
 })
 
 type SortKey = 'name' | 'votes' | 'location' | 'life' | 'strength' | 'coins'

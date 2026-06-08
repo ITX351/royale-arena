@@ -99,8 +99,6 @@ impl GameState {
             );
 
             let data = serde_json::json!({
-                "message_type": "Info",
-                "log_message": log_message,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "invalid_places": problematic
             });
@@ -140,14 +138,14 @@ impl GameState {
         // 验证所有空投物品名称是否已存在于场上
         for airdrop in &airdrops {
             if self.check_item_name_exists(&airdrop.item_name) {
-                let data = serde_json::json!({
-                    "message_type": "Info",
-                    "log_message": format!("批量空投被拒绝: 物品 {} 已存在于场上", airdrop.item_name),
-                    "timestamp": chrono::Utc::now().to_rfc3339()
-                });
-
                 let log_message =
                     format!("批量空投被拒绝: 物品 {} 已存在于场上", airdrop.item_name);
+
+                let data = serde_json::json!({
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "item_name": airdrop.item_name,
+                    "reason": "物品已存在于场上"
+                });
 
                 return Ok(
                     ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
@@ -175,11 +173,8 @@ impl GameState {
         }
 
         let response_data = serde_json::json!({
-            "action_result": {
-                "message_type": "Info",
-                "log_message": format!("导演执行批量空投操作，成功 {} 项", success_count),
-                "timestamp": chrono::Utc::now().to_rfc3339()
-            }
+            "success_count": success_count,
+            "timestamp": chrono::Utc::now().to_rfc3339()
         });
 
         let log_message = format!("导演执行批量空投操作，成功 {} 项", success_count);
@@ -256,15 +251,9 @@ impl GameState {
         let failed_count = failed_items.len();
 
         let response_data = serde_json::json!({
-            "action_result": {
-                "message_type": "Info",
-                "log_message": format!("导演删除物品操作完成：成功删除{}个物品，失败{}个物品", deleted_count, failed_count),
-                "timestamp": chrono::Utc::now().to_rfc3339(),
-                "data": {
-                    "deleted_items": deleted_items,
-                    "failed_items": failed_items
-                }
-            }
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "deleted_items": deleted_items,
+            "failed_items": failed_items
         });
 
         let log_message = format!(
@@ -561,13 +550,13 @@ impl GameState {
     ) -> Result<ActionResults, String> {
         // 验证物品名称是否已存在于场上
         if self.check_item_name_exists(item_name) {
-            let data = serde_json::json!({
-                "message_type": "Info",
-                "log_message": format!("无法添加物品 {}: 该物品已存在于场上", item_name),
-                "timestamp": chrono::Utc::now().to_rfc3339()
-            });
-
             let log_message = format!("无法添加物品 {}: 该物品已存在于场上", item_name);
+
+            let data = serde_json::json!({
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "item_name": item_name,
+                "reason": "该物品已存在于场上"
+            });
 
             return Ok(
                 ActionResult::new_info_message(data, vec![], log_message, true).as_results(),

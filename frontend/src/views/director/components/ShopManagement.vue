@@ -111,7 +111,8 @@ const parsedItems = computed<ParsedItemInfo | null>(() => {
   try {
     const parser = createItemParser(rulesJson.value, [])
     return parser.parseAllItems()
-  } catch {
+  } catch (error) {
+    console.error('解析物品失败:', error)
     return null
   }
 })
