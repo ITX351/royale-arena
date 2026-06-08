@@ -124,7 +124,7 @@ impl GameState {
                 disposition = DeathDisposition::DropToGround;
             }
 
-            // 货币处理：仅被玩家攻击致死时击杀者缴获全部货币，其余死因货币直接消失
+            // 货币处理：有击杀归属者时（PVP 击杀），击杀者缴获全部货币；无击杀者时（非 PVP 死因），货币直接消失
             if victim_coins > 0 {
                 if let Some(loot_player_id) = loot_recipient_id {
                     if let Some(killer) = self.players.get_mut(loot_player_id) {
@@ -134,7 +134,7 @@ impl GameState {
                         }
                     }
                 }
-                // 非 PVP 击杀：货币直接消失（victim_coins 已在上方清零，无需额外操作）
+                // 无击杀归属者：货币直接消失
             }
 
             if !loot_items.is_empty() {
