@@ -1,4 +1,4 @@
-//! 货币系统和玩家移动功能单元测试
+//! 货币系统和玩家移动功能集成测试
 //! 测试新增的货币类型、货币使用、导演设置货币和导演移动玩家功能
 
 use royale_arena_backend::game::game_rule_engine::{GameRuleEngine, ItemType};

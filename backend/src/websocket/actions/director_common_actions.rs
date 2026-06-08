@@ -507,8 +507,9 @@ impl GameState {
         // 验证目标地点是否被摧毁
         if self.places[target_place].is_destroyed {
             let data = serde_json::json!({
-                "message_type": "Info",
-                "log_message": format!("无法移动到 {}: 地点已被摧毁", target_place),
+                "player_id": player_id,
+                "target_place": target_place,
+                "reason": "地点已被摧毁",
             });
             return Ok(ActionResult::new_info_message(
                 data,
