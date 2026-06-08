@@ -2,7 +2,7 @@
 
 ## 概述
 
-已为 Royale Arena 后端添加了 **13 个新的单元测试**，专门测试新增的货币系统和导演玩家移动功能。
+已为 Royale Arena 后端添加了 **25 个新的单元测试**，专门测试新增的货币系统、导演玩家移动功能、商店系统和死亡时的货币转移。
 
 ## 测试文件
 
@@ -11,6 +11,8 @@
 ## 测试覆盖用例
 
 ### 1. 货币配置解析 (3 个测试)
+
+测试货币系统的配置读取和初始化。
 
 #### `test_currency_config_parsing`
 - **目的**: 验证规则配置中的货币配置正确解析
@@ -34,6 +36,8 @@
 
 ### 2. 玩家货币管理 (3 个测试)
 
+测试导演对玩家货币的直接操作和管理。
+
 #### `test_player_initial_coins_is_zero`
 - **目的**: 验证新玩家的初始货币值
 - **验证内容**:
@@ -54,6 +58,8 @@
   - 尝试设置不存在玩家的货币返回 "Player not found" 错误
 
 ### 3. 玩家移动功能 (5 个测试)
+
+测试导演将玩家移动到各种位置的功能。
 
 #### `test_director_move_player`
 - **目的**: 验证导演将玩家移动到不同位置
@@ -86,6 +92,8 @@
 
 ### 4. 货币物品属性 (2 个测试)
 
+测试货币物品的基本属性和多玩家独立管理。
+
 #### `test_currency_item_properties`
 - **目的**: 验证货币物品的完整属性
 - **验证内容**:
@@ -101,25 +109,87 @@
   - 玩家2的货币独立设置 (50)
   - 修改玩家1的货币 (200) 不影响玩家2 (仍为 50)
 
+### 5. 死亡时的货币转移 (5 个测试)
+
+测试玩家死亡时的货币转移逻辑，包括 PVP 击杀、流血死亡、缩圈死亡和导演击杀等各种场景。
+
+#### `test_kill_player_transfers_coins_for_player_kill`
+- **目的**: 验证玩家被其他玩家攻击致死时，击杀者获得死亡玩家的所有货币
+
+#### `test_kill_player_transfers_coins_for_bleed_death`
+- **目的**: 验证玩家因流血死亡时的货币处理
+
+#### `test_kill_player_drops_coins_on_shrink_death`
+- **目的**: 验证玩家因缩圈死亡时货币的处理方式
+
+#### `test_kill_player_drops_coins_on_director_kill`
+- **目的**: 验证玩家被导演击杀时的货币转移
+
+#### `test_kill_player_coin_transfer_overflow_does_not_wrap`
+- **目的**: 验证大额货币转移时不会发生整数溢出
+
+### 6. 商店系统 (7 个测试)
+
+测试商店的上架、下架、购买等功能及边界情况。
+
+#### `test_shop_list_and_delist_item_broadcasts_to_all`
+- **目的**: 验证商店上架和下架时向玩家广播通知
+
+#### `test_shop_buy_success_splits_shop_sync_and_purchase_detail`
+- **目的**: 验证成功购买时生成库存同步和购买明细两条结果
+
+#### `test_shop_buy_rejects_duplicate_listing_total_exceeding_stock`
+- **目的**: 验证重复订单导致购买失败
+
+#### `test_shop_buy_rejects_when_total_cost_multiplication_overflows`
+- **目的**: 验证单价乘以数量时溢出的处理
+
+#### `test_shop_buy_rejects_when_total_cost_accumulation_overflows`
+- **目的**: 验证两个订单总成本累加溢出的处理
+
+#### `test_shop_buy_rolls_back_when_item_creation_fails`
+- **目的**: 验证物品创建失败时的事务回滚
+
+#### `test_shop_buy_rejects_insufficient_balance_without_mutation`
+- **目的**: 验证余额不足时不修改游戏状态
+
+### 7. 货币物品使用 (1 个测试)
+
+#### `test_currency_item_use_supports_boundary_value`
+- **目的**: 验证边界值货币物品 (i32::MAX) 的使用
+
 ## 测试执行结果
 
 ```
-running 13 tests
-test test_player_initial_coins_is_zero ... ok
-test test_director_move_player_same_location ... ok
-test test_currency_item_properties ... ok
+running 25 tests
 test test_currency_config_parsing ... ok
-test test_director_move_player_nonexistent_location ... ok
-test test_create_nonexistent_currency_item ... ok
 test test_create_currency_item_from_config ... ok
-test test_director_set_currency_nonexistent_player ... ok
-test test_multiple_players_independent_coins ... ok
-test test_director_move_player ... ok
-test test_director_move_player_to_destroyed_location ... ok
-test test_director_move_nonexistent_player ... ok
+test test_create_nonexistent_currency_item ... ok
+test test_player_initial_coins_is_zero ... ok
 test test_director_set_player_coins ... ok
+test test_director_set_currency_nonexistent_player ... ok
+test test_director_move_player ... ok
+test test_director_move_player_same_location ... ok
+test test_director_move_player_nonexistent_location ... ok
+test test_director_move_nonexistent_player ... ok
+test test_director_move_player_to_destroyed_location ... ok
+test test_currency_item_properties ... ok
+test test_multiple_players_independent_coins ... ok
+test test_shop_list_and_delist_item_broadcasts_to_all ... ok
+test test_shop_buy_success_splits_shop_sync_and_purchase_detail ... ok
+test test_shop_buy_rejects_duplicate_listing_total_exceeding_stock ... ok
+test test_shop_buy_rejects_when_total_cost_multiplication_overflows ... ok
+test test_shop_buy_rejects_when_total_cost_accumulation_overflows ... ok
+test test_shop_buy_rolls_back_when_item_creation_fails ... ok
+test test_shop_buy_rejects_insufficient_balance_without_mutation ... ok
+test test_currency_item_use_supports_boundary_value ... ok
+test test_kill_player_transfers_coins_for_player_kill ... ok
+test test_kill_player_transfers_coins_for_bleed_death ... ok
+test test_kill_player_drops_coins_on_shrink_death ... ok
+test test_kill_player_drops_coins_on_director_kill ... ok
+test test_kill_player_coin_transfer_overflow_does_not_wrap ... ok
 
-test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 ## 运行测试
@@ -176,8 +246,8 @@ cargo test
 
 ### 限制
 - 这些是单元测试，主要测试核心逻辑
-- 没有包含与 WebSocket、数据库的集成测试（集成测试可单独编写）
-- 死亡时的货币转移不在这里测试（需要完整的死亡流程，通常在集成测试中测试）
+- 没有包含与 WebSocket、数据库的真实集成测试（如使用实际数据库连接）
+- 测试使用内存中的游戏状态对象，不涉及数据库持久化
 
 ### 依赖关系
 - 测试依赖于修改报告中的所有后端代码更改
@@ -194,10 +264,14 @@ cargo test
 
 ## 总结
 
-通过这 13 个测试，我们全面验证了：
+通过这 25 个测试，我们全面验证了：
 - ✅ 货币系统的完整功能
 - ✅ 导演移动玩家的所有场景
+- ✅ 玩家死亡时的货币转移逻辑
+- ✅ 商店系统的购买、上架、下架功能
 - ✅ 边界情况和错误处理
+- ✅ 整数溢出保护
+- ✅ 事务回滚和状态一致性
 - ✅ 数据一致性
 
 所有测试都通过，代码质量和可靠性得到保证。
