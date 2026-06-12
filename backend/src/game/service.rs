@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use sqlx::MySqlPool;
 
 use super::errors::GameError;
@@ -75,9 +76,9 @@ impl GameService {
         let game = sqlx::query_as!(
             Game,
             r#"
-            SELECT id, name, description, director_password, max_players, 
-                   status as "status: GameStatus", rules_config, created_at, updated_at
-            FROM games 
+            SELECT id, name, description, director_password, max_players,
+                   status as "status: GameStatus", rules_config, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            FROM games
             WHERE id = ?
             "#,
             game_id_for_fetch
@@ -279,8 +280,8 @@ impl GameService {
         // 直接查询游戏表，无需JOIN规则模板表
         let game_info = sqlx::query!(
             r#"
-            SELECT id, name, description, status as "status: GameStatus", 
-                   max_players, created_at, director_password, rules_config
+            SELECT id, name, description, status as "status: GameStatus",
+                   max_players, created_at as "created_at!: DateTime<Utc>", director_password, rules_config
             FROM games
             WHERE id = ?
             "#,
@@ -360,9 +361,9 @@ impl GameService {
         let game = sqlx::query_as!(
             Game,
             r#"
-            SELECT id, name, description, director_password, max_players, 
-                   status as "status: GameStatus", rules_config, created_at, updated_at
-            FROM games 
+            SELECT id, name, description, director_password, max_players,
+                   status as "status: GameStatus", rules_config, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            FROM games
             WHERE id = ?
             "#,
             game_id

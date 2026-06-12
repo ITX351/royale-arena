@@ -96,7 +96,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="位置" min-width="80" prop="location">
+          <el-table-column label="位置" min-width="100" prop="location">
             <template #header>
               <div
                 class="sortable-header"
@@ -110,6 +110,21 @@
                 <ArrowUp v-if="sortKey === 'location' && sortOrder === 'asc'" class="sort-icon" />
                 <ArrowDown v-else-if="sortKey === 'location' && sortOrder === 'desc'" class="sort-icon" />
               </div>
+            </template>
+            <template #default="scope">
+              <el-select
+                :model-value="scope.row.location"
+                size="small"
+                @change="(val: string) => handleLocationChange(scope.row.id, val)"
+                :disabled="!scope.row.is_alive"
+              >
+                <el-option
+                  v-for="place in availablePlaces"
+                  :key="place"
+                  :label="place"
+                  :value="place"
+                />
+              </el-select>
             </template>
           </el-table-column>
           <el-table-column label="生命" min-width="60">
@@ -159,6 +174,32 @@
                   v-model="scope.row.strength"
                   @focus="() => handleEditableFieldFocus(scope.row, 'strength')"
                   @blur="(event: FocusEvent) => handleStrengthBlur(scope.row, event)"
+                  size="small"
+                />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="货币" min-width="60">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('coins')"
+                @keydown.enter.prevent="toggleSort('coins')"
+                @keydown.space.prevent="toggleSort('coins')"
+              >
+                货币
+                <ArrowUp v-if="sortKey === 'coins' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'coins' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
+            <template #default="scope">
+              <div class="status-value">
+                <el-input
+                  v-model="scope.row.coins"
+                  @focus="() => handleEditableFieldFocus(scope.row, 'coins')"
+                  @blur="(event: FocusEvent) => handleCoinsBlur(scope.row, event)"
                   size="small"
                 />
               </div>
@@ -307,7 +348,12 @@ const playerList = computed<Player[]>(() => {
 
 const showDeadPlayers = ref(true)
 
-type SortKey = 'name' | 'votes' | 'location' | 'life' | 'strength'
+// 可用地点列表（从 store 获取）
+const availablePlaces = computed<string[]>(() => {
+  return store.directorPlaceList.filter(place => !place.is_destroyed).map(place => place.name)
+})
+
+type SortKey = 'name' | 'votes' | 'location' | 'life' | 'strength' | 'coins'
 type SortOrder = 'asc' | 'desc'
 
 const sortKey = ref<SortKey>('name')
@@ -359,6 +405,8 @@ const getSortValue = (player: Player, key: SortKey): string | number => {
       return player.life
     case 'strength':
       return player.strength
+    case 'coins':
+      return player.coins
     case 'name':
     default:
       return player.name
@@ -456,7 +504,16 @@ const toggleSort = (key: SortKey) => {
 }
 
 const handleEditableFieldFocus = (player: Player, key: SortKey) => {
-  const originalValue = key === 'life' ? player.life : player.strength
+  let originalValue: number
+  if (key === 'life') {
+    originalValue = player.life
+  } else if (key === 'strength') {
+    originalValue = player.strength
+  } else if (key === 'coins') {
+    originalValue = player.coins
+  } else {
+    originalValue = 0
+  }
   editingState.value = {
     playerId: player.id,
     key,
@@ -491,6 +548,16 @@ const handleStrengthBlur = (player: Player, event: FocusEvent) => {
   finishEditing()
 }
 
+const handleCoinsBlur = (player: Player, event: FocusEvent) => {
+  const newValueStr = (event.target as HTMLInputElement).value
+  const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'coins'
+    ? editingState.value.originalValue
+    : player.coins
+
+  updatePlayerCoins(player.id, currentValue, newValueStr)
+  finishEditing()
+}
+
 // 玩家状态管理方法
 const togglePlayerBinding = (playerId: string) => {
   // 调用store中的方法处理玩家捆绑/松绑
@@ -514,6 +581,22 @@ const updatePlayerStrength = (playerId: string, currentValue: number, newValueSt
   // 只有当值发生变化时才提交修改
   if (!isNaN(newValue) && newValue !== currentValue) {
     store.setPlayerStrength(playerId, newValue)
+  }
+}
+
+// 更新玩家货币
+const updatePlayerCoins = (playerId: string, currentValue: number, newValueStr: string) => {
+  const newValue = parseInt(newValueStr, 10)
+  if (!isNaN(newValue) && newValue !== currentValue) {
+    store.setPlayerCoins(playerId, newValue)
+  }
+}
+
+// 移动玩家位置
+const handleLocationChange = (playerId: string, targetPlace: string) => {
+  const player = playerList.value.find(p => p.id === playerId)
+  if (player && player.location !== targetPlace) {
+    store.movePlayer(playerId, targetPlace)
   }
 }
 
@@ -551,7 +634,7 @@ const removeItem = (playerId: string, itemName: string) => {
 const showPlainTextDialog = (type: 'place' | 'player') => {
   if (type === 'player') {
     // 创建玩家状态的表格文本表示（按名称升序且包含装备信息）
-    let statusText = '玩家\t票数\t位置\t生命值\t体力值\t武器\t防具\t物品\n'
+    let statusText = '玩家\t票数\t位置\t生命值\t体力值\t货币\t武器\t防具\t物品\n'
 
     const alivePlayersByName = playerList.value
       .filter(player => player.is_alive)
@@ -562,7 +645,7 @@ const showPlainTextDialog = (type: 'place' | 'player') => {
       const votes = calculatePlayerVotes(player)
       const weaponName = player.equipped_weapon ? getItemDisplayName(player.equipped_weapon) : '无'
       const armorName = player.equipped_armor ? getItemDisplayName(player.equipped_armor) : '无'
-      statusText += `${player.name}\t${votes}\t${player.location}\t${player.life}\t${player.strength}\t${weaponName}\t${armorName}\t${items}\n`
+      statusText += `${player.name}\t${votes}\t${player.location}\t${player.life}\t${player.strength}\t${player.coins}\t${weaponName}\t${armorName}\t${items}\n`
     })
 
     plainTextContent.value = statusText

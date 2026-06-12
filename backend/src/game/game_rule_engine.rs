@@ -96,6 +96,7 @@ pub enum ItemType {
     Consumable(ConsumableProperties),
     Utility(UtilityProperties),
     Upgrader,
+    Currency(CurrencyProperties),
 }
 
 /// 游戏规则引擎
@@ -190,6 +191,8 @@ pub struct ItemsByCategory {
     pub consumables: Vec<ConsumableConfig>,
     #[serde(default)]
     pub upgraders: Vec<UpgraderConfig>,
+    #[serde(default)]
+    pub currencies: Vec<CurrencyConfig>,
 }
 
 /// 稀有度等级配置
@@ -272,6 +275,23 @@ pub struct ConsumableProperties {
     pub effect_value: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cure_bleed: Option<i32>,
+}
+
+/// 货币属性
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyProperties {
+    pub value: i32,
+}
+
+/// 货币配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyConfig {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub internal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
+    pub properties: CurrencyProperties,
 }
 
 /// 升级器配置
@@ -459,6 +479,18 @@ impl GameRuleEngine {
                     Some(upgrader.internal_name.clone()),
                     upgrader.rarity.clone(),
                     ItemType::Upgrader,
+                ));
+            }
+        }
+
+        // 6. 搜索货币
+        for currency in &self.items_config.items.currencies {
+            if currency.name == item_name {
+                return Ok(Item::new(
+                    currency.name.clone(),
+                    currency.internal_name.clone(),
+                    currency.rarity.clone(),
+                    ItemType::Currency(currency.properties.clone()),
                 ));
             }
         }

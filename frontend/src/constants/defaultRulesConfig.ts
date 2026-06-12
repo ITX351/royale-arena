@@ -1,11 +1,4 @@
-# Royale Arena 游戏规则配置示例
-
-## 完整配置示例
-
-### 基础配置
-
-```json
-{
+export const DEFAULT_RULES_CONFIG = {
   "map": {
     "places": [
       "码头",
@@ -442,5 +435,6 @@
       ]
     }
   }
-}
-```
+} as const
+
+export const DEFAULT_RULES_JSON = JSON.stringify(DEFAULT_RULES_CONFIG, null, 2)

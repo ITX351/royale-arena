@@ -132,6 +132,11 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
         })
       }
       break
+    case 'currency':
+      if (properties.value != null) {
+        entries.push({ label: '面值', value: properties.value })
+      }
+      break
   }
 
   if (properties.uses != null) {

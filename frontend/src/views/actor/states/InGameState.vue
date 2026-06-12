@@ -1,13 +1,15 @@
 <template>
   <div class="in-game-state">
-    <CompactActionPanel 
-      v-if="player" 
-      :player="player" 
+    <CompactActionPanel
+      v-if="player"
+      :player="player"
       :places="placeList"
       :players="actorPlayerList"
       :global-state="globalState"
+      :shop-listings="shopListings"
       :communication-visible="showInventoryDetails"
       @action="handlePlayerAction"
+      @shop-buy="handleShopBuy"
     />
 
     <el-alert 
@@ -61,7 +63,7 @@
 import { computed, ref } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { GameWithRules } from '@/types/game'
-import type { Player, GlobalState, ActorPlayer, ActorPlace } from '@/types/gameStateTypes'
+import type { Player, GlobalState, ActorPlayer, ActorPlace, ShopBuyItem } from '@/types/gameStateTypes'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 
 import CompactActionPanel from '@/views/actor/components/CompactActionPanel.vue'
@@ -95,6 +97,10 @@ const placeList = computed<ActorPlace[]>(() => {
 const actorPlayerList = computed<ActorPlayer[]>(() => {
   // 从游戏状态存储中获取所有玩家列表（玩家视角）
   return gameStateStore.actorPlayerList
+})
+
+const shopListings = computed(() => {
+  return gameStateStore.shopListings
 })
 
 const totalItemCount = computed(() => {
@@ -145,6 +151,10 @@ const handleUpgradeEquip = (payload: { itemId: string; slotType: 'weapon' | 'arm
     item_id: payload.itemId,
     slot_type: payload.slotType
   })
+}
+
+const handleShopBuy = (items: ShopBuyItem[]) => {
+  gameStateStore.shopBuy(items)
 }
 </script>
 

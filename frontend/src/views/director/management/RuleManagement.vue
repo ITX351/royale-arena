@@ -37,14 +37,14 @@
           <div class="rules-content">
             <el-alert
               v-if="!game.rules_config"
-              title="当前游戏未配置规则"
+              title="当前游戏未配置规则，已自动载入默认规则模板，可直接修改并保存"
               type="info"
               show-icon
               :closable="false"
               class="no-rules-alert"
             />
-            
-            <div v-else class="rules-editor">
+
+            <div class="rules-editor">
               <el-tabs v-model="activeTab" class="rules-tabs">
                 <el-tab-pane label="JSON编辑器" name="editor">
                   <el-row :gutter="24">
@@ -120,6 +120,7 @@ import MarkdownIt from 'markdown-it'
 
 import type { GameWithRules } from '@/types/game'
 import type { RuleConfigSource } from '@/types/ruleTemplate'
+import { DEFAULT_RULES_JSON } from '@/constants/defaultRulesConfig'
 import { directorService } from '@/services/directorService'
 import { getBasePathUrl } from '@/utils/commonUtils'
 import { GameRuleParser, GameRuleParserError } from '@/utils/gameRuleParser'
@@ -159,7 +160,8 @@ const md = new MarkdownIt({
 })
 
 // 计算属性
-const isDirty = computed(() => editableRules.value !== originalRules.value)
+const hasRulesConfig = computed(() => !!props.game.rules_config)
+const isDirty = computed(() => !hasRulesConfig.value || editableRules.value !== originalRules.value)
 
 const renderedDocumentation = computed(() => {
   if (!documentation.value) return ''
@@ -179,7 +181,7 @@ watch(() => props.game.rules_config, (newRules) => {
     editableRules.value = JSON.stringify(newRules, null, 2)
     originalRules.value = editableRules.value
   } else {
-    editableRules.value = '{}'
+    editableRules.value = DEFAULT_RULES_JSON
     originalRules.value = editableRules.value
   }
 }, { immediate: true })
@@ -248,7 +250,7 @@ const saveRules = async () => {
 }
 
 const resetRules = () => {
-  editableRules.value = originalRules.value
+  editableRules.value = hasRulesConfig.value ? originalRules.value : DEFAULT_RULES_JSON
 }
 
 const applyTemplate = (source: RuleConfigSource) => {
