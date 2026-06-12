@@ -14,10 +14,10 @@ use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[cfg(all(not(target_env = "msvc")))]
+#[cfg(all(not(target_env = "msvc"), not(windows)))]
 use jemallocator::Jemalloc;
 
-#[cfg(all(not(target_env = "msvc")))]
+#[cfg(all(not(target_env = "msvc"), not(windows)))]
 #[global_allocator]
 // Use jemalloc globally where supported to improve allocator performance.
 static GLOBAL: Jemalloc = Jemalloc;
@@ -32,7 +32,7 @@ use routes::create_routes;
 use rule_template::RuleTemplateService;
 
 fn log_allocator_status() {
-    #[cfg(all(not(target_env = "msvc")))]
+    #[cfg(all(not(target_env = "msvc"), not(windows)))]
     {
         let jemalloc_conf = std::env::var("JEMALLOC_CONF").ok();
         let malloc_conf = std::env::var("MALLOC_CONF").ok();
@@ -42,9 +42,9 @@ fn log_allocator_status() {
         );
     }
 
-    #[cfg(target_env = "msvc")]
+    #[cfg(any(target_env = "msvc", windows))]
     {
-        info!("allocator detected: system default (jemalloc disabled on MSVC target)");
+        info!("allocator detected: system default (jemalloc disabled on this target)");
     }
 }
 

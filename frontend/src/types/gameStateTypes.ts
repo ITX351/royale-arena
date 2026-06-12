@@ -1,7 +1,21 @@
 // 导演视角的游戏状态类型定义
 
+// 商店上架物品接口
+export interface ShopListing {
+  id: string;
+  item_name: string;
+  price: number;
+  quantity: number;
+}
+
+// 商店购买请求项
+export interface ShopBuyItem {
+  listing_id: string;
+  quantity: number;
+}
+
 // 物品类型分类
-export type ItemCategory = 'weapon' | 'armor' | 'consumable' | 'utility' | 'upgrader';
+export type ItemCategory = 'weapon' | 'armor' | 'consumable' | 'utility' | 'upgrader' | 'currency';
 
 // 物品类型载荷
 export interface ItemType {
@@ -39,6 +53,7 @@ export interface Player {
   last_search_time: string | null;
   team_id: number | null;
   bleed_damage: number;
+  coins: number;
 }
 
 // 玩家视角的玩家列表
@@ -80,6 +95,7 @@ export interface GlobalState {
   next_night_destroyed_places: string[];
   rules_config: Record<string, any>; // 后端传递的规则配置
   server_now?: string; // 后端服务器当前时间戳（ISO字符串）
+  shop: ShopListing[];
 }
 
 // 导演视角的游戏数据接口

@@ -98,7 +98,12 @@
             @place-status-change="handlePlaceStatusChange"
           />
         </div>
-        
+
+        <!-- 商店管理 -->
+        <div class="full-width-section">
+          <ShopManagement />
+        </div>
+
         <!-- 广播消息面板 -->
         <BroadcastMessage 
           ref="broadcastMessageRef"
@@ -120,6 +125,7 @@ import type { Player, DirectorPlace as Place } from '@/types/gameStateTypes'
 import PlaceStatusCard from '../components/PlaceStatusCard.vue'
 import PlayerStatusCard from '../components/PlayerStatusCard.vue'
 import BroadcastMessage from '../components/BroadcastMessage.vue'
+import ShopManagement from '../components/ShopManagement.vue'
 import { useManualSaveGame } from '../composables/useManualSaveGame'
 import { areStringArraysEqual } from '@/utils/commonUtils'
 

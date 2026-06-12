@@ -154,6 +154,7 @@ impl GameState {
             "next_night_destroyed_places": self.next_night_destroyed_places,
             "rules_config": self.rules_config,
             "server_now": Utc::now(),
+            "shop": self.shop,
         })
     }
 
@@ -166,6 +167,7 @@ impl GameState {
             "next_night_destroyed_places": self.next_night_destroyed_places,
             "rules_config": self.rules_config,
             "server_now": Utc::now(),
+            "shop": self.shop,
         })
     }
 }

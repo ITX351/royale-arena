@@ -165,6 +165,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Refresh, Edit, Delete, View, Search } from '@element-plus/icons-vue'
 import { adminService } from '@/services/adminService'
+import { DEFAULT_RULES_JSON } from '@/constants/defaultRulesConfig'
 import type {
   RuleTemplate,
   CreateRuleTemplateRequest,
@@ -191,7 +192,7 @@ const templateForm = reactive({
   template_name: '',
   description: '',
   is_active: true,
-  rules_config_text: '{}'
+  rules_config_text: DEFAULT_RULES_JSON
 })
 
 const templateFormRules: FormRules = {
@@ -254,7 +255,7 @@ const resetTemplateForm = () => {
   templateForm.template_name = ''
   templateForm.description = ''
   templateForm.is_active = true
-  templateForm.rules_config_text = '{}'
+  templateForm.rules_config_text = DEFAULT_RULES_JSON
   templateFormRef.value?.clearValidate()
 }
 
@@ -279,7 +280,7 @@ const openCreateDialog = () => {
   dialogMode.value = 'create'
   editingTemplateId.value = null
   resetTemplateForm()
-  templateForm.rules_config_text = '{\n  "game_flow": {}\n}'
+  templateForm.rules_config_text = DEFAULT_RULES_JSON
   showTemplateDialog.value = true
 }
 

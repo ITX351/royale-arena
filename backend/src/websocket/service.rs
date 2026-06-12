@@ -429,19 +429,22 @@ impl WebSocketService {
             .await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
 
-        let result = {
+        let action_params = ActionParams::from_json(&action_data)
+            .map_err(|e| format!("Failed to parse action params: {}", e))?;
+
+        let (result, updated_game_state) = {
             // 获取可写的游戏状态锁
             let mut game_state = game_state_ref.write().await;
 
             // 使用调度器处理行动
-            let action_params = ActionParams::from_json(&action_data)
-                .map_err(|e| format!("Failed to parse action params: {}", e))?;
-
-            PlayerActionScheduler::dispatch(&mut game_state, player_id, action, action_params)
+            let result =
+                PlayerActionScheduler::dispatch(&mut game_state, player_id, action, action_params);
+            let updated_game_state = game_state.clone();
+            (result, updated_game_state)
         };
 
         // 统一处理动作结果
-        self.handle_action_results(result, game_state_ref).await
+        self.handle_action_results(result, updated_game_state).await
     }
 
     /// 处理导演控制
@@ -463,31 +466,30 @@ impl WebSocketService {
             .await
             .map_err(|e| format!("Failed to get game state: {}", e))?;
 
-        let result = {
+        let action_params = DirectorActionParams::from_json(&action_data)
+            .map_err(|e| format!("Failed to parse director action params: {}", e))?;
+
+        let (result, updated_game_state) = {
             let mut game_state = game_state_ref.write().await;
 
             // 使用调度器处理导演行动
-            let action_params = DirectorActionParams::from_json(&action_data)
-                .map_err(|e| format!("Failed to parse director action params: {}", e))?;
-
-            DirectorActionScheduler::dispatch(&mut game_state, action, action_params)
+            let result = DirectorActionScheduler::dispatch(&mut game_state, action, action_params);
+            let updated_game_state = game_state.clone();
+            (result, updated_game_state)
         };
 
         // 统一处理动作结果
-        self.handle_action_results(result, game_state_ref).await
+        self.handle_action_results(result, updated_game_state).await
     }
 
     /// 统一处理ActionResults结果（完全破坏性修改，不保持向后兼容）
     async fn handle_action_results(
         &self,
         result: Result<ActionResults, String>,
-        game_state_ref: Arc<tokio::sync::RwLock<GameState>>,
+        updated_game_state: GameState,
     ) -> Result<String, String> {
         match result {
             Ok(action_results) => {
-                // 获取更新后的游戏状态
-                let updated_game_state = game_state_ref.read().await;
-
                 // 处理所有ActionResult
                 for action_result in &action_results.results {
                     // 使用新的广播器广播消息给相关玩家

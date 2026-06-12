@@ -152,10 +152,10 @@ impl GameLogService {
             let mut result = sqlx::query_as!(
                 MessageRecord,
                 r#"
-                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp as "timestamp!: DateTime<Utc>",
                     visible_to_all_players as "visible_to_all_players: bool",
                     visible_to_director as "visible_to_director: bool"
-                FROM game_logs 
+                FROM game_logs
                 WHERE game_id = ? AND (player_id = ? OR visible_to_all_players = TRUE)
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -173,10 +173,10 @@ impl GameLogService {
             sqlx::query_as!(
                 MessageRecord,
                 r#"
-                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp as "timestamp!: DateTime<Utc>",
                     visible_to_all_players as "visible_to_all_players: bool",
                     visible_to_director as "visible_to_director: bool"
-                FROM game_logs 
+                FROM game_logs
                 WHERE game_id = ? AND (player_id = ? OR visible_to_all_players = TRUE)
                 ORDER BY timestamp ASC
                 "#,
@@ -227,10 +227,10 @@ impl GameLogService {
             let mut result = sqlx::query_as!(
                 MessageRecord,
                 r#"
-                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp as "timestamp!: DateTime<Utc>",
                     visible_to_all_players as "visible_to_all_players: bool",
                     visible_to_director as "visible_to_director: bool"
-                FROM game_logs 
+                FROM game_logs
                 WHERE game_id = ? AND visible_to_director = TRUE
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -247,10 +247,10 @@ impl GameLogService {
             sqlx::query_as!(
                 MessageRecord,
                 r#"
-                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp, 
+                SELECT id, game_id, type as "message_type: MessageType", message, player_id, timestamp as "timestamp!: DateTime<Utc>",
                     visible_to_all_players as "visible_to_all_players: bool",
                     visible_to_director as "visible_to_director: bool"
-                FROM game_logs 
+                FROM game_logs
                 WHERE game_id = ? AND visible_to_director = TRUE
                 ORDER BY timestamp ASC
                 "#,
@@ -317,8 +317,8 @@ impl GameLogService {
         let kill_records = sqlx::query_as!(
             KillRecord,
             r#"
-            SELECT id, game_id, killer_id, victim_id, kill_time, cause, weapon, location
-            FROM kill_records 
+            SELECT id, game_id, killer_id, victim_id, kill_time as "kill_time!: DateTime<Utc>", cause, weapon, location
+            FROM kill_records
             WHERE game_id = ? AND killer_id = ?
             ORDER BY kill_time ASC
             "#,
@@ -358,8 +358,8 @@ impl GameLogService {
         let kill_records = sqlx::query_as!(
             KillRecord,
             r#"
-            SELECT id, game_id, killer_id, victim_id, kill_time, cause, weapon, location
-            FROM kill_records 
+            SELECT id, game_id, killer_id, victim_id, kill_time as "kill_time!: DateTime<Utc>", cause, weapon, location
+            FROM kill_records
             WHERE game_id = ?
             ORDER BY kill_time ASC
             "#,

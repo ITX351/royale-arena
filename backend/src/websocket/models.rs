@@ -63,6 +63,33 @@ pub struct ItemDeletionItem {
     pub item_name: Option<String>, // None表示清空地点所有物品
 }
 
+/// 商店上架物品结构
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ShopListing {
+    /// 上架条目唯一ID
+    pub id: String,
+    /// 物品名称（来自规则配置）
+    pub item_name: String,
+    /// 价格（货币数，单价）
+    pub price: i32,
+    /// 库存数量
+    #[serde(default = "default_quantity")]
+    pub quantity: i32,
+}
+
+fn default_quantity() -> i32 {
+    1
+}
+
+/// 玩家购买请求项
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ShopBuyItem {
+    /// 商品上架ID
+    pub listing_id: String,
+    /// 购买数量
+    pub quantity: i32,
+}
+
 // /// WebSocket服务端消息
 // #[derive(Debug, Clone, Deserialize, Serialize)]
 // pub struct WebSocketServerMessage {
@@ -99,6 +126,9 @@ pub struct GameState {
     pub next_night_destroyed_places: Vec<String>,
     /// 存档时间
     pub save_time: Option<DateTime<Utc>>,
+    /// 商店上架物品列表
+    #[serde(default)]
+    pub shop: Vec<ShopListing>,
 }
 
 /// 玩家类
@@ -145,6 +175,9 @@ pub struct Player {
     /// 附加流血的玩家ID
     #[serde(default)]
     pub bleed_inflictor: Option<String>,
+    /// 货币总数
+    #[serde(default)]
+    pub coins: i32,
 }
 
 impl Player {
@@ -180,6 +213,7 @@ impl Player {
             team_id: Some(team_id),
             bleed_damage: 0,
             bleed_inflictor: None,
+            coins: 0,
         }
     }
 
@@ -443,6 +477,7 @@ impl GameState {
             night_end_time: None,
             next_night_destroyed_places: Vec::new(),
             save_time: None,
+            shop: Vec::new(),
         }
     }
 }
@@ -466,6 +501,8 @@ impl<'de> Deserialize<'de> for GameState {
             night_end_time: Option<DateTime<Utc>>,
             next_night_destroyed_places: Vec<String>,
             save_time: Option<DateTime<Utc>>,
+            #[serde(default)]
+            shop: Vec<ShopListing>,
         }
 
         let helper = GameStateHelper::deserialize(deserializer)?;
@@ -488,6 +525,7 @@ impl<'de> Deserialize<'de> for GameState {
             night_end_time: helper.night_end_time,
             next_night_destroyed_places: helper.next_night_destroyed_places,
             save_time: helper.save_time,
+            shop: helper.shop,
         })
     }
 }

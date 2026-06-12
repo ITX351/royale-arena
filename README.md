@@ -44,6 +44,8 @@ cargo sqlx prepare
 
 访问以下链接以使用：[https://www.mistytown.cn/royale-arena/](https://www.mistytown.cn/royale-arena/)
 
+更新笔记：[https://www.mistytown.cn/forum.php?mod=viewthread&tid=13043](https://www.mistytown.cn/forum.php?mod=viewthread&tid=13043)
+
 ## 相关项目
 
 本项目是对旧版导演工具的升级和重构：
@@ -54,3 +56,4 @@ cargo sqlx prepare
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
 作者：ITX351, lydrainbowcat
+代码贡献者：花零., 胖达

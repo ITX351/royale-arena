@@ -1,8 +1,9 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
+  "packageManager": "pnpm@11.1.3",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
@@ -31,6 +32,7 @@
     "globals": "^16.4.0",
     "jiti": "^2.6.1",
     "prettier": "^3.6.2",
+    "rollup": "^4.60.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.46.1",
     "vite": "^7.1.2",

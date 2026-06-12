@@ -2,17 +2,19 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElNotification } from 'element-plus'
 import type { NotificationHandle } from 'element-plus'
-import type { 
-  DirectorGameState, 
+import type {
+  DirectorGameState,
   ActorGameState,
-  GlobalState, 
-  DirectorGameData, 
+  GlobalState,
+  DirectorGameData,
   ActorGameData,
-  Player, 
-  DirectorPlace, 
+  Player,
+  DirectorPlace,
   ActorPlayer,
-  ActorPlace, 
-  ActionResult 
+  ActorPlace,
+  ActionResult,
+  ShopListing,
+  ShopBuyItem
 } from '@/types/gameStateTypes'
 import { webSocketService, type WebSocketEvent } from '@/services/webSocketService'
 
@@ -91,6 +93,10 @@ export const useGameStateStore = defineStore('gameState', () => {
 
   const actorPlaceList = computed<ActorPlace[]>(() => {
     return Object.values(actorPlaces.value)
+  })
+
+  const shopListings = computed<ShopListing[]>(() => {
+    return globalState.value?.shop || []
   })
 
   // 操作
@@ -241,6 +247,16 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('strength', { player_id: playerId, strength: strength })
   }
 
+  // 设置玩家货币（绝对值）
+  const setPlayerCoins = (playerId: string, coins: number) => {
+    sendDirectorAction('coins', { player_id: playerId, coins: coins })
+  }
+
+  // 移动玩家到指定地点
+  const movePlayer = (playerId: string, targetPlace: string) => {
+    sendDirectorAction('move_player', { player_id: playerId, target_place: targetPlace })
+  }
+
   // 玩家捆绑/松绑
   const togglePlayerBinding = (playerId: string) => {
     // 先获取玩家当前状态来决定是捆绑还是松绑
@@ -295,6 +311,21 @@ export const useGameStateStore = defineStore('gameState', () => {
   // 夜晚结算
   const triggerNightSettlement = (restEnabled: boolean = true) => {
     sendDirectorAction('night_settlement', { rest_enabled: restEnabled })
+  }
+
+  // 商店上架物品
+  const shopListItem = (itemName: string, price: number, quantity: number = 1) => {
+    sendDirectorAction('shop_list_item', { item_name: itemName, price, quantity })
+  }
+
+  // 商店下架物品
+  const shopDelistItem = (listingId: string) => {
+    sendDirectorAction('shop_delist_item', { shop_listing_id: listingId })
+  }
+
+  // 玩家购买商品
+  const shopBuy = (items: ShopBuyItem[]) => {
+    sendPlayerAction('shop_buy', { shop_buy_items: items })
   }
 
   const handleWebSocketEvent = (event: WebSocketEvent) => {
@@ -376,6 +407,7 @@ export const useGameStateStore = defineStore('gameState', () => {
     directorPlaceList,
     actorPlayerList,
     actorPlaceList,
+    shopListings,
     serverOffsetMs,
     
     // 操作
@@ -392,6 +424,8 @@ export const useGameStateStore = defineStore('gameState', () => {
     togglePlaceStatus,
     setPlayerLife,
     setPlayerStrength,
+    setPlayerCoins,
+    movePlayer,
     togglePlayerBinding,
     destroyPlace,
     sendBroadcast,
@@ -401,6 +435,9 @@ export const useGameStateStore = defineStore('gameState', () => {
     addPlayerItem, // 新增导出
     removePlayerItem, // 新增导出
     triggerNightSettlement,
+    shopListItem,
+    shopDelistItem,
+    shopBuy,
     clearError
   }
 })

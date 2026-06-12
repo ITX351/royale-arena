@@ -8,6 +8,7 @@ import type {
   ArmorConfig as NormalizedArmorConfig,
   UtilityConfig as NormalizedUtilityConfig,
   ConsumableConfig as NormalizedConsumableConfig,
+  CurrencyConfig as NormalizedCurrencyConfig,
   UpgraderConfig as NormalizedUpgraderConfig
 } from './itemConfigUtils'
 import type { DirectorGameData, Item } from '@/types/gameStateTypes'
@@ -17,6 +18,7 @@ export type WeaponConfig = NormalizedWeaponConfig
 export type ArmorConfig = NormalizedArmorConfig
 export type UtilityConfig = NormalizedUtilityConfig
 export type ConsumableConfig = NormalizedConsumableConfig
+export type CurrencyConfig = NormalizedCurrencyConfig
 export type UpgraderConfig = NormalizedUpgraderConfig
 export type ItemConfig = NormalizedItemsConfig
 
@@ -32,6 +34,7 @@ export interface ParsedItemInfo {
   // 其他物品类型
   utilities: string[]
   consumables: string[]
+  currencies: string[]
   upgraders: string[]
   // 稀有度配置
   rarityLevels: RarityLevelConfig[]
@@ -73,6 +76,7 @@ export class ItemParser {
       config.items.armors.length > 0 ||
       config.items.utilities.length > 0 ||
       config.items.consumables.length > 0 ||
+      config.items.currencies.length > 0 ||
       config.items.upgraders.length > 0
 
     if (!hasAnyItem) {
@@ -127,6 +131,10 @@ export class ItemParser {
     const consumables = this.itemConfig.items.consumables.map(item => item.name)
     allItems.push(...consumables)
 
+    // 货币道具
+    const currencies = this.itemConfig.items.currencies.map(item => item.name)
+    allItems.push(...currencies)
+
     // 升级器
     const upgraders = this.itemConfig.items.upgraders.flatMap(upgrader => upgrader.displayNames)
     allItems.push(...upgraders)
@@ -139,6 +147,7 @@ export class ItemParser {
       },
       utilities,
       consumables,
+      currencies,
       upgraders,
       rarityLevels: this.itemConfig.rarityLevels
     }
