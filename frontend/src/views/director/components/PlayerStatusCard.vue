@@ -196,10 +196,12 @@
             </template>
             <template #default="scope">
               <div class="status-value">
-                <el-input
-                  v-model="scope.row.coins"
+                <el-input-number
+                  :model-value="Number(scope.row.coins)"
+                  :controls="false"
+                  @update:model-value="(val: number | undefined) => handleCoinsInput(scope.row, val)"
                   @focus="() => handleEditableFieldFocus(scope.row, 'coins')"
-                  @blur="(event: FocusEvent) => handleCoinsBlur(scope.row, event)"
+                  @blur="() => handleCoinsBlur(scope.row)"
                   size="small"
                 />
               </div>
@@ -548,13 +550,18 @@ const handleStrengthBlur = (player: Player, event: FocusEvent) => {
   finishEditing()
 }
 
-const handleCoinsBlur = (player: Player, event: FocusEvent) => {
-  const newValueStr = (event.target as HTMLInputElement).value
+const handleCoinsInput = (player: Player, value: number | undefined) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    player.coins = value
+  }
+}
+
+const handleCoinsBlur = (player: Player) => {
   const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'coins'
     ? editingState.value.originalValue
     : player.coins
 
-  updatePlayerCoins(player.id, currentValue, newValueStr)
+  updatePlayerCoins(player.id, currentValue, player.coins)
   finishEditing()
 }
 
@@ -585,10 +592,9 @@ const updatePlayerStrength = (playerId: string, currentValue: number, newValueSt
 }
 
 // 更新玩家货币
-const updatePlayerCoins = (playerId: string, currentValue: number, newValueStr: string) => {
-  const newValue = parseInt(newValueStr, 10)
-  if (!isNaN(newValue) && newValue !== currentValue) {
-    store.setPlayerCoins(playerId, newValue)
+const updatePlayerCoins = (playerId: string, currentValue: number, newValue: number) => {
+  if (Number.isFinite(newValue) && newValue !== currentValue) {
+    store.setPlayerCoins(playerId, Math.trunc(newValue))
   }
 }
 

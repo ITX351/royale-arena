@@ -192,7 +192,7 @@ impl GameState {
                 let strength_delta = strength_after - strength_before;
 
                 let mut log_message = format!(
-                    "{} 使用了 {}，生命值{} ({})，体力{} ({})",
+                    "{} 使用了 {}，生命值: {} ({})，体力: {} ({})",
                     player_name,
                     item_display_name,
                     life_after,
@@ -238,7 +238,7 @@ impl GameState {
                 let strength_delta = strength_after - strength_before;
 
                 let mut log_message = format!(
-                    "{} 使用了 {}，体力{} ({})",
+                    "{} 使用了 {}，体力: {} ({})",
                     player_name,
                     item_display_name,
                     strength_after,
@@ -290,7 +290,7 @@ impl GameState {
         let strength_delta = strength_after - strength_before;
 
         let log_message = format!(
-            "{} 使用了 {}，货币总数{} (+{})，体力{} ({})",
+            "{} 使用了 {}，货币总数: {} (+{})，体力: {} ({})",
             player_name,
             item_display_name,
             coins_after,
