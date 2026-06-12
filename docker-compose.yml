@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:5.7
-    container_name: discuz_mysql
+    container_name: royale_test_mysql
     # network_mode: "host"
     ports:
       - "3306:3306"
@@ -18,7 +18,7 @@ services:
 
   adminer:
     image: adminer
-    container_name: discuz_adminer
+    container_name: royale_test_adminer
     # network_mode: "host"
     ports:
       - "8080:8080"
