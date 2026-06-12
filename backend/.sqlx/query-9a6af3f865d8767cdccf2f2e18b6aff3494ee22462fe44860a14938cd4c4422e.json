@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "\n            SELECT id, name, description, status as \"status: GameStatus\", \n                   max_players, created_at, director_password, rules_config\n            FROM games\n            WHERE id = ?\n            ",
+  "query": "\n            SELECT id, name, description, director_password, max_players,\n                   status as \"status: GameStatus\", rules_config, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM games\n            WHERE id = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -32,11 +32,11 @@
       },
       {
         "ordinal": 3,
-        "name": "status: GameStatus",
+        "name": "director_password",
         "type_info": {
-          "type": "String",
-          "flags": "NOT_NULL | MULTIPLE_KEY | ENUM",
-          "max_size": 28
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "max_size": 200
         }
       },
       {
@@ -50,7 +50,25 @@
       },
       {
         "ordinal": 5,
-        "name": "created_at",
+        "name": "status: GameStatus",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | ENUM",
+          "max_size": 28
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "rules_config",
+        "type_info": {
+          "type": "Json",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "max_size": 4294967295
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at!: DateTime<Utc>",
         "type_info": {
           "type": "Timestamp",
           "flags": "NOT_NULL | BINARY | TIMESTAMP",
@@ -58,21 +76,12 @@
         }
       },
       {
-        "ordinal": 6,
-        "name": "director_password",
+        "ordinal": 8,
+        "name": "updated_at!: DateTime<Utc>",
         "type_info": {
-          "type": "VarString",
-          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
-          "max_size": 200
-        }
-      },
-      {
-        "ordinal": 7,
-        "name": "rules_config",
-        "type_info": {
-          "type": "Json",
-          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
-          "max_size": 4294967295
+          "type": "Timestamp",
+          "flags": "NOT_NULL | BINARY | TIMESTAMP | ON_UPDATE_NOW",
+          "max_size": 19
         }
       }
     ],
@@ -87,8 +96,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "299a1d38403b6bde83a6ee03f1abc0117bf23031c438404cde24c36d2a451e21"
+  "hash": "9a6af3f865d8767cdccf2f2e18b6aff3494ee22462fe44860a14938cd4c4422e"
 }

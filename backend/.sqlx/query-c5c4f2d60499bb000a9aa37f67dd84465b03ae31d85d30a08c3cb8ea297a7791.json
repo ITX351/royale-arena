@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "\n            SELECT id, game_id, killer_id, victim_id, kill_time, cause, weapon, location\n            FROM kill_records \n            WHERE game_id = ?\n            ORDER BY kill_time ASC\n            ",
+  "query": "\n            SELECT id, game_id, killer_id, victim_id, kill_time as \"kill_time!: DateTime<Utc>\", cause, weapon, location\n            FROM kill_records\n            WHERE game_id = ? AND killer_id = ?\n            ORDER BY kill_time ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -41,7 +41,7 @@
       },
       {
         "ordinal": 4,
-        "name": "kill_time",
+        "name": "kill_time!: DateTime<Utc>",
         "type_info": {
           "type": "Timestamp",
           "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | TIMESTAMP",
@@ -77,7 +77,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       false,
@@ -90,5 +90,5 @@
       true
     ]
   },
-  "hash": "9964aaf0144259f89d54d98083caf023518473e337de032cf5fd028edf6e8c5c"
+  "hash": "c5c4f2d60499bb000a9aa37f67dd84465b03ae31d85d30a08c3cb8ea297a7791"
 }

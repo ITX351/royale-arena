@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "\n                SELECT id, game_id, type as \"message_type: MessageType\", message, player_id, timestamp, \n                    visible_to_all_players as \"visible_to_all_players: bool\",\n                    visible_to_director as \"visible_to_director: bool\"\n                FROM game_logs \n                WHERE game_id = ? AND visible_to_director = TRUE\n                ORDER BY timestamp ASC\n                ",
+  "query": "\n                SELECT id, game_id, type as \"message_type: MessageType\", message, player_id, timestamp as \"timestamp!: DateTime<Utc>\",\n                    visible_to_all_players as \"visible_to_all_players: bool\",\n                    visible_to_director as \"visible_to_director: bool\"\n                FROM game_logs\n                WHERE game_id = ? AND visible_to_director = TRUE\n                ORDER BY timestamp DESC\n                LIMIT ?\n                ",
   "describe": {
     "columns": [
       {
@@ -50,7 +50,7 @@
       },
       {
         "ordinal": 5,
-        "name": "timestamp",
+        "name": "timestamp!: DateTime<Utc>",
         "type_info": {
           "type": "Timestamp",
           "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | TIMESTAMP",
@@ -77,7 +77,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       false,
@@ -90,5 +90,5 @@
       false
     ]
   },
-  "hash": "eef4a4ca2382eda39b1d64716b330637f8cc7f31703fbe4eabb41e726804f765"
+  "hash": "d04cfcfb1222c833b45808cb66c8957e4a6940ae305f94d5a7e465d5131b4f17"
 }
