@@ -515,38 +515,61 @@ impl WebSocketService {
 
                     // 仅在非Info类型消息时创建日志记录
                     if message_type != crate::game::MessageType::Info {
-                        let mut first_message = true;
-                        // 为每个相关玩家创建日志记录
-                        for broadcast_player_id in &action_result.broadcast_players {
-                            let player_id_option = if action_result.broadcast_to_all {
-                                None
-                            } else {
-                                Some(broadcast_player_id.clone())
-                            };
-
+                        // 导演专属消息（无目标玩家）也写入日志，仅导演可见
+                        if action_result.broadcast_players.is_empty()
+                            && action_result.broadcast_to_director
+                        {
                             let log_result = self
                                 .app_state
                                 .game_log_service
                                 .create_log(
                                     &updated_game_state.game_id,
-                                    player_id_option,
+                                    None,
                                     &action_result.log_message,
                                     message_type.clone(),
-                                    action_result.timestamp, // 传递ActionResult中的时间戳
-                                    action_result.broadcast_to_all, // 传递broadcast_to_all作为visible_to_all_players
-                                    action_result.broadcast_to_director && first_message, // 传递broadcast_to_director作为visible_to_director
+                                    action_result.timestamp,
+                                    false,
+                                    true,
                                 )
                                 .await;
 
-                            // 忽略日志记录错误，但记录日志
                             if let Err(e) = log_result {
                                 eprintln!("Failed to create log record: {}", e);
                             }
+                        } else {
+                            let mut first_message = true;
+                            // 为每个相关玩家创建日志记录
+                            for broadcast_player_id in &action_result.broadcast_players {
+                                let player_id_option = if action_result.broadcast_to_all {
+                                    None
+                                } else {
+                                    Some(broadcast_player_id.clone())
+                                };
 
-                            if action_result.broadcast_to_all {
-                                break;
+                                let log_result = self
+                                    .app_state
+                                    .game_log_service
+                                    .create_log(
+                                        &updated_game_state.game_id,
+                                        player_id_option,
+                                        &action_result.log_message,
+                                        message_type.clone(),
+                                        action_result.timestamp, // 传递ActionResult中的时间戳
+                                        action_result.broadcast_to_all, // 传递broadcast_to_all作为visible_to_all_players
+                                        action_result.broadcast_to_director && first_message, // 传递broadcast_to_director作为visible_to_director
+                                    )
+                                    .await;
+
+                                // 忽略日志记录错误，但记录日志
+                                if let Err(e) = log_result {
+                                    eprintln!("Failed to create log record: {}", e);
+                                }
+
+                                if action_result.broadcast_to_all {
+                                    break;
+                                }
+                                first_message = false;
                             }
-                            first_message = false;
                         }
                     }
 

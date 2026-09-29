@@ -91,7 +91,7 @@ impl GameState {
             player.is_alive = false;
             player.bleed_damage = 0;
             player.bleed_inflictor = None;
-            player.coins = 0;
+            player.coins = 0.0;
 
             (items, mem::take(&mut player.location), coins)
         };
@@ -115,7 +115,7 @@ impl GameState {
         let mut collected_item_names: Vec<String> = Vec::new();
         let mut dropped_item_names: Vec<String> = Vec::new();
         let mut vanished_item_names: Vec<String> = Vec::new();
-        let mut transferred_coins: i32 = 0;
+        let mut transferred_coins: f64 = 0.0;
 
         {
             let raw_rule = &self.rule_engine.death_item_disposition.description;
@@ -125,13 +125,11 @@ impl GameState {
             }
 
             // 货币处理：有击杀归属者时（PVP 击杀），击杀者缴获全部货币；无击杀者时（非 PVP 死因），货币直接消失
-            if victim_coins > 0 {
+            if victim_coins > 0.0 {
                 if let Some(loot_player_id) = loot_recipient_id {
                     if let Some(killer) = self.players.get_mut(loot_player_id) {
-                        if let Some(updated_coins) = killer.coins.checked_add(victim_coins) {
-                            killer.coins = updated_coins;
-                            transferred_coins = victim_coins;
-                        }
+                        killer.coins += victim_coins;
+                        transferred_coins = victim_coins;
                     }
                 }
                 // 无击杀归属者：货币直接消失
@@ -160,8 +158,7 @@ impl GameState {
                     DeathDisposition::KillerTakes => {
                         if let Some(loot_player_id) = loot_recipient_id {
                             if let Some(killer) = self.players.get_mut(loot_player_id) {
-                                let max_backpack =
-                                    self.rule_engine.player_config.max_backpack_items;
+                                let max_backpack = killer.max_backpack_items;
                                 let current_total = killer.get_total_item_count();
                                 let available_slots = max_backpack.saturating_sub(current_total);
                                 if available_slots > 0 {
@@ -215,13 +212,13 @@ impl GameState {
 
         let mut detail_segments: Vec<String> = Vec::new();
         Self::push_segment(&mut detail_segments, "缴获", &collected_item_names);
-        if transferred_coins > 0 {
+        if transferred_coins > 0.0 {
             detail_segments.push(format!("缴获货币: {}", transferred_coins));
         }
         Self::push_segment(&mut detail_segments, "掉落", &dropped_item_names);
         Self::push_segment(&mut detail_segments, "消失", &vanished_item_names);
         // 非 PVP 击杀时货币直接消失
-        if victim_coins > 0 && transferred_coins == 0 {
+        if victim_coins > 0.0 && transferred_coins == 0.0 {
             detail_segments.push(format!("消失货币: {}", victim_coins));
         }
 
@@ -367,16 +364,21 @@ impl GameState {
             // 添加其他玩家到搜索目标
             for other_player_id in &place.players {
                 if other_player_id != player_id {
-                    // 只搜索存活的玩家
                     if let Some(other_player) = self.players.get(other_player_id) {
-                        if other_player.is_alive {
-                            targets.push(SearchTarget::Player(other_player_id.clone()));
+                        if !other_player.is_alive {
+                            continue;
                         }
+                        // 队友搜索过滤（位 2）
+                        if self.rule_engine.teammate_behavior.is_search_filtered()
+                            && self.are_teammates(player_id, other_player_id)
+                        {
+                            continue;
+                        }
+                        targets.push(SearchTarget::Player(other_player_id.clone()));
                     }
                 }
             }
-
-            // 添加物品到搜索目标
+            // 添加物品到搜索目标（保持原样）
             for item in &place.items {
                 targets.push(SearchTarget::Item(item.id.clone()));
             }

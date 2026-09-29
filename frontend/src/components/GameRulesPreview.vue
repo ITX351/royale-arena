@@ -105,12 +105,12 @@
               </el-col>
               <el-col :xs="24" :md="12">
                 <h4>玩家配置</h4>
-                <p><strong>最大生命值：</strong>{{ parsedRules.player.maxLife }}</p>
-                <p><strong>最大体力值：</strong>{{ parsedRules.player.maxStrength }}</p>
+                <p><strong>生命上限（初始）：</strong>{{ parsedRules.player.maxLife }}（可累加至 {{ parsedRules.player.maxLifeCap }}）</p>
+                <p><strong>体力上限（初始）：</strong>{{ parsedRules.player.maxStrength }}（可累加至 {{ parsedRules.player.maxStrengthCap }}）</p>
                 <p><strong>每日生命恢复：</strong>{{ parsedRules.player.dailyLifeRecovery }}</p>
                 <p><strong>每日体力恢复：</strong>{{ parsedRules.player.dailyStrengthRecovery }}</p>
                 <p><strong>搜索冷却时间：</strong>{{ parsedRules.player.searchCooldown }}秒</p>
-                <p><strong>背包最大物品数：</strong>{{ parsedRules.player.maxBackpackItems }}</p>
+                <p><strong>背包上限（初始）：</strong>{{ parsedRules.player.maxBackpackItems }}（可累加至 {{ parsedRules.player.maxBackpackItemsCap }}）</p>
                 <p><strong>挥拳伤害：</strong>{{ parsedRules.player.unarmedDamage }}</p>
               </el-col>
             </el-row>
@@ -134,24 +134,6 @@
                 <p><strong>最大移动次数：</strong>{{ parsedRules.restMode.maxMoves }}次</p>
                 <p><strong>队友行为规则：</strong>{{ parsedRules.teammateBehavior }}</p>
                 <p><strong>死亡后物品去向：</strong>{{ getDispositionDisplayText(parsedRules.deathItemDisposition) }}</p>
-
-                <div class="teammate-behavior-details">
-                  <h5>队友行为详细设置：</h5>
-                  <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.noHarm" class="tag">禁止队友伤害</el-tag>
-                  <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.noSearch" class="tag">禁止搜索到队友</el-tag>
-                  <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.canViewStatus" class="tag">允许查看队友状态</el-tag>
-                  <el-tag type="info" v-if="parsedRules.parsedTeammateBehaviors.canTransferItems" class="tag">允许赠送物品给队友</el-tag>
-                  <el-tag
-                    v-if="!parsedRules.parsedTeammateBehaviors.noHarm &&
-                       !parsedRules.parsedTeammateBehaviors.noSearch &&
-                       !parsedRules.parsedTeammateBehaviors.canViewStatus &&
-                       !parsedRules.parsedTeammateBehaviors.canTransferItems"
-                    type="success"
-                    class="tag"
-                  >
-                    无特殊队友行为规则
-                  </el-tag>
-                </div>
               </el-col>
             </el-row>
           </div>
@@ -293,6 +275,24 @@
                         <span v-if="scope.row.properties.cureBleed === undefined">否</span>
                         <span v-else-if="scope.row.properties.cureBleed === 1">抵消</span>
                         <span v-else>治愈</span>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </el-tab-pane>
+
+              <el-tab-pane label="永久增益" name="permanent_buffs">
+                <div class="table-wrapper">
+                  <el-table :data="parsedRules.itemsConfig.items.permanentBuffs" style="width: 100%">
+                    <el-table-column prop="name" label="名称" />
+                    <el-table-column label="效果类型">
+                      <template #default="scope">
+                        {{ ({ max_life: '生命上限', max_strength: '体力上限', max_backpack: '背包容量' } as Record<string, string>)[scope.row.properties.effectType] || scope.row.properties.effectType }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="效果值">
+                      <template #default="scope">
+                        {{ scope.row.properties.effectValue }}
                       </template>
                     </el-table-column>
                   </el-table>
@@ -461,19 +461,6 @@ const getDispositionDisplayText = (value: string) => {
 
 .tag {
   margin: 2px;
-}
-
-.teammate-behavior-details {
-  margin-top: 12px;
-  padding: 8px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-.teammate-behavior-details h5 {
-  margin: 0 0 8px 0;
-  color: #606266;
-  font-size: 14px;
 }
 
 .recipe-block {

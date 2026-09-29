@@ -1,8 +1,9 @@
 //! GameState 导演控制实现
 
-use crate::websocket::actions::utils::format_delta;
+use crate::websocket::actions::utils::{format_delta, format_delta_f64};
 use crate::websocket::models::{
-    ActionResult, ActionResults, AirdropItem, GameState, ItemDeletionItem, ShopListing,
+    ActionResult, ActionResults, AirdropItem, GameState, ItemDeletionItem, SellPriceEntry,
+    ShopListing,
 };
 
 impl GameState {
@@ -411,7 +412,7 @@ impl GameState {
     pub fn handle_set_player_coins(
         &mut self,
         player_id: &str,
-        coins: i32,
+        coins: f64,
     ) -> Result<ActionResults, String> {
         let (player_name, final_coins, coins_change) = {
             let player = self.players.get_mut(player_id).ok_or("Player not found")?;
@@ -454,8 +455,178 @@ impl GameState {
                 "导演设置 {} 货币为 {} ({})",
                 player_name,
                 final_coins,
-                format_delta(coins_change)
+                format_delta_f64(coins_change)
             ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
+
+    /// 设置玩家生命上限（clamp 到 [base, cap]，当前生命高于新上限时压到新上限）
+    pub fn handle_set_player_max_life(
+        &mut self,
+        player_id: &str,
+        max_life: i32,
+    ) -> Result<ActionResults, String> {
+        let (base_max_life, max_life_cap) = {
+            let pc = &self.rule_engine.player_config;
+            (pc.max_life, pc.max_life_cap)
+        };
+        let cap = max_life_cap.max(base_max_life);
+        let new_max_life = max_life.clamp(base_max_life, cap);
+
+        let (player_name, final_max_life, final_life) = {
+            let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+
+            if player.max_life == new_max_life {
+                let data = serde_json::json!({
+                    "player_id": player_id,
+                    "max_life": player.max_life,
+                    "message": "生命上限未发生变化"
+                });
+                let log_message = format!(
+                    "导演尝试设置 {} 生命上限为 {}，但未发生变化（或被上限规则收敛回原值）",
+                    player.name, max_life
+                );
+                return Ok(
+                    ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+                );
+            }
+
+            let player_name = player.name.clone();
+            player.max_life = new_max_life;
+            if player.life > player.max_life {
+                player.life = player.max_life;
+            }
+            (player_name, player.max_life, player.life)
+        };
+
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "max_life": final_max_life,
+            "life": final_life
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "导演设置 {} 生命上限为 {}（当前生命 {}）",
+                player_name, final_max_life, final_life
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
+
+    /// 设置玩家体力上限（clamp 到 [base, cap]，当前体力高于新上限时压到新上限）
+    pub fn handle_set_player_max_strength(
+        &mut self,
+        player_id: &str,
+        max_strength: i32,
+    ) -> Result<ActionResults, String> {
+        let (base_max_strength, max_strength_cap) = {
+            let pc = &self.rule_engine.player_config;
+            (pc.max_strength, pc.max_strength_cap)
+        };
+        let cap = max_strength_cap.max(base_max_strength);
+        let new_max_strength = max_strength.clamp(base_max_strength, cap);
+
+        let (player_name, final_max_strength, final_strength) = {
+            let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+
+            if player.max_strength == new_max_strength {
+                let data = serde_json::json!({
+                    "player_id": player_id,
+                    "max_strength": player.max_strength,
+                    "message": "体力上限未发生变化"
+                });
+                let log_message = format!(
+                    "导演尝试设置 {} 体力上限为 {}，但未发生变化（或被上限规则收敛回原值）",
+                    player.name, max_strength
+                );
+                return Ok(
+                    ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+                );
+            }
+
+            let player_name = player.name.clone();
+            player.max_strength = new_max_strength;
+            if player.strength > player.max_strength {
+                player.strength = player.max_strength;
+            }
+            (player_name, player.max_strength, player.strength)
+        };
+
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "max_strength": final_max_strength,
+            "strength": final_strength
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!(
+                "导演设置 {} 体力上限为 {}（当前体力 {}）",
+                player_name, final_max_strength, final_strength
+            ),
+            true,
+        );
+
+        Ok(action_result.as_results())
+    }
+
+    /// 设置玩家背包上限（clamp 到 [base, cap]，降低上限不丢弃已有物品）
+    pub fn handle_set_player_max_backpack(
+        &mut self,
+        player_id: &str,
+        max_backpack_items: i32,
+    ) -> Result<ActionResults, String> {
+        let (base_backpack, backpack_cap) = {
+            let pc = &self.rule_engine.player_config;
+            (pc.max_backpack_items, pc.max_backpack_items_cap)
+        };
+        let base = base_backpack as i32;
+        let cap = (backpack_cap as i32).max(base);
+        let new_max = max_backpack_items.clamp(base, cap) as usize;
+
+        let (player_name, final_max) = {
+            let player = self.players.get_mut(player_id).ok_or("Player not found")?;
+
+            if player.max_backpack_items == new_max {
+                let data = serde_json::json!({
+                    "player_id": player_id,
+                    "max_backpack_items": player.max_backpack_items,
+                    "message": "背包上限未发生变化"
+                });
+                let log_message = format!(
+                    "导演尝试设置 {} 背包上限为 {}，但未发生变化（或被上限规则收敛回原值）",
+                    player.name, max_backpack_items
+                );
+                return Ok(
+                    ActionResult::new_info_message(data, vec![], log_message, true).as_results(),
+                );
+            }
+
+            let player_name = player.name.clone();
+            player.max_backpack_items = new_max;
+            (player_name, new_max)
+        };
+
+        // 降低上限不丢弃已有物品：inventory 不裁剪，仅拦截后续拾取
+
+        let data = serde_json::json!({
+            "player_id": player_id,
+            "max_backpack_items": final_max
+        });
+
+        let action_result = ActionResult::new_system_message(
+            data,
+            vec![player_id.to_string()],
+            format!("导演设置 {} 背包上限为 {}", player_name, final_max),
             true,
         );
 
@@ -766,9 +937,20 @@ impl GameState {
         }
 
         // 验证物品名称是否存在于规则配置中
-        self.rule_engine
+        let preview = self
+            .rule_engine
             .create_item_from_name(&item_name)
             .map_err(|err| format!("物品 {} 不存在于规则配置中: {}", item_name, err))?;
+        if preview.is_weapon_or_armor() {
+            let data = serde_json::json!({});
+            return Ok(ActionResult::new_info_message(
+                data,
+                vec![],
+                "武器和防具请按稀有度类目上架".to_string(),
+                true,
+            )
+            .as_results());
+        }
 
         let qty = quantity.max(1);
 
@@ -777,6 +959,8 @@ impl GameState {
             item_name,
             price,
             quantity: qty,
+            item_kind: None,
+            rarity: None,
         };
 
         self.shop.push(listing.clone());
@@ -823,6 +1007,250 @@ impl GameState {
         );
         action_result.broadcast_to_all = true;
 
+        Ok(action_result.as_results())
+    }
+
+    /// 导演更新队友行为配置
+    pub fn handle_set_teammate_behavior(&mut self, mode: i32) -> Result<ActionResults, String> {
+        // 1. 写回 rule_engine（让本轮后续 action 立刻生效）
+        self.rule_engine.teammate_behavior.mode = mode;
+
+        // 2. 同步到 rules_config JSON（让前端 state_update 看到新值、让存档保留）
+        if let Some(obj) = self.rules_config.as_object_mut() {
+            obj.insert("teammate_behavior".to_string(), serde_json::json!(mode));
+        }
+
+        // 3. 全员广播 SystemNotice
+        let all_player_ids: Vec<String> = self.players.keys().cloned().collect();
+        Ok(ActionResult::new_system_message(
+            serde_json::json!({ "teammate_behavior": mode }),
+            all_player_ids,
+            format!("导演已更新队友行为规则（位掩码={}）", mode),
+            true,
+        )
+        .as_results())
+    }
+
+    /// 售出价格校验与显示辅助
+    pub fn rarity_display_name(rarity: &str) -> Option<&'static str> {
+        match rarity {
+            "common" => Some("绿"),
+            "rare" => Some("蓝"),
+            "epic" => Some("紫"),
+            "legendary" => Some("橙"),
+            _ => None,
+        }
+    }
+
+    /// 商店稀有度类目：类别中文名
+    pub fn item_kind_display_name(kind: &str) -> Option<&'static str> {
+        match kind {
+            "weapon" => Some("武器"),
+            "armor" => Some("防具"),
+            _ => None,
+        }
+    }
+
+    /// 道具库中该类别该稀有度的全部候选显示名（多条目合并）
+    pub fn rarity_display_names(&self, item_kind: &str, rarity: &str) -> Vec<String> {
+        match item_kind {
+            "weapon" => self
+                .rule_engine
+                .items_config
+                .items
+                .weapons
+                .iter()
+                .filter(|w| w.rarity.as_deref() == Some(rarity))
+                .flat_map(|w| w.display_names.clone())
+                .collect(),
+            "armor" => self
+                .rule_engine
+                .items_config
+                .items
+                .armors
+                .iter()
+                .filter(|a| a.rarity.as_deref() == Some(rarity))
+                .flat_map(|a| a.display_names.clone())
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// 商店上架稀有度类目（武器/防具 × 稀有度，购买时随机抽取）
+    pub fn handle_shop_list_rarity(
+        &mut self,
+        item_kind: String,
+        rarity: String,
+        price: i32,
+        quantity: i32,
+    ) -> Result<ActionResults, String> {
+        let info = |message: String| -> ActionResults {
+            ActionResult::new_info_message(serde_json::json!({}), vec![], message, true).as_results()
+        };
+        let Some(kind_cn) = Self::item_kind_display_name(&item_kind) else {
+            return Ok(info(format!(
+                "类目必须为 weapon 或 armor，当前值为 {}",
+                item_kind
+            )));
+        };
+        let Some(rarity_cn) = Self::rarity_display_name(&rarity) else {
+            return Ok(info(format!(
+                "稀有度必须为 common/rare/epic/legendary，当前值为 {}",
+                rarity
+            )));
+        };
+
+        if price < 1 {
+            return Ok(info(format!("上架价格必须 >= 1，当前值为 {}", price)));
+        }
+
+        let pool = self.rarity_display_names(&item_kind, &rarity);
+        if pool.is_empty() {
+            return Ok(info(format!("道具库中没有{}类{}", rarity_cn, kind_cn)));
+        }
+
+        let qty = quantity.max(1);
+        if qty > pool.len() as i32 {
+            return Ok(info(format!(
+                "库存不能超过道具库中{}类{}的名称总数（{}）",
+                rarity_cn,
+                kind_cn,
+                pool.len()
+            )));
+        }
+
+        if self
+            .shop
+            .iter()
+            .any(|l| l.item_kind.as_deref() == Some(item_kind.as_str())
+                && l.rarity.as_deref() == Some(rarity.as_str()))
+        {
+            return Ok(info("该类目已上架".to_string()));
+        }
+
+        let listing = ShopListing {
+            id: uuid::Uuid::new_v4().to_string(),
+            item_name: format!("{}类{}（随机）", rarity_cn, kind_cn),
+            price,
+            quantity: qty,
+            item_kind: Some(item_kind),
+            rarity: Some(rarity),
+        };
+        self.shop.push(listing.clone());
+
+        let data = serde_json::json!({ "shop_listing": listing });
+        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
+        let mut action_result = ActionResult::new_system_message(
+            data,
+            broadcast_players,
+            format!(
+                "导演上架了{}类{}（随机），价格 {} 货币，库存 {}",
+                rarity_cn, kind_cn, price, qty
+            ),
+            true,
+        );
+        action_result.broadcast_to_all = true;
+
+        Ok(action_result.as_results())
+    }
+
+    /// 格式化价格显示（整数省略小数点）
+    pub fn format_price(price: f64) -> String {
+        if (price - price.round()).abs() < 1e-9 {
+            format!("{}", price.round() as i64)
+        } else {
+            format!("{}", price)
+        }
+    }
+
+    /// 导演设置售出价格（新增或改价）
+    pub fn handle_sell_set_price(
+        &mut self,
+        rarity: String,
+        price: f64,
+    ) -> Result<ActionResults, String> {
+        let Some(display) = Self::rarity_display_name(&rarity) else {
+            return Ok(ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![],
+                format!(
+                    "稀有度必须为 common/rare/epic/legendary，当前值为 {}",
+                    rarity
+                ),
+                true,
+            )
+            .as_results());
+        };
+        if price <= 0.0 || (price * 2.0 - (price * 2.0).round()).abs() >= 1e-9 {
+            return Ok(ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![],
+                format!("售出价格必须为 0.5 的倍数且大于 0，当前值为 {}", price),
+                true,
+            )
+            .as_results());
+        }
+
+        let broadcast_rarity = rarity.clone();
+        if let Some(entry) = self.sell_prices.iter_mut().find(|e| e.rarity == rarity) {
+            entry.price = price;
+        } else {
+            self.sell_prices.push(SellPriceEntry {
+                id: uuid::Uuid::new_v4().to_string(),
+                rarity,
+                price,
+            });
+        }
+
+        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
+        let mut action_result = ActionResult::new_system_message(
+            serde_json::json!({ "rarity": broadcast_rarity, "price": price }),
+            broadcast_players,
+            format!(
+                "导演更新了售出价格：{}类道具 {} 货币",
+                display,
+                Self::format_price(price)
+            ),
+            true,
+        );
+        action_result.broadcast_to_all = true;
+        Ok(action_result.as_results())
+    }
+
+    /// 导演删除某稀有度的售出配置
+    pub fn handle_sell_remove_price(&mut self, rarity: &str) -> Result<ActionResults, String> {
+        let Some(display) = Self::rarity_display_name(rarity) else {
+            return Ok(ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![],
+                format!(
+                    "稀有度必须为 common/rare/epic/legendary，当前值为 {}",
+                    rarity
+                ),
+                true,
+            )
+            .as_results());
+        };
+        let Some(pos) = self.sell_prices.iter().position(|e| e.rarity == rarity) else {
+            return Ok(ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![],
+                format!("{}类道具尚未配置售出价格", display),
+                true,
+            )
+            .as_results());
+        };
+        let rarity = rarity.to_string();
+        self.sell_prices.remove(pos);
+
+        let broadcast_players: Vec<String> = self.players.keys().cloned().collect();
+        let mut action_result = ActionResult::new_system_message(
+            serde_json::json!({ "rarity": rarity }),
+            broadcast_players,
+            format!("导演关闭了{}类道具的售出", display),
+            true,
+        );
+        action_result.broadcast_to_all = true;
         Ok(action_result.as_results())
     }
 }

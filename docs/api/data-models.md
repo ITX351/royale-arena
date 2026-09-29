@@ -117,7 +117,10 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
   "vote": "integer",      // 持有的票数
   "ts": "number",         // 上次搜索时间戳
   "deliver": "integer",   // 传音次数标记
-  "rest": "integer"       // 静养模式标记
+  "rest": "integer",      // 静养模式标记
+  "max_life": "integer",           // 生命上限（可被永久增益道具提升）
+  "max_strength": "integer",       // 体力上限（可被永久增益道具提升）
+  "max_backpack_items": "integer"  // 背包容量上限（初始来自规则，可被永久增益道具提升）
 }
 ```
 
@@ -144,7 +147,11 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
   "player": {
     "max_life": "integer",        // 最大生命值
     "max_strength": "integer",    // 最大体力值
-    "daily_strength_recovery": "integer"  // 每日体力恢复值
+    "daily_strength_recovery": "integer",  // 每日体力恢复值
+    "max_backpack_items": "integer",       // 背包容量基础值
+    "max_life_cap": "integer",             // 生命上限的硬上限（默认 300）
+    "max_strength_cap": "integer",         // 体力上限的硬上限（默认 300）
+    "max_backpack_items_cap": "integer"    // 背包容量的硬上限（默认 12）
   },
   "action": {
     "move_cost": "integer",       // 移动消耗体力

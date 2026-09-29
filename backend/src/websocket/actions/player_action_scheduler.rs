@@ -18,6 +18,9 @@ pub struct ActionParams {
     /// 道具ID
     pub item_id: Option<String>,
 
+    /// 道具ID列表（售出等多件行动）
+    pub item_ids: Option<Vec<String>>,
+
     /// 装备槽位类型
     pub slot_type: Option<String>,
 
@@ -302,6 +305,30 @@ impl PlayerActionScheduler {
                 game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_deliver_action(player_id, target_player_id, message);
             }
+            "transfer_item" => {
+                validate_or_return!(
+                    game_state,
+                    player_id,
+                    vec![
+                        ValidationType::Alive,
+                        ValidationType::NotBound,
+                    ]
+                );
+                let item_id = action_params
+                    .item_id
+                    .clone()
+                    .ok_or("Missing item_id parameter".to_string())?;
+                let target_player_id = action_params
+                    .target_player_id
+                    .clone()
+                    .ok_or("Missing target_player_id parameter".to_string())?;
+                game_state.end_rest_mode_for_action(player_id);
+                return game_state.handle_transfer_item_action(
+                    player_id,
+                    &item_id,
+                    &target_player_id,
+                );
+            }
             "shop_buy" => {
                 validate_or_return!(
                     game_state,
@@ -317,6 +344,23 @@ impl PlayerActionScheduler {
                     .as_ref()
                     .ok_or("Missing shop_buy_items parameter")?;
                 return game_state.handle_shop_buy_action(player_id, buy_items);
+            }
+            "sell_item" => {
+                validate_or_return!(
+                    game_state,
+                    player_id,
+                    vec![
+                        ValidationType::Alive,
+                        ValidationType::Born,
+                        ValidationType::NotBound,
+                    ]
+                );
+                let item_ids = action_params
+                    .item_ids
+                    .clone()
+                    .ok_or("Missing item_ids parameter".to_string())?;
+                game_state.end_rest_mode_for_action(player_id);
+                return game_state.handle_sell_item_action(player_id, &item_ids);
             }
             "send" => {
                 let message = action_params
@@ -456,11 +500,11 @@ impl PlayerActionScheduler {
     /// 验证背包有空闲空间（从玩家引用）
     fn check_inventory_space_from_ref(
         player: &Player,
-        game_state: &GameState,
+        _game_state: &GameState,
         player_id: &str,
     ) -> Result<(), ActionResults> {
         // 获取背包最大容量
-        let max_inventory_size = game_state.rule_engine.player_config.max_backpack_items as usize;
+        let max_inventory_size = player.max_backpack_items;
 
         // 检查当前物品总数（包括装备）
         let total_items = player.get_total_item_count();

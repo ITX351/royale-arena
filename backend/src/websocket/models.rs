@@ -75,10 +75,27 @@ pub struct ShopListing {
     /// 库存数量
     #[serde(default = "default_quantity")]
     pub quantity: i32,
+    /// 稀有度随机条目：Some("weapon" | "armor")；具体物品条目为 None
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub item_kind: Option<String>,
+    /// 与 item_kind 同时出现的稀有度（common | rare | epic | legendary）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
 }
 
 fn default_quantity() -> i32 {
     1
+}
+
+/// 售出系统稀有度价格条目
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SellPriceEntry {
+    /// 条目唯一ID
+    pub id: String,
+    /// 稀有度：common | rare | epic | legendary
+    pub rarity: String,
+    /// 售出价格（货币数，0.5 步长）
+    pub price: f64,
 }
 
 /// 玩家购买请求项
@@ -129,6 +146,9 @@ pub struct GameState {
     /// 商店上架物品列表
     #[serde(default)]
     pub shop: Vec<ShopListing>,
+    /// 售出系统：稀有度 → 价格（同一稀有度最多一条）
+    #[serde(default)]
+    pub sell_prices: Vec<SellPriceEntry>,
 }
 
 /// 玩家类
@@ -175,9 +195,12 @@ pub struct Player {
     /// 附加流血的玩家ID
     #[serde(default)]
     pub bleed_inflictor: Option<String>,
+    /// 背包容量上限（初始来自规则，可被永久增益道具提升）
+    #[serde(default)]
+    pub max_backpack_items: usize,
     /// 货币总数
     #[serde(default)]
-    pub coins: i32,
+    pub coins: f64,
 }
 
 impl Player {
@@ -191,6 +214,7 @@ impl Player {
     ) -> Self {
         let max_life = rule_engine.player_config.max_life;
         let max_strength = rule_engine.player_config.max_strength;
+        let max_backpack_items = rule_engine.player_config.max_backpack_items;
 
         Self {
             id,
@@ -201,6 +225,7 @@ impl Player {
             strength: max_strength,
             max_life,
             max_strength,
+            max_backpack_items,
             inventory: Vec::new(),
             equipped_weapon: None,
             equipped_armor: None,
@@ -213,7 +238,7 @@ impl Player {
             team_id: Some(team_id),
             bleed_damage: 0,
             bleed_inflictor: None,
-            coins: 0,
+            coins: 0.0,
         }
     }
 
@@ -478,6 +503,23 @@ impl GameState {
             next_night_destroyed_places: Vec::new(),
             save_time: None,
             shop: Vec::new(),
+            sell_prices: Vec::new(),
+        }
+    }
+
+    /// 判断两个玩家是否为同队队友
+    /// 规则：team_id 必须相等且 > 0；自己不算自己的队友；任一玩家不存在返回 false
+    pub fn are_teammates(&self, a_id: &str, b_id: &str) -> bool {
+        if a_id == b_id {
+            return false;
+        }
+        let (a, b) = match (self.players.get(a_id), self.players.get(b_id)) {
+            (Some(a), Some(b)) => (a, b),
+            _ => return false,
+        };
+        match (a.team_id, b.team_id) {
+            (Some(ta), Some(tb)) => ta > 0 && ta == tb,
+            _ => false,
         }
     }
 }
@@ -503,6 +545,8 @@ impl<'de> Deserialize<'de> for GameState {
             save_time: Option<DateTime<Utc>>,
             #[serde(default)]
             shop: Vec<ShopListing>,
+            #[serde(default)]
+            sell_prices: Vec<SellPriceEntry>,
         }
 
         let helper = GameStateHelper::deserialize(deserializer)?;
@@ -513,9 +557,18 @@ impl<'de> Deserialize<'de> for GameState {
         let rule_engine =
             GameRuleEngine::from_json(&rules_json).map_err(serde::de::Error::custom)?;
 
+        // 旧存档玩家没有 max_backpack_items 字段（serde default 为 0），回填为规则初始值
+        let mut players = helper.players;
+        let default_backpack = rule_engine.player_config.max_backpack_items;
+        for player in players.values_mut() {
+            if player.max_backpack_items == 0 {
+                player.max_backpack_items = default_backpack;
+            }
+        }
+
         Ok(GameState {
             game_id: helper.game_id,
-            players: helper.players,
+            players,
             places: helper.places,
             weather: helper.weather,
             votes: helper.votes,
@@ -526,6 +579,74 @@ impl<'de> Deserialize<'de> for GameState {
             next_night_destroyed_places: helper.next_night_destroyed_places,
             save_time: helper.save_time,
             shop: helper.shop,
+            sell_prices: helper.sell_prices,
         })
+    }
+}
+
+#[cfg(test)]
+mod are_teammates_tests {
+    use super::*;
+    use crate::game::game_rule_engine::GameRuleEngine;
+
+    fn build_state_with_players(pairs: &[(&str, u32)]) -> GameState {
+        let rules_json = r#"{
+            "map": {"places": ["loc"], "safe_places": []},
+            "player": {"max_life": 100, "max_strength": 100, "daily_life_recovery": 0, "daily_strength_recovery": 40, "search_cooldown": 30, "max_backpack_items": 6, "unarmed_damage": 5},
+            "action_costs": {"move": 5, "search": 5, "pick": 0, "attack": 0, "equip": 0, "use": 0, "throw": 0, "deliver": 10},
+            "rest_mode": {"life_recovery": 25, "strength_recovery": 1000, "max_moves": 1},
+            "death_item_disposition": "killer_takes_loot",
+            "teammate_behavior": 0,
+            "items_config": {"rarity_levels": [], "items": {}, "upgrade_recipes": {}}
+        }"#;
+        let rules_value: JsonValue =
+            serde_json::from_str(rules_json).expect("rules JSON must parse");
+        let engine = GameRuleEngine::from_json(rules_json).unwrap();
+        let mut state = GameState::new("game1".to_string(), rules_value);
+        state.rule_engine = engine;
+        for (id, team) in pairs {
+            let mut p = Player::new(
+                id.to_string(),
+                format!("name_{}", id),
+                "pw".to_string(),
+                *team,
+                &state.rule_engine,
+            );
+            p.location = "loc".to_string();
+            state.players.insert(id.to_string(), p);
+        }
+        state
+    }
+
+    #[test]
+    fn same_positive_team_id_are_teammates() {
+        let s = build_state_with_players(&[("a", 1), ("b", 1)]);
+        assert!(s.are_teammates("a", "b"));
+        assert!(s.are_teammates("b", "a")); // symmetric
+    }
+
+    #[test]
+    fn different_team_ids_not_teammates() {
+        let s = build_state_with_players(&[("a", 1), ("b", 2)]);
+        assert!(!s.are_teammates("a", "b"));
+    }
+
+    #[test]
+    fn zero_team_id_never_teammate_even_if_equal() {
+        let s = build_state_with_players(&[("a", 0), ("b", 0)]);
+        assert!(!s.are_teammates("a", "b"));
+    }
+
+    #[test]
+    fn self_is_not_own_teammate() {
+        let s = build_state_with_players(&[("a", 1)]);
+        assert!(!s.are_teammates("a", "a"));
+    }
+
+    #[test]
+    fn unknown_player_id_not_teammate() {
+        let s = build_state_with_players(&[("a", 1)]);
+        assert!(!s.are_teammates("a", "ghost"));
+        assert!(!s.are_teammates("ghost", "a"));
     }
 }

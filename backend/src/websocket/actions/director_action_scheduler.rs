@@ -24,7 +24,10 @@ pub struct DirectorActionParams {
     pub player_id: Option<String>,
     pub life: Option<i32>,     // 玩家生命值
     pub strength: Option<i32>, // 玩家体力值
-    pub coins: Option<i32>,    // 玩家货币
+    pub coins: Option<f64>,    // 玩家货币
+    pub max_life: Option<i32>,           // 玩家生命上限
+    pub max_strength: Option<i32>,       // 玩家体力上限
+    pub max_backpack_items: Option<i32>, // 玩家背包上限
     pub target_place: Option<String>,
     pub action_type: Option<String>, // rope/unrope
     pub rest_enabled: Option<bool>,  // 夜晚结算时静养是否生效
@@ -45,6 +48,17 @@ pub struct DirectorActionParams {
     pub shop_listing_id: Option<String>,
     pub price: Option<i32>,
     pub quantity: Option<i32>,
+
+    /// 队友行为位掩码（0..=15）
+    pub teammate_behavior: Option<i32>,
+
+    /// 售出系统：稀有度与价格（0.5 步长）
+    pub sell_rarity: Option<String>,
+    pub sell_price: Option<f64>,
+
+    /// 商店稀有度类目上架：类别与稀有度
+    pub shop_item_kind: Option<String>,
+    pub shop_rarity: Option<String>,
 }
 
 impl DirectorActionParams {
@@ -156,6 +170,36 @@ impl DirectorActionScheduler {
                 game_state.handle_set_player_coins(&player_id, coins)
             }
 
+            "max_life" => {
+                let player_id = action_params
+                    .player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let max_life = action_params
+                    .max_life
+                    .ok_or_else(|| "Missing max_life parameter".to_string())?;
+                game_state.handle_set_player_max_life(&player_id, max_life)
+            }
+
+            "max_strength" => {
+                let player_id = action_params
+                    .player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let max_strength = action_params
+                    .max_strength
+                    .ok_or_else(|| "Missing max_strength parameter".to_string())?;
+                game_state.handle_set_player_max_strength(&player_id, max_strength)
+            }
+
+            "max_backpack" => {
+                let player_id = action_params
+                    .player_id
+                    .ok_or_else(|| "Missing player_id parameter".to_string())?;
+                let max_backpack_items = action_params
+                    .max_backpack_items
+                    .ok_or_else(|| "Missing max_backpack_items parameter".to_string())?;
+                game_state.handle_set_player_max_backpack(&player_id, max_backpack_items)
+            }
+
             "move_player" => {
                 let player_id = action_params
                     .player_id
@@ -231,6 +275,51 @@ impl DirectorActionScheduler {
                     .shop_listing_id
                     .ok_or_else(|| "Missing shop_listing_id parameter".to_string())?;
                 game_state.handle_shop_delist_item(&listing_id)
+            }
+
+            "shop_list_rarity" => {
+                let item_kind = action_params
+                    .shop_item_kind
+                    .clone()
+                    .ok_or_else(|| "Missing shop_item_kind parameter".to_string())?;
+                let rarity = action_params
+                    .shop_rarity
+                    .clone()
+                    .ok_or_else(|| "Missing shop_rarity parameter".to_string())?;
+                let price = action_params
+                    .price
+                    .ok_or_else(|| "Missing price parameter".to_string())?;
+                let quantity = action_params.quantity.unwrap_or(1);
+                game_state.handle_shop_list_rarity(item_kind, rarity, price, quantity)
+            }
+
+            "set_teammate_behavior" => {
+                let mode = action_params
+                    .teammate_behavior
+                    .ok_or_else(|| "Missing teammate_behavior parameter".to_string())?;
+                if !(0..=15).contains(&mode) {
+                    return Err(format!("teammate_behavior must be in 0..=15, got {}", mode));
+                }
+                game_state.handle_set_teammate_behavior(mode)
+            }
+
+            "sell_set_price" => {
+                let rarity = action_params
+                    .sell_rarity
+                    .clone()
+                    .ok_or_else(|| "Missing sell_rarity parameter".to_string())?;
+                let price = action_params
+                    .sell_price
+                    .ok_or_else(|| "Missing sell_price parameter".to_string())?;
+                game_state.handle_sell_set_price(rarity, price)
+            }
+
+            "sell_remove_price" => {
+                let rarity = action_params
+                    .sell_rarity
+                    .clone()
+                    .ok_or_else(|| "Missing sell_rarity parameter".to_string())?;
+                game_state.handle_sell_remove_price(&rarity)
             }
 
             _ => Err(format!("Unknown director action type: {}", action_type)),

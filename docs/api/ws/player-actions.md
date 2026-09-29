@@ -60,6 +60,15 @@
 }
 ```
 
+使用道具补充说明：
+- 对 `permanent_buff` 类型道具（永久增益），返回的 data 含对应属性及其变化量：
+  - 生命上限类：`max_life` + `max_life_delta`
+  - 体力上限类：`max_strength` + `max_strength_delta`
+  - 背包容量类：`max_backpack_items` + `max_backpack_items_delta`
+  - 同时返回 `strength` / `strength_delta`（使用本身的体力消耗，默认 0）
+- 道具使用后消耗；达到硬上限后再使用，超出部分无效，道具照常消耗
+- 未知 `effect_type` 返回 Info 错误，道具退回背包
+
 **丢弃道具 (throw):**
 ```json
 {

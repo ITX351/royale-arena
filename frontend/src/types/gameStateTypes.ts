@@ -6,6 +6,15 @@ export interface ShopListing {
   item_name: string;
   price: number;
   quantity: number;
+  item_kind?: 'weapon' | 'armor';
+  rarity?: 'common' | 'rare' | 'epic' | 'legendary';
+}
+
+// 售出系统稀有度价格条目
+export interface SellPriceEntry {
+  id: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  price: number;
 }
 
 // 商店购买请求项
@@ -15,7 +24,7 @@ export interface ShopBuyItem {
 }
 
 // 物品类型分类
-export type ItemCategory = 'weapon' | 'armor' | 'consumable' | 'utility' | 'upgrader' | 'currency';
+export type ItemCategory = 'weapon' | 'armor' | 'consumable' | 'utility' | 'upgrader' | 'currency' | 'permanent_buff';
 
 // 物品类型载荷
 export interface ItemType {
@@ -42,6 +51,7 @@ export interface Player {
   strength: number;
   max_life: number;
   max_strength: number;
+  max_backpack_items: number;
   inventory: Item[];
   equipped_weapon: Item | null; // 修改：单槽位武器
   equipped_armor: Item | null; // 修改：单槽位防具
@@ -60,6 +70,7 @@ export interface Player {
 export interface ActorPlayer {
   id: string;
   name: string;
+  team_id?: number;
 }
 
 // 导演视角的地点接口
@@ -96,6 +107,7 @@ export interface GlobalState {
   rules_config: Record<string, any>; // 后端传递的规则配置
   server_now?: string; // 后端服务器当前时间戳（ISO字符串）
   shop: ShopListing[];
+  sell_prices: SellPriceEntry[];
 }
 
 // 导演视角的游戏数据接口

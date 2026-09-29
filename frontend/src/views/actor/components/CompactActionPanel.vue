@@ -6,11 +6,11 @@
     </div>
     <div class="status-item">
       <span class="status-label">生命:</span>
-      <span :class="['status-value', 'life', lifeAnimationClass]">{{ player.life }}</span>
+      <span :class="['status-value', 'life', lifeAnimationClass]">{{ player.life }}{{ lifeCapRaised ? `/${player.max_life}` : '' }}</span>
     </div>
     <div class="status-item">
       <span class="status-label">体力:</span>
-      <span class="status-value strength">{{ player.strength }}</span>
+      <span class="status-value strength">{{ player.strength }}{{ strengthCapRaised ? `/${player.max_strength}` : '' }}</span>
     </div>
     <div class="status-item">
       <span class="status-label">货币:</span>
@@ -32,7 +32,7 @@
 
   <!-- 核心操作区 -->
   <div class="core-actions">
-    <div class="action-row">
+    <div class="action-row" :class="{ 'action-row--spawned': hasSpawned }">
       <!-- 出生/移动操作 -->
       <div class="action-group">
         <template v-if="!hasSpawned">
@@ -43,7 +43,7 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
-            filterable
+            :filterable="!isCoarseSelect"
             :class="{
               'safe-zone-selected': isSafePlace(selectedPlace) && !isNextNightDestroyedPlace(selectedPlace),
               'next-destroy-selected': isNextNightDestroyedPlace(selectedPlace)
@@ -78,7 +78,7 @@
             style="width: 120px;"
             placement="bottom-start"
             :popper-options="selectPopperOptions"
-            filterable
+            :filterable="!isCoarseSelect"
             :class="{
               'safe-zone-selected': isSafePlace(targetPlace) && !isNextNightDestroyedPlace(targetPlace),
               'next-destroy-selected': isNextNightDestroyedPlace(targetPlace)
@@ -158,7 +158,10 @@
               <template v-else>
                 <div class="shop-item-list">
                   <div v-for="listing in shopListings" :key="listing.id" class="shop-item-row">
-                    <span class="shop-item-name">{{ listing.item_name }}</span>
+                    <span class="shop-item-name">
+                      <span v-if="listing.rarity" :class="['rarity-dot', listing.rarity]"></span>
+                      {{ listing.item_name }}
+                    </span>
                     <span class="shop-item-meta">
                       <span class="shop-item-price">{{ listing.price }} 币</span>
                       <span class="shop-item-stock">库存 {{ listing.quantity }}</span>
@@ -189,6 +192,14 @@
               </template>
             </div>
           </el-popover>
+          <el-button
+            type="warning"
+            size="small"
+            :disabled="!sellAvailable"
+            @click="sellDialogVisible = true"
+          >
+            售出
+          </el-button>
         </div>
         <div class="rest-status-chip rest-desktop" :class="restStatusClass">
           <span class="rest-status-text">{{ restStatusLabel }}</span>
@@ -211,6 +222,9 @@
         </template>
       </span>
       <span class="timing-text timing-night">{{ nightCountdownMessage }}</span>
+      <div class="rest-status-chip rest-mobile" :class="restStatusClass">
+        <span class="rest-status-text">{{ restStatusLabel }}</span>
+      </div>
     </div>
 
     <div class="search-result-brief">
@@ -218,74 +232,7 @@
     </div>
   </div>
 
-  <!-- 通信快捷区 -->
-  <div class="communication-actions" v-if="props.communicationVisible">
-    <div class="comm-row">
-      <!-- 传音 -->
-      <div class="deliver-group">
-        <el-select 
-          v-model="targetPlayer" 
-          placeholder="选择玩家" 
-          size="small"
-          style="width: 120px;"
-          placement="bottom-start"
-          :popper-options="selectPopperOptions"
-          filterable
-        >
-          <el-option
-            v-for="otherPlayer in sortedOtherPlayers"
-            :key="otherPlayer.id"
-            :label="otherPlayer.name"
-            :value="otherPlayer.id"
-          />
-        </el-select>
-        <el-input 
-          v-model="deliverMessage" 
-          placeholder="传音内容"
-          size="small"
-          style="width: 150px;"
-          :maxlength="MESSAGE_MAX_LENGTH"
-          show-word-limit
-          @keyup.enter="handleDeliver"
-        />
-        <el-button 
-          size="small"
-          :disabled="!targetPlayer || !deliverMessage.trim() || deliverMessageTooLong"
-          @click="handleDeliver"
-        >
-          传音
-        </el-button>
-        <span v-if="deliverMessageTooLong" class="input-error">内容不能超过 {{ MESSAGE_MAX_LENGTH }} 字</span>
-      </div>
-
-      <!-- 发送给导演 -->
-      <div class="director-message-group">
-        <el-input 
-          v-model="directorMessage" 
-          placeholder="发送给导演"
-          size="small"
-          style="width: 200px;"
-          :maxlength="MESSAGE_MAX_LENGTH"
-          show-word-limit
-          @keyup.enter="handleSendToDirector"
-        />
-        <el-button 
-          size="small"
-          :disabled="!directorMessage.trim() || directorMessageTooLong"
-          @click="handleSendToDirector"
-        >
-          发送
-        </el-button>
-        <span v-if="directorMessageTooLong" class="input-error">内容不能超过 {{ MESSAGE_MAX_LENGTH }} 字</span>
-      </div>
-      <div
-        class="rest-status-chip rest-mobile"
-        :class="restStatusClass"
-      >
-        <span class="rest-status-text">{{ restStatusLabel }}</span>
-      </div>
-    </div>
-  </div>
+  <SellItemDialog v-model="sellDialogVisible" :inventory="props.player.inventory" />
 </template>
 
 <script setup lang="ts">
@@ -294,17 +241,15 @@ import { storeToRefs } from 'pinia'
 import type { Player, ActorPlayer,ActorPlace, GlobalState, ShopListing, ShopBuyItem } from '@/types/gameStateTypes'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 import { useGameStateStore } from '@/stores/gameState'
+import SellItemDialog from './SellItemDialog.vue'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   player: Player
   places: ActorPlace[]
   players: ActorPlayer[]
   globalState: GlobalState | null
   shopListings: ShopListing[]
-  communicationVisible?: boolean
-}>(), {
-  communicationVisible: true
-})
+}>()
 
 const emit = defineEmits<{
   action: [action: string, params: Record<string, any>]
@@ -314,16 +259,12 @@ const emit = defineEmits<{
 // 响应式数据
 const selectedPlace = ref('')
 const targetPlace = ref('')
-const targetPlayer = ref('')
-const deliverMessage = ref('')
-const directorMessage = ref('')
 const gameStateStore = useGameStateStore()
 const { serverOffsetMs } = storeToRefs(gameStateStore)
 const now = ref(Date.now() + serverOffsetMs.value)
 let timer: number | null = null
 const lifeAnimation = ref<'damage' | 'heal' | ''>('')
 let lifeAnimationTimer: number | null = null
-const MESSAGE_MAX_LENGTH = 100
 const shopPopoverVisible = ref(false)
 const shopQuantities = ref<Record<string, number>>({})
 
@@ -363,6 +304,25 @@ const selectPopperOptions = {
       }
     }
   ]
+}
+
+// 移动端/触屏设备禁用下拉框筛选输入，避免点击时弹出输入法或出现可编辑的搜索框
+// 同时结合“触摸指针”和“窄屏（手机版布局）”两个条件判断，
+// 这样即使在桌面浏览器的移动端调试模式（未必报告 pointer: coarse）下也能生效
+const MOBILE_SELECT_BREAKPOINT = 768
+const isCoarsePointer = ref(false)
+const isNarrowViewport = ref(false)
+const isCoarseSelect = computed(() => isCoarsePointer.value || isNarrowViewport.value)
+
+let coarsePointerMediaQuery: MediaQueryList | null = null
+const handleCoarsePointerChange = (event: MediaQueryListEvent) => {
+  isCoarsePointer.value = event.matches
+}
+
+const updateViewportWidth = () => {
+  if (typeof window !== 'undefined') {
+    isNarrowViewport.value = window.innerWidth <= MOBILE_SELECT_BREAKPOINT
+  }
 }
 
 const safeZoneOptionStyle: Record<string, string> = {
@@ -504,6 +464,20 @@ const actionsDisabled = computed(() => {
   return !nightActionActive.value || props.player.is_bound
 })
 
+const nightTimesSet = computed(
+  () => nightStartMs.value !== null && nightEndMs.value !== null
+)
+
+const sellAvailable = computed(
+  () =>
+    nightTimesSet.value &&
+    !nightActionActive.value &&
+    !props.player.is_bound &&
+    props.player.is_alive
+)
+
+const sellDialogVisible = ref(false)
+
 const nightCountdownMessage = computed(() => {
   if (!nightStartMs.value) {
     return '夜晚行动时间未设置'
@@ -562,17 +536,6 @@ const canSearchNow = computed(() => {
   return now.value >= nextAvailable
 })
 
-const otherPlayers = computed((): ActorPlayer[] => {
-  return props.players.filter(p => p.id !== props.player.id)
-})
-
-const sortedOtherPlayers = computed(() => {
-  return [...otherPlayers.value].sort((a, b) => {
-    const localeResult = a.name.localeCompare(b.name, 'zh-CN-u-co-pinyin')
-    return localeResult || a.name.localeCompare(b.name)
-  })
-})
-
 const searchResultText = computed(() => {
   const result = props.player.last_search_result
   if (!result) {
@@ -582,6 +545,16 @@ const searchResultText = computed(() => {
   return `最近发现${typeLabel}: ${result.target_name}`
 })
 
+const lifeCapRaised = computed(() => {
+  const base = props.globalState?.rules_config?.player?.max_life
+  return typeof base === 'number' && props.player.max_life > base
+})
+
+const strengthCapRaised = computed(() => {
+  const base = props.globalState?.rules_config?.player?.max_strength
+  return typeof base === 'number' && props.player.max_strength > base
+})
+
 const lifeAnimationClass = computed(() => {
   if (!lifeAnimation.value) {
     return ''
@@ -589,18 +562,19 @@ const lifeAnimationClass = computed(() => {
   return lifeAnimation.value === 'damage' ? 'life-damage' : 'life-heal'
 })
 
-const deliverMessageTooLong = computed(() => {
-  return deliverMessage.value.length > MESSAGE_MAX_LENGTH
-})
-
-const directorMessageTooLong = computed(() => {
-  return directorMessage.value.length > MESSAGE_MAX_LENGTH
-})
-
 onMounted(() => {
   timer = window.setInterval(() => {
     now.value = Date.now() + serverOffsetMs.value
   }, 100)
+
+  if (typeof window !== 'undefined') {
+    updateViewportWidth()
+    window.addEventListener('resize', updateViewportWidth)
+
+    coarsePointerMediaQuery = window.matchMedia('(pointer: coarse)')
+    isCoarsePointer.value = coarsePointerMediaQuery.matches
+    coarsePointerMediaQuery.addEventListener('change', handleCoarsePointerChange)
+  }
 })
 
 watch(serverOffsetMs, (newOffset) => {
@@ -616,6 +590,12 @@ onUnmounted(() => {
     window.clearTimeout(lifeAnimationTimer)
     lifeAnimationTimer = null
   }
+
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateViewportWidth)
+  }
+  coarsePointerMediaQuery?.removeEventListener('change', handleCoarsePointerChange)
+  coarsePointerMediaQuery = null
 })
 
 // Resetting the class allows repeated life changes to retrigger the CSS animation.
@@ -687,27 +667,6 @@ const handlePick = () => {
     return
   }
   emit('action', 'pick', {})
-}
-
-const handleDeliver = () => {
-  const trimmedMessage = deliverMessage.value.trim()
-  if (!targetPlayer.value || !trimmedMessage || trimmedMessage.length > MESSAGE_MAX_LENGTH) {
-    return
-  }
-  emit('action', 'deliver', {
-    target_player_id: targetPlayer.value,
-    message: trimmedMessage
-  })
-  deliverMessage.value = ''
-}
-
-const handleSendToDirector = () => {
-  const trimmedMessage = directorMessage.value.trim()
-  if (!trimmedMessage || trimmedMessage.length > MESSAGE_MAX_LENGTH) {
-    return
-  }
-  emit('action', 'send', { message: trimmedMessage })
-  directorMessage.value = ''
 }
 
 function formatDuration(durationMs: number) {
@@ -898,13 +857,13 @@ function formatDuration(durationMs: number) {
   color: #303133;
 }
 
-.core-actions, .item-quick-actions, .communication-actions {
+.core-actions, .item-quick-actions {
   margin-bottom: 16px;
 }
 
 .action-row {
   display: flex;
-  gap: 12px;
+  gap: 28px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -1031,35 +990,6 @@ function formatDuration(durationMs: number) {
   align-items: center;
 }
 
-.comm-row {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.deliver-group, .director-message-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.input-error {
-  color: #f56c6c;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-@media (min-width: 769px) {
-  .comm-row {
-    width: 100%;
-  }
-
-  .director-message-group {
-    margin-left: auto;
-  }
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .player-status-bar {
@@ -1091,7 +1021,8 @@ function formatDuration(durationMs: number) {
 
   .primary-actions {
     justify-content: center;
-    width: auto;
+    width: 100%;
+    flex-wrap: wrap;
   }
   
   .action-row {
@@ -1101,55 +1032,62 @@ function formatDuration(durationMs: number) {
   }
   
   .action-group {
-    justify-content: center;
+    justify-content: flex-start;
+    width: auto;
   }
 
   .action-buttons {
     justify-content: center;
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .timing-hints {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: left;
-    align-items: left;
+    align-items: center;
     gap: 8px;
   }
 
   .timing-search,
   .timing-night {
+    flex: 0 1 auto;
     text-align: left;
-    min-width: 150px;
+    min-width: 0;
+  }
+
+  .timing-night {
+    flex: 1 1 auto;
+    text-align: center;
+    display: flex;
+    justify-content: center;
   }
   
-  .quick-item-row, .comm-row {
+  .quick-item-row {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: left;
+  }
+
+  .action-row--spawned {
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .action-row--spawned .action-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-row--spawned .action-buttons {
+    width: 100%;
+    justify-content: center;
   }
 }
 
 @media (max-width: 600px) {
-  .deliver-group, .director-message-group {
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: auto;
-    justify-content: left;
-  }
-  
-  .deliver-group .el-select,
-  .deliver-group .el-input,
-  .director-message-group .el-input {
-    flex: 1 1 150px;
-    width: auto !important;
-  }
-
-  .deliver-group .el-button,
-  .director-message-group .el-button {
-    flex: 0 0 auto;
-  }
-
   .rest-status-chip.rest-mobile {
     flex: 0 0 auto;
   }
@@ -1252,5 +1190,26 @@ function formatDuration(durationMs: number) {
     transform: scale(0.75);
     transform-origin: left center;
   }
+}
+
+.rarity-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.rarity-dot.common {
+  background-color: #67c23a;
+}
+.rarity-dot.rare {
+  background-color: #409eff;
+}
+.rarity-dot.epic {
+  background-color: #9b59b6;
+}
+.rarity-dot.legendary {
+  background-color: #e6a23c;
 }
 </style>

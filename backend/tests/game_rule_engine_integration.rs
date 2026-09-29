@@ -1,7 +1,7 @@
 //! GameRuleEngine集成测试
 //! 测试JSON规则配置的解析和验证功能
 
-use royale_arena_backend::game::game_rule_engine::GameRuleEngine;
+use royale_arena_backend::game::game_rule_engine::{GameRuleEngine, ItemType};
 
 /// 测试用的JSON规则配置（基于rule_test.json）
 const TEST_RULES_JSON: &str = r#"{
@@ -467,4 +467,66 @@ fn test_external_json_file() {
     } else {
         println!("External rule_test.json not found, skipping file test");
     }
+}
+
+/// 测试：永久增益道具配置解析与物品创建
+#[test]
+fn test_permanent_buff_config_parsing() {
+    let rules_json = r#"{
+        "map": {"places": ["loc"], "safe_places": []},
+        "player": {"max_life": 100, "max_strength": 100, "daily_life_recovery": 0, "daily_strength_recovery": 40, "search_cooldown": 30, "max_backpack_items": 6, "unarmed_damage": 5},
+        "action_costs": {"move": 5, "search": 5, "pick": 0, "attack": 0, "equip": 0, "use": 0, "throw": 0, "deliver": 10},
+        "rest_mode": {"life_recovery": 25, "strength_recovery": 1000, "max_moves": 1},
+        "death_item_disposition": "killer_takes_loot",
+        "teammate_behavior": 0,
+        "items_config": {
+            "rarity_levels": [],
+            "items": {
+                "permanent_buffs": [
+                    {"name": "[HP上限+20]养生丸", "properties": {"effect_type": "max_life", "effect_value": 20}},
+                    {"name": "[MP上限+50]行军丹", "properties": {"effect_type": "max_strength", "effect_value": 50}},
+                    {"name": "[背包+6]百宝袋", "properties": {"effect_type": "max_backpack", "effect_value": 6}}
+                ]
+            },
+            "upgrade_recipes": {}
+        }
+    }"#;
+    let rule_engine =
+        GameRuleEngine::from_json(rules_json).expect("Failed to parse rules with permanent buffs");
+
+    let buffs = &rule_engine.items_config.items.permanent_buffs;
+    assert_eq!(buffs.len(), 3);
+    assert_eq!(buffs[0].name, "[HP上限+20]养生丸");
+    assert_eq!(buffs[0].properties.effect_type, "max_life");
+    assert_eq!(buffs[0].properties.effect_value, 20);
+    assert_eq!(buffs[1].properties.effect_type, "max_strength");
+    assert_eq!(buffs[2].properties.effect_type, "max_backpack");
+
+    let item = rule_engine
+        .create_item_from_name("[背包+6]百宝袋")
+        .expect("Failed to create permanent buff item");
+    assert_eq!(item.name, "[背包+6]百宝袋");
+    match &item.item_type {
+        ItemType::PermanentBuff(props) => {
+            assert_eq!(props.effect_type, "max_backpack");
+            assert_eq!(props.effect_value, 6);
+        }
+        _ => panic!("物品应该是永久增益类型"),
+    }
+}
+
+/// 测试：旧配置（无 permanent_buffs 数组）解析为空列表
+#[test]
+fn test_permanent_buffs_absent_defaults_empty() {
+    let rules_json = r#"{
+        "map": {"places": ["loc"], "safe_places": []},
+        "player": {"max_life": 100, "max_strength": 100, "daily_life_recovery": 0, "daily_strength_recovery": 40, "search_cooldown": 30, "max_backpack_items": 6, "unarmed_damage": 5},
+        "action_costs": {"move": 5, "search": 5, "pick": 0, "attack": 0, "equip": 0, "use": 0, "throw": 0, "deliver": 10},
+        "rest_mode": {"life_recovery": 25, "strength_recovery": 1000, "max_moves": 1},
+        "death_item_disposition": "killer_takes_loot",
+        "teammate_behavior": 0,
+        "items_config": {"rarity_levels": [], "items": {}, "upgrade_recipes": {}}
+    }"#;
+    let rule_engine = GameRuleEngine::from_json(rules_json).expect("Failed to parse legacy rules");
+    assert!(rule_engine.items_config.items.permanent_buffs.is_empty());
 }

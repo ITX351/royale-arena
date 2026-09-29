@@ -113,7 +113,7 @@ fn add_test_player(
     player_id: &str,
     player_name: &str,
     location: &str,
-    coins: i32,
+    coins: f64,
 ) {
     add_test_place(game_state, location);
 
@@ -142,6 +142,8 @@ fn make_shop_listing(id: &str, item_name: &str, price: i32, quantity: i32) -> Sh
         item_name: item_name.to_string(),
         price,
         quantity,
+        item_kind: None,
+        rarity: None,
     }
 }
 
@@ -150,6 +152,7 @@ fn empty_action_params() -> ActionParams {
         target_place: None,
         place_name: None,
         item_id: None,
+        item_ids: None,
         slot_type: None,
         target_player_id: None,
         target_player_ids: None,
@@ -244,7 +247,7 @@ fn test_player_initial_coins_is_zero() {
         &rule_engine,
     );
 
-    assert_eq!(player.coins, 0, "新玩家初始货币应为0");
+    assert_eq!(player.coins, 0.0, "新玩家初始货币应为0");
 }
 
 /// 测试：导演设置玩家货币
@@ -262,7 +265,7 @@ fn test_director_set_player_coins() {
         &game_state.rule_engine,
     );
 
-    player.coins = 50;
+    player.coins = 50.0;
     player.location = "位置1".to_string();
 
     game_state.players.insert(player_id.to_string(), player);
@@ -271,29 +274,29 @@ fn test_director_set_player_coins() {
         .insert("位置1".to_string(), Place::new("位置1".to_string()));
 
     // 导演设置玩家货币为100
-    let result = game_state.handle_set_player_coins(player_id, 100);
+    let result = game_state.handle_set_player_coins(player_id, 100.0);
     assert!(result.is_ok(), "导演设置货币应该成功");
 
     let updated_player = game_state.players.get(player_id).unwrap();
-    assert_eq!(updated_player.coins, 100, "导演设置的货币值应该正确应用");
+    assert_eq!(updated_player.coins, 100.0, "导演设置的货币值应该正确应用");
 
     // 导演设置玩家货币为当前值（应该返回成功）
-    let result = game_state.handle_set_player_coins(player_id, 100);
+    let result = game_state.handle_set_player_coins(player_id, 100.0);
     assert!(result.is_ok(), "设置相同值应该返回成功");
 
     // 导演设置玩家货币为0
-    let result = game_state.handle_set_player_coins(player_id, 0);
+    let result = game_state.handle_set_player_coins(player_id, 0.0);
     assert!(result.is_ok(), "设置货币为0应该成功");
 
     let updated_player = game_state.players.get(player_id).unwrap();
-    assert_eq!(updated_player.coins, 0, "货币应该被设置为0");
+    assert_eq!(updated_player.coins, 0.0, "货币应该被设置为0");
 
     // 导演设置玩家货币为负数
-    let result = game_state.handle_set_player_coins(player_id, -50);
+    let result = game_state.handle_set_player_coins(player_id, -50.0);
     assert!(result.is_ok(), "可以设置负数货币");
 
     let updated_player = game_state.players.get(player_id).unwrap();
-    assert_eq!(updated_player.coins, -50, "负数货币应该被正确设置");
+    assert_eq!(updated_player.coins, -50.0, "负数货币应该被正确设置");
 }
 
 /// 测试：导演设置不存在的玩家货币（应该失败）
@@ -302,7 +305,7 @@ fn test_director_set_currency_nonexistent_player() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_noexist".to_string(), rules_json);
 
-    let result = game_state.handle_set_player_coins("nonexistent_player", 100);
+    let result = game_state.handle_set_player_coins("nonexistent_player", 100.0);
     assert!(result.is_err(), "设置不存在玩家的货币应该失败");
     assert_eq!(result.unwrap_err(), "Player not found");
 }
@@ -521,25 +524,25 @@ fn test_multiple_players_independent_coins() {
 
     // 设置玩家1的货币为100
     game_state
-        .handle_set_player_coins(player1_id, 100)
+        .handle_set_player_coins(player1_id, 100.0)
         .expect("Failed to set player1 coins");
 
     // 设置玩家2的货币为50
     game_state
-        .handle_set_player_coins(player2_id, 50)
+        .handle_set_player_coins(player2_id, 50.0)
         .expect("Failed to set player2 coins");
 
     // 验证两个玩家的货币独立
-    assert_eq!(game_state.players.get(player1_id).unwrap().coins, 100);
-    assert_eq!(game_state.players.get(player2_id).unwrap().coins, 50);
+    assert_eq!(game_state.players.get(player1_id).unwrap().coins, 100.0);
+    assert_eq!(game_state.players.get(player2_id).unwrap().coins, 50.0);
 
     // 修改玩家1的货币不应该影响玩家2
     game_state
-        .handle_set_player_coins(player1_id, 200)
+        .handle_set_player_coins(player1_id, 200.0)
         .expect("Failed to update player1 coins");
 
-    assert_eq!(game_state.players.get(player1_id).unwrap().coins, 200);
-    assert_eq!(game_state.players.get(player2_id).unwrap().coins, 50);
+    assert_eq!(game_state.players.get(player1_id).unwrap().coins, 200.0);
+    assert_eq!(game_state.players.get(player2_id).unwrap().coins, 50.0);
 }
 
 #[test]
@@ -547,8 +550,8 @@ fn test_shop_list_and_delist_item_broadcasts_to_all() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_manage".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "player1", "玩家1", "位置1", 0);
-    add_test_player(&mut game_state, "player2", "玩家2", "位置1", 0);
+    add_test_player(&mut game_state, "player1", "玩家1", "位置1", 0.0);
+    add_test_player(&mut game_state, "player2", "玩家2", "位置1", 0.0);
 
     let list_result = game_state
         .handle_shop_list_item("金币".to_string(), 15, 0)
@@ -576,12 +579,12 @@ fn test_shop_list_and_delist_item_broadcasts_to_all() {
 }
 
 #[test]
-fn test_shop_buy_success_splits_shop_sync_and_purchase_detail() {
+fn test_shop_buy_success_returns_purchase_detail_only() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_success".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 80);
-    add_test_player(&mut game_state, "observer", "旁观者", "位置1", 0);
+    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 80.0);
+    add_test_player(&mut game_state, "observer", "旁观者", "位置1", 0.0);
     game_state
         .shop
         .push(make_shop_listing("listing-1", "[HP10]测试药水", 25, 3));
@@ -598,25 +601,11 @@ fn test_shop_buy_success_splits_shop_sync_and_purchase_detail() {
 
     assert_eq!(
         results.results.len(),
-        2,
-        "应拆分为库存同步和购买明细两条结果"
+        1,
+        "购买仅返回购买明细，不再向全员广播库存变化"
     );
 
-    let sync_result = &results.results[0];
-    assert_eq!(sync_result.message_type, MessageType::Info);
-    assert_eq!(sync_result.broadcast_players.len(), 2);
-    assert!(sync_result.broadcast_players.iter().any(|id| id == "buyer"));
-    assert!(
-        sync_result
-            .broadcast_players
-            .iter()
-            .any(|id| id == "observer")
-    );
-    assert!(sync_result.broadcast_to_director);
-    assert!(!sync_result.broadcast_to_all);
-    assert_eq!(sync_result.log_message, "商店库存已更新");
-
-    let detail_result = &results.results[1];
+    let detail_result = &results.results[0];
     assert_eq!(detail_result.message_type, MessageType::SystemNotice);
     assert_eq!(detail_result.broadcast_players, vec!["buyer".to_string()]);
     assert!(detail_result.broadcast_to_director);
@@ -625,7 +614,7 @@ fn test_shop_buy_success_splits_shop_sync_and_purchase_detail() {
     assert!(detail_result.log_message.contains("花费 50 货币"));
 
     let buyer = game_state.players.get("buyer").unwrap();
-    assert_eq!(buyer.coins, 30);
+    assert_eq!(buyer.coins, 30.0);
     assert_eq!(buyer.inventory.len(), 2);
     assert_eq!(game_state.shop.len(), 1);
     assert_eq!(game_state.shop[0].quantity, 1);
@@ -636,7 +625,7 @@ fn test_shop_buy_rejects_duplicate_listing_total_exceeding_stock() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_duplicate".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 100);
+    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 100.0);
     game_state
         .shop
         .push(make_shop_listing("listing-1", "测试药水", 10, 1));
@@ -660,7 +649,7 @@ fn test_shop_buy_rejects_duplicate_listing_total_exceeding_stock() {
     assert_eq!(result.results.len(), 1);
     assert_eq!(result.results[0].message_type, MessageType::Info);
     assert!(result.results[0].log_message.contains("库存不足"));
-    assert_eq!(game_state.players.get("buyer").unwrap().coins, 100);
+    assert_eq!(game_state.players.get("buyer").unwrap().coins, 100.0);
     assert!(
         game_state
             .players
@@ -677,7 +666,7 @@ fn test_shop_buy_rejects_when_total_cost_multiplication_overflows() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_mul_overflow".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "buyer", "购买者", "位置1", i32::MAX);
+    add_test_player(&mut game_state, "buyer", "购买者", "位置1", i32::MAX as f64);
     game_state
         .shop
         .push(make_shop_listing("listing-1", "测试药水", i32::MAX, 2));
@@ -694,7 +683,7 @@ fn test_shop_buy_rejects_when_total_cost_multiplication_overflows() {
 
     assert_eq!(result.results[0].message_type, MessageType::Info);
     assert!(result.results[0].log_message.contains("总价计算溢出"));
-    assert_eq!(game_state.players.get("buyer").unwrap().coins, i32::MAX);
+    assert_eq!(game_state.players.get("buyer").unwrap().coins, i32::MAX as f64);
     assert!(
         game_state
             .players
@@ -711,7 +700,7 @@ fn test_shop_buy_rejects_when_total_cost_accumulation_overflows() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_add_overflow".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "buyer", "购买者", "位置1", i32::MAX);
+    add_test_player(&mut game_state, "buyer", "购买者", "位置1", i32::MAX as f64);
     game_state
         .shop
         .push(make_shop_listing("listing-1", "测试药水", i32::MAX, 1));
@@ -737,7 +726,7 @@ fn test_shop_buy_rejects_when_total_cost_accumulation_overflows() {
 
     assert_eq!(result.results[0].message_type, MessageType::Info);
     assert!(result.results[0].log_message.contains("总价过大"));
-    assert_eq!(game_state.players.get("buyer").unwrap().coins, i32::MAX);
+    assert_eq!(game_state.players.get("buyer").unwrap().coins, i32::MAX as f64);
     assert!(
         game_state
             .players
@@ -755,7 +744,7 @@ fn test_shop_buy_rolls_back_when_item_creation_fails() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_atomic".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 100);
+    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 100.0);
     game_state
         .shop
         .push(make_shop_listing("listing-1", "不存在的商品", 10, 1));
@@ -776,7 +765,7 @@ fn test_shop_buy_rolls_back_when_item_creation_fails() {
             .log_message
             .contains("创建物品 不存在的商品 失败")
     );
-    assert_eq!(game_state.players.get("buyer").unwrap().coins, 100);
+    assert_eq!(game_state.players.get("buyer").unwrap().coins, 100.0);
     assert!(
         game_state
             .players
@@ -793,7 +782,7 @@ fn test_shop_buy_rejects_insufficient_balance_without_mutation() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_balance".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 20);
+    add_test_player(&mut game_state, "buyer", "购买者", "位置1", 20.0);
     game_state
         .shop
         .push(make_shop_listing("listing-1", "测试药水", 30, 1));
@@ -810,7 +799,7 @@ fn test_shop_buy_rejects_insufficient_balance_without_mutation() {
 
     assert_eq!(result.results[0].message_type, MessageType::Info);
     assert!(result.results[0].log_message.contains("货币不足"));
-    assert_eq!(game_state.players.get("buyer").unwrap().coins, 20);
+    assert_eq!(game_state.players.get("buyer").unwrap().coins, 20.0);
     assert!(
         game_state
             .players
@@ -827,7 +816,7 @@ fn test_currency_item_use_supports_boundary_value() {
     let rules_json = get_test_rules_with_single_currency("超大金币", i32::MAX);
     let mut game_state = GameState::new("test_game_currency_boundary".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "player", "玩家", "位置1", 0);
+    add_test_player(&mut game_state, "player", "玩家", "位置1", 0.0);
     let item = game_state
         .rule_engine
         .create_item_from_name("超大金币")
@@ -846,7 +835,7 @@ fn test_currency_item_use_supports_boundary_value() {
 
     assert_eq!(result.results.len(), 1);
     assert_eq!(result.results[0].message_type, MessageType::SystemNotice);
-    assert_eq!(game_state.players.get("player").unwrap().coins, i32::MAX);
+    assert_eq!(game_state.players.get("player").unwrap().coins, i32::MAX as f64);
     assert!(
         game_state
             .players
@@ -858,11 +847,11 @@ fn test_currency_item_use_supports_boundary_value() {
 }
 
 #[test]
-fn test_currency_item_use_rejects_overflow_and_keeps_item() {
+fn test_currency_item_use_accepts_large_values_with_f64_coins() {
     let rules_json = get_test_rules_with_single_currency("超大金币", i32::MAX);
     let mut game_state = GameState::new("test_game_currency_overflow".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "player", "玩家", "位置1", 1);
+    add_test_player(&mut game_state, "player", "玩家", "位置1", 1.0);
     let item = game_state
         .rule_engine
         .create_item_from_name("超大金币")
@@ -877,12 +866,14 @@ fn test_currency_item_use_rejects_overflow_and_keeps_item() {
     let item_id = game_state.players["player"].inventory[0].id.clone();
     let result = game_state
         .handle_use_action("player", &item_id, &empty_action_params())
-        .expect("溢出应返回提示结果而不是Err");
+        .expect("f64 货币不会溢出，使用应成功");
 
-    assert_eq!(result.results[0].message_type, MessageType::Info);
-    assert!(result.results[0].log_message.contains("货币总数溢出"));
-    assert_eq!(game_state.players.get("player").unwrap().coins, 1);
-    assert_eq!(game_state.players.get("player").unwrap().inventory.len(), 1);
+    assert_eq!(result.results[0].message_type, MessageType::SystemNotice);
+    assert_eq!(
+        game_state.players.get("player").unwrap().coins,
+        1.0 + i32::MAX as f64
+    );
+    assert_eq!(game_state.players.get("player").unwrap().inventory.len(), 0);
 }
 
 #[test]
@@ -890,16 +881,16 @@ fn test_kill_player_transfers_coins_for_player_kill() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_kill_transfer".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "killer", "击杀者", "位置1", 10);
-    add_test_player(&mut game_state, "victim", "受害者", "位置1", 25);
+    add_test_player(&mut game_state, "killer", "击杀者", "位置1", 10.0);
+    add_test_player(&mut game_state, "victim", "受害者", "位置1", 25.0);
 
     let result = game_state
         .kill_player("victim", Some("killer"), Some("killer"), "攻击")
         .expect("击杀应成功");
 
-    assert_eq!(game_state.players.get("killer").unwrap().coins, 35);
-    assert_eq!(game_state.players.get("victim").unwrap().coins, 0);
-    assert_eq!(result.results[0].data["transferred_coins"], json!(25));
+    assert_eq!(game_state.players.get("killer").unwrap().coins, 35.0);
+    assert_eq!(game_state.players.get("victim").unwrap().coins, 0.0);
+    assert_eq!(result.results[0].data["transferred_coins"], json!(25.0));
 }
 
 #[test]
@@ -907,16 +898,16 @@ fn test_kill_player_transfers_coins_for_bleed_death() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_bleed_transfer".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "killer", "击杀者", "位置1", 5);
-    add_test_player(&mut game_state, "victim", "受害者", "位置1", 20);
+    add_test_player(&mut game_state, "killer", "击杀者", "位置1", 5.0);
+    add_test_player(&mut game_state, "victim", "受害者", "位置1", 20.0);
 
     let result = game_state
         .kill_player("victim", Some("killer"), Some("killer"), "流血")
         .expect("流血致死应成功");
 
-    assert_eq!(game_state.players.get("killer").unwrap().coins, 25);
+    assert_eq!(game_state.players.get("killer").unwrap().coins, 25.0);
     assert_eq!(result.results[0].data["reason"], json!("流血"));
-    assert_eq!(result.results[0].data["transferred_coins"], json!(20));
+    assert_eq!(result.results[0].data["transferred_coins"], json!(20.0));
 }
 
 #[test]
@@ -924,14 +915,14 @@ fn test_kill_player_drops_coins_on_shrink_death() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shrink_death".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "victim", "受害者", "位置1", 18);
+    add_test_player(&mut game_state, "victim", "受害者", "位置1", 18.0);
 
     let result = game_state
         .kill_player("victim", None, None, "缩圈")
         .expect("缩圈致死应成功");
 
-    assert_eq!(game_state.players.get("victim").unwrap().coins, 0);
-    assert_eq!(result.results[0].data["transferred_coins"], json!(0));
+    assert_eq!(game_state.players.get("victim").unwrap().coins, 0.0);
+    assert_eq!(result.results[0].data["transferred_coins"], json!(0.0));
     assert!(result.results[0].log_message.contains("消失货币: 18"));
 }
 
@@ -940,33 +931,36 @@ fn test_kill_player_drops_coins_on_director_kill() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_director_kill".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "victim", "受害者", "位置1", 12);
+    add_test_player(&mut game_state, "victim", "受害者", "位置1", 12.0);
 
     let result = game_state
         .kill_player("victim", None, None, "导演处决")
         .expect("导演击杀应成功");
 
-    assert_eq!(game_state.players.get("victim").unwrap().coins, 0);
-    assert_eq!(result.results[0].data["transferred_coins"], json!(0));
+    assert_eq!(game_state.players.get("victim").unwrap().coins, 0.0);
+    assert_eq!(result.results[0].data["transferred_coins"], json!(0.0));
     assert!(result.results[0].log_message.contains("消失货币: 12"));
 }
 
 #[test]
-fn test_kill_player_coin_transfer_overflow_does_not_wrap() {
+fn test_kill_player_coin_transfer_accepts_large_values_with_f64_coins() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_kill_overflow".to_string(), rules_json);
 
-    add_test_player(&mut game_state, "killer", "击杀者", "位置1", i32::MAX);
-    add_test_player(&mut game_state, "victim", "受害者", "位置1", 1);
+    add_test_player(&mut game_state, "killer", "击杀者", "位置1", i32::MAX as f64);
+    add_test_player(&mut game_state, "victim", "受害者", "位置1", 1.0);
 
     let result = game_state
         .kill_player("victim", Some("killer"), Some("killer"), "攻击")
         .expect("击杀应成功");
 
-    assert_eq!(game_state.players.get("killer").unwrap().coins, i32::MAX);
-    assert_eq!(game_state.players.get("victim").unwrap().coins, 0);
-    assert_eq!(result.results[0].data["transferred_coins"], json!(0));
-    assert!(result.results[0].log_message.contains("消失货币: 1"));
+    // f64 货币不会溢出，击杀者正常缴获全部货币
+    assert_eq!(
+        game_state.players.get("killer").unwrap().coins,
+        i32::MAX as f64 + 1.0
+    );
+    assert_eq!(game_state.players.get("victim").unwrap().coins, 0.0);
+    assert_eq!(result.results[0].data["transferred_coins"], json!(1.0));
 }
 
 #[test]
@@ -1001,7 +995,7 @@ fn test_legacy_save_deserialization_defaults_for_coins_shop_and_quantity() {
     .expect("旧存档应可反序列化");
 
     assert!(game_state_without_shop.shop.is_empty());
-    assert_eq!(game_state_without_shop.players["legacy_player"].coins, 0);
+    assert_eq!(game_state_without_shop.players["legacy_player"].coins, 0.0);
 
     let game_state_with_legacy_listing: GameState = serde_json::from_value(json!({
         "game_id": "legacy-game-2",
@@ -1030,6 +1024,6 @@ fn test_legacy_save_deserialization_defaults_for_coins_shop_and_quantity() {
     assert_eq!(game_state_with_legacy_listing.shop[0].quantity, 1);
     assert_eq!(
         game_state_with_legacy_listing.players["legacy_player"].coins,
-        0
+        0.0
     );
 }

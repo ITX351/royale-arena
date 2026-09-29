@@ -97,6 +97,7 @@ pub enum ItemType {
     Utility(UtilityProperties),
     Upgrader,
     Currency(CurrencyProperties),
+    PermanentBuff(PermanentBuffProperties),
 }
 
 /// 游戏规则引擎
@@ -107,8 +108,7 @@ pub struct GameRuleEngine {
     pub action_costs: ActionCosts,
     pub rest_mode: RestModeConfig,
     pub items_config: ItemsConfig,
-    #[allow(dead_code)]
-    pub teammate_behavior: TeammateBehavior, // TODO: 实现队友行为规则
+    pub teammate_behavior: TeammateBehavior,
     pub death_item_disposition: DeathItemDisposition,
 }
 
@@ -124,11 +124,27 @@ pub struct MapConfig {
 pub struct PlayerConfig {
     pub max_life: i32,
     pub max_strength: i32,
+    #[serde(default = "default_max_life_cap")]
+    pub max_life_cap: i32,
+    #[serde(default = "default_max_strength_cap")]
+    pub max_strength_cap: i32,
     pub daily_life_recovery: i32,
     pub daily_strength_recovery: i32,
     pub search_cooldown: i64,
     pub max_backpack_items: usize,
+    #[serde(default = "default_max_backpack_items_cap")]
+    pub max_backpack_items_cap: usize,
     pub unarmed_damage: i32, // 挥拳伤害
+}
+
+fn default_max_life_cap() -> i32 {
+    300
+}
+fn default_max_strength_cap() -> i32 {
+    300
+}
+fn default_max_backpack_items_cap() -> usize {
+    12
 }
 
 /// 行动消耗配置结构体
@@ -158,7 +174,23 @@ pub struct RestModeConfig {
 /// 队友行为配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeammateBehavior {
-    pub mode: i32, // 0: 无队友伤害免疫, 1: 有队友伤害免疫
+    pub mode: i32,
+}
+
+impl TeammateBehavior {
+    pub const BIT_DAMAGE_IMMUNE: i32 = 1;
+    pub const BIT_SEARCH_FILTER: i32 = 2;
+    pub const BIT_TRANSFER: i32 = 8;
+
+    pub fn is_damage_immune(&self) -> bool {
+        self.mode & Self::BIT_DAMAGE_IMMUNE != 0
+    }
+    pub fn is_search_filtered(&self) -> bool {
+        self.mode & Self::BIT_SEARCH_FILTER != 0
+    }
+    pub fn is_transfer_enabled(&self) -> bool {
+        self.mode & Self::BIT_TRANSFER != 0
+    }
 }
 
 /// 死亡物品处置规则
@@ -193,6 +225,8 @@ pub struct ItemsByCategory {
     pub upgraders: Vec<UpgraderConfig>,
     #[serde(default)]
     pub currencies: Vec<CurrencyConfig>,
+    #[serde(default)]
+    pub permanent_buffs: Vec<PermanentBuffConfig>,
 }
 
 /// 稀有度等级配置
@@ -275,6 +309,24 @@ pub struct ConsumableProperties {
     pub effect_value: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cure_bleed: Option<i32>,
+}
+
+/// 永久增益属性
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermanentBuffProperties {
+    pub effect_type: String,
+    pub effect_value: i32,
+}
+
+/// 永久增益配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermanentBuffConfig {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub internal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
+    pub properties: PermanentBuffProperties,
 }
 
 /// 货币属性
@@ -495,6 +547,18 @@ impl GameRuleEngine {
             }
         }
 
+        // 7. 搜索永久增益道具
+        for buff in &self.items_config.items.permanent_buffs {
+            if buff.name == item_name {
+                return Ok(Item::new(
+                    buff.name.clone(),
+                    buff.internal_name.clone(),
+                    buff.rarity.clone(),
+                    ItemType::PermanentBuff(buff.properties.clone()),
+                ));
+            }
+        }
+
         Err(format!("未在规则JSON中找到物品: {}", item_name))
     }
 
@@ -517,5 +581,51 @@ impl GameRuleEngine {
             .armors
             .iter()
             .find(|config| config.internal_name == internal_name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn teammate_behavior_bit_helpers() {
+        use crate::game::game_rule_engine::TeammateBehavior;
+
+        let b = TeammateBehavior { mode: 0 };
+        assert!(!b.is_damage_immune());
+        assert!(!b.is_search_filtered());
+        assert!(!b.is_transfer_enabled());
+
+        let b = TeammateBehavior { mode: 1 };
+        assert!(b.is_damage_immune());
+        assert!(!b.is_search_filtered());
+        assert!(!b.is_transfer_enabled());
+
+        let b = TeammateBehavior { mode: 2 };
+        assert!(!b.is_damage_immune());
+        assert!(b.is_search_filtered());
+        assert!(!b.is_transfer_enabled());
+
+        let b = TeammateBehavior { mode: 8 };
+        assert!(!b.is_damage_immune());
+        assert!(!b.is_search_filtered());
+        assert!(b.is_transfer_enabled());
+
+        let b = TeammateBehavior { mode: 11 }; // 1 + 2 + 8
+        assert!(b.is_damage_immune());
+        assert!(b.is_search_filtered());
+        assert!(b.is_transfer_enabled());
+
+        let b = TeammateBehavior { mode: 9 }; // 1 + 8
+        assert!(b.is_damage_immune());
+        assert!(!b.is_search_filtered());
+        assert!(b.is_transfer_enabled());
+
+        // Bit 4 (value 4) is NOT exposed — helper methods ignore it
+        let b = TeammateBehavior { mode: 4 };
+        assert!(!b.is_damage_immune());
+        assert!(!b.is_search_filtered());
+        assert!(!b.is_transfer_enabled());
     }
 }

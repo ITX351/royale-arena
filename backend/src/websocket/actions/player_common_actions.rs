@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 
+use rand::Rng;
+
 use crate::websocket::models::{
     ActionResult, ActionResults, GameState, SearchResultType, SearchTarget,
 };
@@ -192,9 +194,8 @@ impl GameState {
         // 使用规则引擎检查背包容量（使用总物品数量）
         {
             let player = self.players.get(player_id).unwrap();
-            let max_backpack_items = self.rule_engine.player_config.max_backpack_items as usize;
 
-            if player.get_total_item_count() >= max_backpack_items {
+            if player.get_total_item_count() >= player.max_backpack_items {
                 // 背包已满，返回Info提示
                 let action_result = ActionResult::new_info_message(
                     serde_json::json!({}),
@@ -678,8 +679,9 @@ impl GameState {
             }
         }
 
-        // 验证并收集购买信息：(listing_id, item_name, price, buy_qty)
-        let mut purchase_plan: Vec<(String, String, i32, i32)> = Vec::new();
+        // 验证并收集购买信息：(listing_id, item_name, price, buy_qty, kind_rarity)
+        let mut purchase_plan: Vec<(String, String, i32, i32, Option<(String, String)>)> =
+            Vec::new();
         let mut total_cost: i32 = 0;
         let mut total_items: usize = 0;
 
@@ -742,6 +744,7 @@ impl GameState {
                 listing.item_name.clone(),
                 listing.price,
                 buy_qty,
+                listing.item_kind.clone().zip(listing.rarity.clone()),
             ));
         }
 
@@ -758,7 +761,7 @@ impl GameState {
 
         // 检查玩家货币是否足够
         let player = self.players.get(player_id).ok_or("Player not found")?;
-        if player.coins < total_cost {
+        if player.coins < total_cost as f64 {
             let data = serde_json::json!({});
             return Ok(ActionResult::new_info_message(
                 data,
@@ -770,7 +773,7 @@ impl GameState {
         }
 
         // 检查背包空间
-        let max_inventory_size = self.rule_engine.player_config.max_backpack_items as usize;
+        let max_inventory_size = player.max_backpack_items;
         let current_items = player.get_total_item_count();
         if current_items + total_items > max_inventory_size {
             let data = serde_json::json!({});
@@ -790,21 +793,63 @@ impl GameState {
         // 预先创建所有物品（原子性检查），任何一个失败则中止整笔交易
         let player_name = self.players.get(player_id).unwrap().name.clone();
         let mut created_items = Vec::new();
-        for (_id, item_name, _price, qty) in &purchase_plan {
+        let existing_names = self.collect_existing_weapons_and_armor_names();
+        let mut drawn_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for (_id, item_name, _price, qty, kind_rarity) in &purchase_plan {
             for _ in 0..*qty {
-                match self.rule_engine.create_item_from_name(item_name) {
-                    Ok(item) => created_items.push(item),
-                    Err(err) => {
-                        let data = serde_json::json!({});
-                        return Ok(ActionResult::new_info_message(
-                            data,
-                            vec![player_id.to_string()],
-                            format!("创建物品 {} 失败，交易取消: {}", item_name, err),
-                            false,
-                        )
-                        .as_results());
+                let item = match kind_rarity {
+                    None => match self.rule_engine.create_item_from_name(item_name) {
+                        Ok(item) => item,
+                        Err(err) => {
+                            let data = serde_json::json!({});
+                            return Ok(ActionResult::new_info_message(
+                                data,
+                                vec![player_id.to_string()],
+                                format!("创建物品 {} 失败，交易取消: {}", item_name, err),
+                                false,
+                            )
+                            .as_results());
+                        }
+                    },
+                    Some((kind, rarity)) => {
+                        let candidates = self.rarity_display_names(kind, rarity);
+                        let available: Vec<&String> = candidates
+                            .iter()
+                            .filter(|n| !existing_names.contains(*n) && !drawn_names.contains(*n))
+                            .collect();
+                        if available.is_empty() {
+                            let kind_cn =
+                                Self::item_kind_display_name(kind).unwrap_or(kind.as_str());
+                            let rarity_cn =
+                                Self::rarity_display_name(rarity).unwrap_or(rarity.as_str());
+                            let data = serde_json::json!({});
+                            return Ok(ActionResult::new_info_message(
+                                data,
+                                vec![player_id.to_string()],
+                                format!("{}类{}可抽选的名称已全部在场，购买失败", rarity_cn, kind_cn),
+                                false,
+                            )
+                            .as_results());
+                        }
+                        let mut rng = rand::rng();
+                        let name = available[rng.random_range(0..available.len())].clone();
+                        drawn_names.insert(name.clone());
+                        match self.rule_engine.create_item_from_name(&name) {
+                            Ok(item) => item,
+                            Err(err) => {
+                                let data = serde_json::json!({});
+                                return Ok(ActionResult::new_info_message(
+                                    data,
+                                    vec![player_id.to_string()],
+                                    format!("创建物品 {} 失败，交易取消: {}", name, err),
+                                    false,
+                                )
+                                .as_results());
+                            }
+                        }
                     }
-                }
+                };
+                created_items.push(item);
             }
         }
 
@@ -814,13 +859,10 @@ impl GameState {
         player.inventory.extend(created_items);
 
         // 扣除货币
-        player.coins = player
-            .coins
-            .checked_sub(total_cost)
-            .expect("validated shop purchase should not underflow player coins");
+        player.coins -= total_cost as f64;
 
         // 扣减库存或移除售罄商品
-        for (listing_id, _, _, buy_qty) in &purchase_plan {
+        for (listing_id, _, _, buy_qty, _) in &purchase_plan {
             if let Some(listing) = self.shop.iter_mut().find(|l| l.id == *listing_id) {
                 listing.quantity = listing
                     .quantity
@@ -836,15 +878,6 @@ impl GameState {
             "remaining_coins": player.coins,
         });
 
-        let shop_sync_result = ActionResult::new_info_message(
-            serde_json::json!({
-                "shop_updated": true,
-            }),
-            self.players.keys().cloned().collect(),
-            "商店库存已更新".to_string(),
-            true,
-        );
-
         let detail_result = ActionResult::new_system_message(
             detail_data,
             vec![player_id.to_string()],
@@ -858,7 +891,288 @@ impl GameState {
         );
 
         Ok(ActionResults {
-            results: vec![shop_sync_result, detail_result],
+            results: vec![detail_result],
+        })
+    }
+
+    /// 处理道具转移行动（队友模式位 8）
+    /// 发起方免费，接收方体力 -5
+    pub fn handle_transfer_item_action(
+        &mut self,
+        sender_id: &str,
+        item_id: &str,
+        target_player_id: &str,
+    ) -> Result<ActionResults, String> {
+        let info_message = |message: String, sender: &str| -> ActionResults {
+            ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![sender.to_string()],
+                message,
+                false,
+            )
+            .as_results()
+        };
+
+        // 1. 位 8 必须开
+        if !self.rule_engine.teammate_behavior.is_transfer_enabled() {
+            return Ok(info_message("队友物品转移未开启".to_string(), sender_id));
+        }
+        // 2. 必须是同队
+        if !self.are_teammates(sender_id, target_player_id) {
+            return Ok(info_message("目标不是你的队友".to_string(), sender_id));
+        }
+        // 3. 接收方必须存活
+        let target_alive = self
+            .players
+            .get(target_player_id)
+            .map(|p| p.is_alive)
+            .unwrap_or(false);
+        if !target_alive {
+            return Ok(info_message("对方已阵亡，无法接收".to_string(), sender_id));
+        }
+        // 4. 物品必须在背包
+        let item = {
+            let sender = self.players.get(sender_id).ok_or("Sender not found")?;
+            sender.inventory.iter().find(|i| i.id == item_id).cloned()
+        };
+        let item = match item {
+            Some(it) => it,
+            None => return Ok(info_message("物品不在背包中".to_string(), sender_id)),
+        };
+        // 5. 接收方体力 ≥ 5
+        let target_strength = self
+            .players
+            .get(target_player_id)
+            .map(|p| p.strength)
+            .unwrap_or(0);
+        if target_strength < 5 {
+            return Ok(info_message("对方体力不足，无法接收".to_string(), sender_id));
+        }
+        // 6. 接收方背包未满
+        let target = self.players.get(target_player_id);
+        let max = target.map(|p| p.max_backpack_items).unwrap_or(0);
+        let target_count = target.map(|p| p.get_total_item_count()).unwrap_or(0);
+        if target_count >= max {
+            return Ok(info_message("对方背包已满，无法接收".to_string(), sender_id));
+        }
+
+        // 应用：sender 移除、target 加入并扣体力
+        let sender_name = self.players.get(sender_id).unwrap().name.clone();
+        let target_name = self.players.get(target_player_id).unwrap().name.clone();
+        let item_name = item.name.clone();
+
+        self.players
+            .get_mut(sender_id)
+            .unwrap()
+            .inventory
+            .retain(|i| i.id != item_id);
+        let target = self.players.get_mut(target_player_id).unwrap();
+        target.inventory.push(item);
+        target.strength -= 5;
+        let target_strength_after = target.strength;
+        let target_life = target.life;
+
+        let sender_msg = format!("你将 {} 转移给了 {}", item_name, target_name);
+        let target_msg = format!("队友 {} 将 {} 转移给你，体力 -5", sender_name, item_name);
+        let director_msg = format!(
+            "玩家 {} 给玩家 {} 转移了物品 {}（接收方体力 -5）",
+            sender_name, target_name, item_name
+        );
+
+        let sender_data = serde_json::json!({
+            "item_name": &item_name,
+            "target": &target_name,
+        });
+        let target_data = serde_json::json!({
+            "item_name": &item_name,
+            "sender": &sender_name,
+            "strength": target_strength_after,
+            "life": target_life,
+        });
+        let director_data = serde_json::json!({
+            "item_name": item_name,
+            "sender": sender_name,
+            "target": target_name,
+        });
+
+        Ok(ActionResults {
+            results: vec![
+                ActionResult::new_system_message(
+                    sender_data,
+                    vec![sender_id.to_string()],
+                    sender_msg,
+                    false,
+                ),
+                ActionResult::new_system_message(
+                    target_data,
+                    vec![target_player_id.to_string()],
+                    target_msg,
+                    false,
+                ),
+                ActionResult::new_system_message(
+                    director_data,
+                    vec![],
+                    director_msg,
+                    true,
+                ),
+            ],
+        })
+    }
+
+    /// 处理售出行动：白天按稀有度价格出售背包中的武器/防具（绿色需成对）
+    pub fn handle_sell_item_action(
+        &mut self,
+        player_id: &str,
+        item_ids: &[String],
+    ) -> Result<ActionResults, String> {
+        let info_message = |message: String, sender: &str| -> ActionResults {
+            ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![sender.to_string()],
+                message,
+                false,
+            )
+            .as_results()
+        };
+
+        // 1. 时间窗：夜窗已设置且当前不在夜间才可售出
+        match (self.night_start_time, self.night_end_time) {
+            (Some(start_time), Some(end_time)) => {
+                let now = chrono::Utc::now();
+                if now >= start_time && now <= end_time {
+                    return Ok(info_message(
+                        "售出只在非夜间行动时间可用".to_string(),
+                        player_id,
+                    ));
+                }
+            }
+            _ => {
+                return Ok(info_message(
+                    "导演尚未设置夜晚行动时间，无法售出".to_string(),
+                    player_id,
+                ));
+            }
+        }
+
+        // 2. 数量：1 件非绿色或 2 件绿色
+        if item_ids.is_empty() || item_ids.len() > 2 {
+            return Ok(info_message(
+                "一次只能售出 1 件非绿色物品或 2 件绿色物品".to_string(),
+                player_id,
+            ));
+        }
+
+        if item_ids.len() == 2 && item_ids[0] == item_ids[1] {
+            return Ok(info_message(
+                "不能重复选择同一件物品".to_string(),
+                player_id,
+            ));
+        }
+
+        // 3. 逐件校验：在背包、武器/防具、稀有度有价
+        let mut items = Vec::new();
+        for id in item_ids {
+            let Some(item) = self
+                .players
+                .get(player_id)
+                .ok_or("Player not found")?
+                .inventory
+                .iter()
+                .find(|i| i.id == *id)
+                .cloned()
+            else {
+                return Ok(info_message(format!("物品 {} 不在背包中", id), player_id));
+            };
+            if !crate::game::game_rule_engine::Item::is_weapon_or_armor(&item) {
+                return Ok(info_message("只有武器和防具可以售出".to_string(), player_id));
+            }
+            let Some(rarity) = item.rarity.as_deref() else {
+                return Ok(info_message(
+                    "该道具稀有度未开放售出".to_string(),
+                    player_id,
+                ));
+            };
+            if !self.sell_prices.iter().any(|e| e.rarity == rarity) {
+                return Ok(info_message(
+                    "该道具稀有度未开放售出".to_string(),
+                    player_id,
+                ));
+            }
+            items.push(item);
+        }
+
+        // 4. 配对约束：1 件不得为绿；2 件必须全绿
+        let is_green =
+            |i: &crate::game::game_rule_engine::Item| i.rarity.as_deref() == Some("common");
+        if items.len() == 1 && is_green(&items[0]) {
+            return Ok(info_message("绿色物品需成对售出".to_string(), player_id));
+        }
+        if items.len() == 2 && !items.iter().all(|i| is_green(i)) {
+            return Ok(info_message(
+                "绿色物品不能与其他稀有度混合售出".to_string(),
+                player_id,
+            ));
+        }
+
+        // 5. 原子应用：移除全部、累计入账
+        let total_price: f64 = items
+            .iter()
+            .map(|i| {
+                let rarity = i.rarity.as_deref().unwrap();
+                self.sell_prices
+                    .iter()
+                    .find(|e| e.rarity == rarity)
+                    .unwrap()
+                    .price
+            })
+            .sum();
+        let player_name = self.players.get(player_id).unwrap().name.clone();
+        let item_names = items.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
+        let names_str = item_names.join("、");
+        let rarity = items[0].rarity.clone().unwrap();
+        let rarity_display = GameState::rarity_display_name(&rarity)
+            .unwrap_or(rarity.as_str())
+            .to_string();
+
+        {
+            let player = self.players.get_mut(player_id).unwrap();
+            player.inventory.retain(|i| !item_ids.contains(&i.id));
+            player.coins += total_price;
+        }
+        let coins_after = self.players.get(player_id).unwrap().coins;
+
+        let price_str = GameState::format_price(total_price);
+        let seller_msg = format!("你售出了 {}，获得 {} 货币", names_str, price_str);
+        let director_msg = format!(
+            "玩家 {} 售出了 {}（{}类），获得 {} 货币",
+            player_name, names_str, rarity_display, price_str
+        );
+
+        let seller_data = serde_json::json!({
+            "item_names": &item_names,
+            "price": total_price,
+            "coins": coins_after,
+        });
+        let director_data = serde_json::json!({
+            "item_names": item_names,
+            "player": player_name,
+            "items": items
+                .iter()
+                .map(|i| serde_json::json!({ "name": &i.name, "rarity": &i.rarity }))
+                .collect::<Vec<_>>(),
+            "price": total_price,
+        });
+
+        Ok(ActionResults {
+            results: vec![
+                ActionResult::new_system_message(
+                    seller_data,
+                    vec![player_id.to_string()],
+                    seller_msg,
+                    false,
+                ),
+                ActionResult::new_system_message(director_data, vec![], director_msg, true),
+            ],
         })
     }
 }
