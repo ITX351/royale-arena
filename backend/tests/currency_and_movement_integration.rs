@@ -6,6 +6,69 @@ use royale_arena_backend::game::models::MessageType;
 use royale_arena_backend::websocket::actions::player_action_scheduler::ActionParams;
 use royale_arena_backend::websocket::models::{GameState, Place, Player, ShopBuyItem, ShopListing};
 use serde_json::{Value, json};
+use royale_arena_backend::websocket::currency::MAX_COINS;
+
+#[test]
+fn invalid_director_balances_leave_state_unchanged() {
+    let mut state = GameState::new("bounds".to_string(), get_test_rules_with_currency());
+    add_test_player(&mut state, "p", "玩家", "位置1", 10.5);
+    for amount in [1e308, f64::INFINITY, f64::NAN, -0.5, 0.6, MAX_COINS + 0.5] {
+        assert!(state.handle_set_player_coins("p", amount).is_err());
+        assert_eq!(state.players["p"].coins, 10.5);
+    }
+    state.handle_set_player_coins("p", MAX_COINS).unwrap();
+    let json = serde_json::to_string(&state).unwrap();
+    let restored: GameState = serde_json::from_str(&json).unwrap();
+    assert_eq!(restored.players["p"].coins, MAX_COINS);
+}
+
+#[test]
+fn currency_item_overflow_or_underflow_preserves_inventory_and_strength() {
+    for (balance, value) in [(MAX_COINS, 1), (0.0, -1)] {
+        let mut state = GameState::new("bounds".to_string(), get_test_rules_with_single_currency("coin", value));
+        add_test_player(&mut state, "p", "玩家", "位置1", balance);
+        let item = state.rule_engine.create_item_from_name("coin").unwrap();
+        let id = item.id.clone();
+        state.players.get_mut("p").unwrap().inventory.push(item);
+        let strength = state.players["p"].strength;
+        let result = state.handle_use_action("p", &id, &empty_action_params()).unwrap();
+        assert_eq!(result.results[0].message_type, MessageType::Info);
+        assert_eq!(state.players["p"].coins, balance);
+        assert_eq!(state.players["p"].inventory[0].id, id);
+        assert_eq!(state.players["p"].strength, strength);
+    }
+}
+
+#[test]
+fn death_at_balance_limit_finishes_and_reports_uncredited_coins() {
+    let mut state = GameState::new("bounds".to_string(), get_test_rules_with_currency());
+    add_test_player(&mut state, "killer", "击杀者", "位置1", MAX_COINS - 0.5);
+    add_test_player(&mut state, "victim", "受害者", "位置1", 2.0);
+    let result = state.kill_player("victim", Some("killer"), Some("killer"), "攻击").unwrap();
+    assert!(!state.players["victim"].is_alive);
+    assert_eq!(state.players["victim"].coins, 0.0);
+    assert_eq!(state.players["killer"].coins, MAX_COINS);
+    assert_eq!(result.results[0].data["transferred_coins"], json!(0.5));
+    assert_eq!(result.results[0].data["vanished_coins"], json!(1.5));
+    assert!(result.results[0].log_message.contains("消失货币: 1.5"));
+    let restored: GameState = serde_json::from_str(&serde_json::to_string(&state).unwrap()).unwrap();
+    assert_eq!(restored.players["killer"].coins, MAX_COINS);
+}
+
+#[test]
+fn saved_balances_reject_invalid_values_and_accept_legacy_integers() {
+    let mut state = GameState::new("bounds".to_string(), get_test_rules_with_currency());
+    add_test_player(&mut state, "p", "玩家", "位置1", 0.0);
+    let mut saved = serde_json::to_value(&state).unwrap();
+    for invalid in [json!(1e308), json!(-1), json!(0.6), json!(null)] {
+        saved["players"]["p"]["coins"] = invalid;
+        assert!(serde_json::from_value::<GameState>(saved.clone()).is_err());
+    }
+    saved["players"]["p"]["coins"] = json!(12);
+    assert_eq!(serde_json::from_value::<GameState>(saved).unwrap().players["p"].coins, 12.0);
+    state.players.get_mut("p").unwrap().coins = f64::INFINITY;
+    assert!(serde_json::to_string(&state).is_err());
+}
 
 /// 测试规则配置（包含货币配置）
 fn get_test_rules_with_currency() -> serde_json::Value {
@@ -293,10 +356,10 @@ fn test_director_set_player_coins() {
 
     // 导演设置玩家货币为负数
     let result = game_state.handle_set_player_coins(player_id, -50.0);
-    assert!(result.is_ok(), "可以设置负数货币");
+    assert!(result.is_err(), "负数货币必须被拒绝");
 
     let updated_player = game_state.players.get(player_id).unwrap();
-    assert_eq!(updated_player.coins, -50.0, "负数货币应该被正确设置");
+    assert_eq!(updated_player.coins, 0.0, "拒绝时应保留原余额");
 }
 
 /// 测试：导演设置不存在的玩家货币（应该失败）
@@ -579,7 +642,7 @@ fn test_shop_list_and_delist_item_broadcasts_to_all() {
 }
 
 #[test]
-fn test_shop_buy_success_returns_purchase_detail_only() {
+fn test_shop_buy_success_keeps_details_private_and_syncs_inventory() {
     let rules_json = get_test_rules_with_currency();
     let mut game_state = GameState::new("test_game_shop_buy_success".to_string(), rules_json);
 
@@ -601,11 +664,17 @@ fn test_shop_buy_success_returns_purchase_detail_only() {
 
     assert_eq!(
         results.results.len(),
-        1,
-        "购买仅返回购买明细，不再向全员广播库存变化"
+        2,
+        "购买返回私有明细和全员库存同步"
     );
 
     let detail_result = &results.results[0];
+    let sync_result = &results.results[1];
+    assert_eq!(sync_result.data, json!({"shop_updated": true}));
+    assert_eq!(sync_result.broadcast_players.len(), game_state.players.len());
+    for id in game_state.players.keys() {
+        assert!(sync_result.broadcast_players.contains(id));
+    }
     assert_eq!(detail_result.message_type, MessageType::SystemNotice);
     assert_eq!(detail_result.broadcast_players, vec!["buyer".to_string()]);
     assert!(detail_result.broadcast_to_director);
@@ -618,6 +687,10 @@ fn test_shop_buy_success_returns_purchase_detail_only() {
     assert_eq!(buyer.inventory.len(), 2);
     assert_eq!(game_state.shop.len(), 1);
     assert_eq!(game_state.shop[0].quantity, 1);
+    let observer_message = royale_arena_backend::websocket::broadcaster::MessageBroadcaster::generate_player_message(
+        &game_state, &game_state.players["observer"], Some(sync_result),
+    );
+    assert_eq!(observer_message["global_state"]["shop"][0]["quantity"], json!(1));
 }
 
 #[test]

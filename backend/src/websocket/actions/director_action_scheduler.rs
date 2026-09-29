@@ -27,7 +27,7 @@ pub struct DirectorActionParams {
     pub coins: Option<f64>,    // 玩家货币
     pub max_life: Option<i32>,           // 玩家生命上限
     pub max_strength: Option<i32>,       // 玩家体力上限
-    pub max_backpack_items: Option<i32>, // 玩家背包上限
+    pub max_backpack_items: Option<usize>, // serde performs checked unsigned conversion at the JSON boundary
     pub target_place: Option<String>,
     pub action_type: Option<String>, // rope/unrope
     pub rest_enabled: Option<bool>,  // 夜晚结算时静养是否生效

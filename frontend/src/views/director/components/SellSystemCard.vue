@@ -59,7 +59,7 @@
           <el-input-number
             v-model="price"
             :min="0.5"
-            :max="9999"
+            :max="MAX_SELL_PRICE"
             :step="0.5"
             style="width: 100%"
           />
@@ -67,7 +67,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!selectedRarity || price < 0.5" @click="handleSave">
+        <el-button type="primary" :disabled="!selectedRarity || !isValidSellPrice(price)" @click="handleSave">
           保存
         </el-button>
       </template>
@@ -80,6 +80,7 @@ import { ref, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { useGameStateStore } from '@/stores/gameState'
 import type { SellPriceEntry } from '@/types/gameStateTypes'
+import { isValidSellPrice, MAX_SELL_PRICE } from '@/utils/currency'
 
 const store = useGameStateStore()
 
@@ -116,7 +117,7 @@ const openEditDialog = (row: SellPriceEntry) => {
 }
 
 const handleSave = () => {
-  if (!selectedRarity.value || price.value < 0.5) return
+  if (!selectedRarity.value || !isValidSellPrice(price.value)) return
   store.sellSetPrice(selectedRarity.value, price.value)
   dialogVisible.value = false
 }

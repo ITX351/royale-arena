@@ -1,6 +1,24 @@
 //! 导演设置玩家上限（max_life / max_strength / max_backpack）集成测试
 //! 覆盖 clamp 收敛、当前值压限、背包降容不丢物品、拾取拦截、缺参报错
 
+#[test]
+fn director_backpack_json_keeps_unsigned_capacity() {
+    for capacity in [i32::MAX as usize + 1, usize::MAX] {
+        let mut state = GameState::new("large".to_string(), rules_with_caps(300, 300, capacity));
+        add_test_player(&mut state, "p1", "玩家1", "位置1");
+        let params = DirectorActionParams::from_json(&json!({
+            "player_id": "p1", "max_backpack_items": capacity,
+        })).unwrap();
+        DirectorActionScheduler::dispatch(&mut state, "max_backpack", params).unwrap();
+        assert_eq!(state.players["p1"].max_backpack_items, capacity);
+        state.handle_set_player_max_backpack("p1", 0).unwrap();
+        assert_eq!(state.players["p1"].max_backpack_items, 6);
+    }
+    for invalid in [json!(-1), json!(1.5), json!(1e308), json!("10")] {
+        assert!(DirectorActionParams::from_json(&json!({"max_backpack_items": invalid})).is_err());
+    }
+}
+
 use royale_arena_backend::websocket::actions::director_action_scheduler::{
     DirectorActionParams, DirectorActionScheduler,
 };

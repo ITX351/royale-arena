@@ -69,6 +69,18 @@ impl GameState {
         let record_killer_name =
             record_killer_id.and_then(|id| self.players.get(id).map(|p| p.name.clone()));
 
+        // Validate before death mutates inventory/location. Capped loot must not cancel a kill.
+        let victim_balance = crate::websocket::currency::validate_balance(self.players[target_player_id].coins)?;
+        let coin_transfer = loot_recipient_id
+            .filter(|id| *id != target_player_id)
+            .and_then(|id| self.players.get(id))
+            .map(|killer| {
+                let balance = crate::websocket::currency::validate_balance(killer.coins)?;
+                let amount = victim_balance.min(crate::websocket::currency::MAX_COINS - balance);
+                crate::websocket::currency::checked_change(balance, amount).map(|after| (amount, after))
+            })
+            .transpose()?;
+
         let (mut loot_items, previous_location, victim_coins) = {
             let player = self
                 .players
@@ -124,12 +136,12 @@ impl GameState {
                 disposition = DeathDisposition::DropToGround;
             }
 
-            // 货币处理：有击杀归属者时（PVP 击杀），击杀者缴获全部货币；无击杀者时（非 PVP 死因），货币直接消失
+            // PVP 货币入账不超过余额上限；溢出部分和无归属者货币记录为消失。
             if victim_coins > 0.0 {
                 if let Some(loot_player_id) = loot_recipient_id {
-                    if let Some(killer) = self.players.get_mut(loot_player_id) {
-                        killer.coins += victim_coins;
-                        transferred_coins = victim_coins;
+                    if let (Some(killer), Some((amount, after))) = (self.players.get_mut(loot_player_id), coin_transfer) {
+                        killer.coins = after;
+                        transferred_coins = amount;
                     }
                 }
                 // 无击杀归属者：货币直接消失
@@ -217,9 +229,9 @@ impl GameState {
         }
         Self::push_segment(&mut detail_segments, "掉落", &dropped_item_names);
         Self::push_segment(&mut detail_segments, "消失", &vanished_item_names);
-        // 非 PVP 击杀时货币直接消失
-        if victim_coins > 0.0 && transferred_coins == 0.0 {
-            detail_segments.push(format!("消失货币: {}", victim_coins));
+        let vanished_coins = victim_coins - transferred_coins;
+        if vanished_coins > 0.0 {
+            detail_segments.push(format!("消失货币: {}", vanished_coins));
         }
 
         if !detail_segments.is_empty() {
@@ -239,6 +251,7 @@ impl GameState {
             "location_before_death": location_option.map(|loc| loc.to_string()),
             "killer_collected_items": collected_item_names,
             "transferred_coins": transferred_coins,
+            "vanished_coins": vanished_coins,
             "dropped_items": dropped_item_names,
             "vanished_items": vanished_item_names,
         });

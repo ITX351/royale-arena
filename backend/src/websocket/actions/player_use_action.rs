@@ -394,7 +394,7 @@ impl GameState {
     ) -> Result<ItemUseOutcome, String> {
         {
             let player = self.players.get_mut(player_id).unwrap();
-            player.coins += properties.value as f64;
+            player.coins = crate::websocket::currency::checked_change(player.coins, properties.value as f64)?;
         }
 
         let coins_after = self.players.get(player_id).unwrap().coins;

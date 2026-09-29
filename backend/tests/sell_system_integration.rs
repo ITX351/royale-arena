@@ -5,6 +5,38 @@ use royale_arena_backend::game::game_rule_engine::GameRuleEngine;
 use royale_arena_backend::websocket::models::GameState;
 use serde_json::{json, Value};
 
+#[test]
+fn sell_prices_reject_nonfinite_oversized_and_fractional_inputs() {
+    let mut state = build_sell_game_state();
+    for price in [1e308, f64::INFINITY, f64::NAN, 9999.5, 0.6, 0.0, -0.5] {
+        let results = state.handle_sell_set_price("common".into(), price).unwrap();
+        assert_eq!(results.results[0].message_type, MessageType::Info);
+        assert!(state.sell_prices.is_empty());
+    }
+    state.handle_sell_set_price("common".into(), 9999.0).unwrap();
+    assert_eq!(state.sell_prices[0].price, 9999.0);
+    state.handle_sell_set_price("common".into(), 1e308).unwrap();
+    assert_eq!(state.sell_prices[0].price, 9999.0);
+}
+
+#[test]
+fn sale_rejects_bad_saved_price_and_balance_overflow_atomically() {
+    use royale_arena_backend::websocket::currency::MAX_COINS;
+    for (balance, price) in [(0.0, 1e308), (0.0, f64::NAN), (MAX_COINS, 0.5)] {
+        let mut state = build_sell_game_state();
+        sell_add_player(&mut state, "p1", "玩家一");
+        state.players.get_mut("p1").unwrap().coins = balance;
+        sell_configure(&mut state, "common", 0.5);
+        state.sell_prices[0].price = price;
+        sell_put_weapon(&mut state, "p1", "w", Some("common"));
+        sell_put_armor(&mut state, "p1", "a", Some("common"));
+        sell_set_night_window(&mut state, 3600, 7200);
+        assert!(state.handle_sell_item_action("p1", &["w".into(), "a".into()]).is_err());
+        assert_eq!(state.players["p1"].coins, balance);
+        assert_eq!(state.players["p1"].inventory.len(), 2);
+    }
+}
+
 const SELL_RULES: &str = r#"{
     "map": { "places": ["码头"], "safe_places": [] },
     "player": { "max_life": 100, "max_strength": 100, "daily_life_recovery": 0,

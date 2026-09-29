@@ -414,6 +414,7 @@ impl GameState {
         player_id: &str,
         coins: f64,
     ) -> Result<ActionResults, String> {
+        let coins = crate::websocket::currency::validate_balance(coins)?;
         let (player_name, final_coins, coins_change) = {
             let player = self.players.get_mut(player_id).ok_or("Player not found")?;
 
@@ -583,15 +584,14 @@ impl GameState {
     pub fn handle_set_player_max_backpack(
         &mut self,
         player_id: &str,
-        max_backpack_items: i32,
+        max_backpack_items: usize,
     ) -> Result<ActionResults, String> {
         let (base_backpack, backpack_cap) = {
             let pc = &self.rule_engine.player_config;
             (pc.max_backpack_items, pc.max_backpack_items_cap)
         };
-        let base = base_backpack as i32;
-        let cap = (backpack_cap as i32).max(base);
-        let new_max = max_backpack_items.clamp(base, cap) as usize;
+        let cap = backpack_cap.max(base_backpack);
+        let new_max = max_backpack_items.clamp(base_backpack, cap);
 
         let (player_name, final_max) = {
             let player = self.players.get_mut(player_id).ok_or("Player not found")?;
@@ -1181,11 +1181,11 @@ impl GameState {
             )
             .as_results());
         };
-        if price <= 0.0 || (price * 2.0 - (price * 2.0).round()).abs() >= 1e-9 {
+        if !crate::websocket::currency::valid_sell_price(price) {
             return Ok(ActionResult::new_info_message(
                 serde_json::json!({}),
                 vec![],
-                format!("售出价格必须为 0.5 的倍数且大于 0，当前值为 {}", price),
+                format!("售出价格必须为 0.5 到 9999 范围内的 0.5 的倍数，当前值为 {}", price),
                 true,
             )
             .as_results());

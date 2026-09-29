@@ -199,7 +199,8 @@ pub struct Player {
     #[serde(default)]
     pub max_backpack_items: usize,
     /// 货币总数
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::websocket::currency::deserialize_balance",
+        serialize_with = "crate::websocket::currency::serialize_balance")]
     pub coins: f64,
 }
 

@@ -276,6 +276,9 @@
               <div class="status-value">
                 <el-input-number
                   :model-value="Number(scope.row.coins)"
+                  :min="0"
+                  :max="MAX_COINS"
+                  :step="0.5"
                   :controls="false"
                   @update:model-value="(val: number | undefined) => handleCoinsInput(scope.row, val)"
                   @focus="() => handleEditableFieldFocus(scope.row, 'coins')"
@@ -391,6 +394,7 @@ import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 import { getItemDisplayName } from '@/utils/itemDisplay'
 import type { Player } from '@/types/gameStateTypes'
+import { isValidBalance, MAX_COINS } from '@/utils/currency'
 
 // 定义组件属性
 const props = defineProps<{
@@ -749,8 +753,14 @@ const updatePlayerMaxBackpack = (playerId: string, currentValue: number, newValu
 
 // 更新玩家货币
 const updatePlayerCoins = (playerId: string, currentValue: number, newValue: number) => {
-  if (Number.isFinite(newValue) && newValue !== currentValue) {
-    store.setPlayerCoins(playerId, Math.trunc(newValue))
+  if (!isValidBalance(newValue)) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.coins = currentValue
+    ElMessage.error(`货币必须是 0 到 ${MAX_COINS} 范围内的 0.5 的倍数`)
+    return
+  }
+  if (newValue !== currentValue) {
+    store.setPlayerCoins(playerId, newValue)
   }
 }
 

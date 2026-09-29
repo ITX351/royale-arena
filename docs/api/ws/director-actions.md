@@ -11,6 +11,12 @@
 
 ## 控制参数说明:
 
+**货币与背包上限：**
+
+- `coins`：`player_id` 和 `coins`；金额必须是 `0..=4503599627370495.5` 内的半币数值。
+- `sell_set_price`：`sell_rarity` 和 `sell_price`；价格必须是 `0.5..=9999` 内的 `0.5` 的倍数。
+- `max_backpack`：`player_id` 和 `max_backpack_items`；容量通过 JSON 无符号整数校验，服务端使用 `usize` 全宽计算，再限制在规则基础容量与硬上限之间。前端应只发送 JavaScript 可精确表示的安全整数。
+
 **开始行动 (start):**
 ```json
 {}  // 无需参数

@@ -772,6 +772,8 @@ impl GameState {
             .as_results());
         }
 
+        let remaining_coins = crate::websocket::currency::checked_change(player.coins, -(total_cost as f64))?;
+
         // 检查背包空间
         let max_inventory_size = player.max_backpack_items;
         let current_items = player.get_total_item_count();
@@ -859,7 +861,7 @@ impl GameState {
         player.inventory.extend(created_items);
 
         // 扣除货币
-        player.coins -= total_cost as f64;
+        player.coins = remaining_coins;
 
         // 扣减库存或移除售罄商品
         for (listing_id, _, _, buy_qty, _) in &purchase_plan {
@@ -890,8 +892,14 @@ impl GameState {
             true,
         );
 
+        let shop_sync_result = ActionResult::new_info_message(
+            serde_json::json!({ "shop_updated": true }),
+            self.players.keys().cloned().collect(),
+            "商店库存已更新".to_string(),
+            true,
+        );
         Ok(ActionResults {
-            results: vec![detail_result],
+            results: vec![detail_result, shop_sync_result],
         })
     }
 
@@ -1119,13 +1127,21 @@ impl GameState {
             .iter()
             .map(|i| {
                 let rarity = i.rarity.as_deref().unwrap();
-                self.sell_prices
+                let price = self.sell_prices
                     .iter()
                     .find(|e| e.rarity == rarity)
                     .unwrap()
-                    .price
+                    .price;
+                if crate::websocket::currency::valid_sell_price(price) {
+                    Ok(price)
+                } else {
+                    Err("售出价格无效，请导演重新配置".to_string())
+                }
             })
-            .sum();
+            .try_fold(0.0, |total, price| crate::websocket::currency::checked_change(total, price?))?;
+        let coins_after = crate::websocket::currency::checked_change(
+            self.players.get(player_id).unwrap().coins, total_price,
+        )?;
         let player_name = self.players.get(player_id).unwrap().name.clone();
         let item_names = items.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
         let names_str = item_names.join("、");
@@ -1137,7 +1153,7 @@ impl GameState {
         {
             let player = self.players.get_mut(player_id).unwrap();
             player.inventory.retain(|i| !item_ids.contains(&i.id));
-            player.coins += total_price;
+            player.coins = coins_after;
         }
         let coins_after = self.players.get(player_id).unwrap().coins;
 
