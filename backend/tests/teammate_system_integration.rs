@@ -718,18 +718,47 @@ fn transfer_item_via_scheduler_dispatch() {
 }
 
 // ============================================================================
-// Task 7: Expose team_id in player list JSON (actor view)
+// Actor clients only see team membership and availability for their own teammates.
 // ============================================================================
 
 #[test]
-fn player_list_json_includes_team_id() {
+fn player_list_json_limits_team_details_to_teammates() {
     let mut state = build_empty_game_state(0);
     add_player_at(&mut state, "p1", 5, "loc");
+    add_player_at(&mut state, "teammate", 5, "loc");
+    add_player_at(&mut state, "opponent", 6, "loc");
+    add_player_at(&mut state, "solo_a", 0, "loc");
+    add_player_at(&mut state, "solo_b", 0, "loc");
     let player = state.players.get("p1").unwrap();
-    let json = player.to_player_client_json_for_other_players();
-    assert!(
-        json.get("team_id").is_some(),
-        "team_id must be present in player list JSON"
-    );
-    assert_eq!(json["team_id"].as_i64(), Some(5));
+    let teammate = state.players.get("teammate").unwrap();
+    let opponent = state.players.get("opponent").unwrap();
+    let teammate_json = teammate.to_player_client_json_for_other_players(player);
+    let opponent_json = opponent.to_player_client_json_for_other_players(player);
+    assert_eq!(teammate_json["team_id"].as_i64(), Some(5));
+    assert_eq!(teammate_json["is_alive"].as_bool(), Some(true));
+    assert!(opponent_json["team_id"].is_null());
+    assert!(opponent_json["is_alive"].is_null());
+    let solo_json = state.players["solo_b"]
+        .to_player_client_json_for_other_players(&state.players["solo_a"]);
+    assert!(solo_json["team_id"].is_null());
+}
+
+#[test]
+fn unspawned_player_cannot_transfer_item() {
+    let mut state = build_empty_game_state(8);
+    add_player_at(&mut state, "sender", 1, "");
+    add_player_at(&mut state, "receiver", 1, "loc");
+    put_item_in_inventory(&mut state, "sender", "i1", "X");
+
+    let results = royale_arena_backend::websocket::actions::player_action_scheduler::PlayerActionScheduler::dispatch(
+        &mut state,
+        "sender",
+        "transfer_item",
+        transfer_params("i1", "receiver"),
+    )
+    .expect("dispatch ok");
+
+    assert_eq!(results.results[0].message_type, MessageType::Info);
+    assert!(state.players["sender"].inventory.iter().any(|i| i.id == "i1"));
+    assert!(state.players["receiver"].inventory.is_empty());
 }

@@ -175,7 +175,7 @@ const selectedRarity = ref('')
 
 const ALL_RARITIES = ['common', 'rare', 'epic', 'legendary'] as const
 const rarityLabel = (r: string) =>
-  ({ common: '绿', rare: '蓝', epic: '紫', legendary: '橙' })[r] || r
+  ({ common: '绿', rare: '蓝', epic: '紫', legendary: '橙' } as Record<string, string>)[r] || r
 
 const rarityPool = computed(() =>
   listMode.value === 'weapon'

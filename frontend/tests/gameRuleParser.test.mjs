@@ -59,3 +59,11 @@ for (const value of [-2147483648, -1, 1, 2147483647, 0, 1.5, -2147483649, 214748
     assert.equal(validate(rules).isValid, [-2147483648, -1, 1, 2147483647].includes(value))
   })
 }
+
+for (const field of ['internal_name', 'rarity']) {
+  test(`permanent buff rejects a non-string ${field}`, () => {
+    const rules = structuredClone(DEFAULT_RULES_CONFIG)
+    rules.items_config.items.permanent_buffs[0][field] = 42
+    assert.equal(validate(rules).isValid, false)
+  })
+}

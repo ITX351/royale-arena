@@ -311,6 +311,7 @@ impl PlayerActionScheduler {
                     player_id,
                     vec![
                         ValidationType::Alive,
+                        ValidationType::Born,
                         ValidationType::NotBound,
                     ]
                 );
@@ -359,7 +360,6 @@ impl PlayerActionScheduler {
                     .item_ids
                     .clone()
                     .ok_or("Missing item_ids parameter".to_string())?;
-                game_state.end_rest_mode_for_action(player_id);
                 return game_state.handle_sell_item_action(player_id, &item_ids);
             }
             "send" => {

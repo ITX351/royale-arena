@@ -451,11 +451,8 @@ const nightEndMs = computed(() => {
 })
 
 const nightActionActive = computed(() => {
-  if (!nightStartMs.value || !nightEndMs.value) {
+  if (nightStartMs.value === null || nightEndMs.value === null) {
     return true
-  }
-  if (nightEndMs.value <= nightStartMs.value) {
-    return now.value >= nightStartMs.value
   }
   return now.value >= nightStartMs.value && now.value <= nightEndMs.value
 })

@@ -105,12 +105,12 @@
               </el-col>
               <el-col :xs="24" :md="12">
                 <h4>玩家配置</h4>
-                <p><strong>生命上限（初始）：</strong>{{ parsedRules.player.maxLife }}（可累加至 {{ parsedRules.player.maxLifeCap }}）</p>
-                <p><strong>体力上限（初始）：</strong>{{ parsedRules.player.maxStrength }}（可累加至 {{ parsedRules.player.maxStrengthCap }}）</p>
+                <p><strong>生命上限（初始）：</strong>{{ parsedRules.player.maxLife }}（可累加至 {{ Math.max(parsedRules.player.maxLife, parsedRules.player.maxLifeCap) }}）</p>
+                <p><strong>体力上限（初始）：</strong>{{ parsedRules.player.maxStrength }}（可累加至 {{ Math.max(parsedRules.player.maxStrength, parsedRules.player.maxStrengthCap) }}）</p>
                 <p><strong>每日生命恢复：</strong>{{ parsedRules.player.dailyLifeRecovery }}</p>
                 <p><strong>每日体力恢复：</strong>{{ parsedRules.player.dailyStrengthRecovery }}</p>
                 <p><strong>搜索冷却时间：</strong>{{ parsedRules.player.searchCooldown }}秒</p>
-                <p><strong>背包上限（初始）：</strong>{{ parsedRules.player.maxBackpackItems }}（可累加至 {{ parsedRules.player.maxBackpackItemsCap }}）</p>
+                <p><strong>背包上限（初始）：</strong>{{ parsedRules.player.maxBackpackItems }}（可累加至 {{ Math.max(parsedRules.player.maxBackpackItems, parsedRules.player.maxBackpackItemsCap) }}）</p>
                 <p><strong>挥拳伤害：</strong>{{ parsedRules.player.unarmedDamage }}</p>
               </el-col>
             </el-row>

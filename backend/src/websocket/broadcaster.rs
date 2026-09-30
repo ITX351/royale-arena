@@ -52,7 +52,7 @@ impl MessageBroadcaster {
         let actor_players: Vec<JsonValue> = game_state
             .players
             .values()
-            .map(|p| p.to_player_client_json_for_other_players())
+            .map(|p| p.to_player_client_json_for_other_players(player))
             .collect();
 
         json!({
@@ -127,11 +127,14 @@ impl Player {
         player
     }
 
-    pub fn to_player_client_json_for_other_players(&self) -> JsonValue {
+    pub fn to_player_client_json_for_other_players(&self, viewer: &Player) -> JsonValue {
+        let is_teammate = self.team_id.is_some_and(|team_id| team_id > 0)
+            && self.team_id == viewer.team_id;
         json!({
             "id": self.id,
             "name": self.name,
-            "team_id": self.team_id,
+            "team_id": if is_teammate { self.team_id } else { None },
+            "is_alive": if is_teammate { Some(self.is_alive) } else { None },
         })
     }
 }

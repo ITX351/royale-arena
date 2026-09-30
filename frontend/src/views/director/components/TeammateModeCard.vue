@@ -24,10 +24,21 @@ import { useGameStateStore } from '@/stores/gameState'
 const store = useGameStateStore()
 
 const rulesConfig = computed(() => store.globalState?.rules_config ?? {})
-const mode = computed(() => {
+const serverMode = computed(() => {
   const v = (rulesConfig.value as any).teammate_behavior
   return typeof v === 'number' ? v : 0
 })
+const pendingMode = ref<number | null>(null)
+const mode = computed(() => pendingMode.value ?? serverMode.value)
+
+watch(serverMode, (value) => {
+  if (value === pendingMode.value) pendingMode.value = null
+})
+
+const setMode = (value: number) => {
+  pendingMode.value = value
+  store.setTeammateBehavior(value)
+}
 
 const lastNonZero = ref(1)
 watch(mode, (v) => {
@@ -36,13 +47,13 @@ watch(mode, (v) => {
 
 const masterOn = computed<boolean>({
   get: () => mode.value !== 0,
-  set: (v) => store.setTeammateBehavior(v ? lastNonZero.value : 0),
+  set: (v) => setMode(v ? lastNonZero.value : 0),
 })
 
 const makeBit = (bit: number) =>
   computed<boolean>({
     get: () => (mode.value & bit) !== 0,
-    set: (v) => store.setTeammateBehavior(v ? mode.value | bit : mode.value & ~bit),
+    set: (v) => setMode(v ? mode.value | bit : mode.value & ~bit),
   })
 
 const bit1 = makeBit(1)

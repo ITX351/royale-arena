@@ -737,6 +737,12 @@ export class GameRuleParser {
 							if (buffUnexpected.length > 0) {
 								errors.push(`items_config.items.permanent_buffs[${index}] 包含未知字段: ${buffUnexpected.join(', ')}`)
 							}
+							if (buff.internal_name != null && typeof buff.internal_name !== 'string') {
+								errors.push(`永久增益[${index}]内部名称必须是字符串`)
+							}
+							if (buff.rarity != null && typeof buff.rarity !== 'string') {
+								errors.push(`永久增益[${index}]稀有度必须是字符串`)
+							}
 							if (!buff.name || typeof buff.name !== 'string' || buff.name.trim().length === 0) {
 								errors.push(`永久增益[${index}]缺少名称`)
 							}

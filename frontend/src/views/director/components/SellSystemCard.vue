@@ -98,7 +98,7 @@ const selectedRarity = ref('')
 const price = ref(0.5)
 
 const rarityLabel = (rarity: string) =>
-  ({ common: '绿', rare: '蓝', epic: '紫', legendary: '橙' })[rarity] || rarity
+  ({ common: '绿', rare: '蓝', epic: '紫', legendary: '橙' } as Record<string, string>)[rarity] || rarity
 
 const formatPrice = (p: number) => String(p)
 

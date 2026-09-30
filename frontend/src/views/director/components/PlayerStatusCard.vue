@@ -744,9 +744,14 @@ const updatePlayerMaxStrength = (playerId: string, currentValue: number, newValu
 
 // 更新玩家背包上限
 const updatePlayerMaxBackpack = (playerId: string, currentValue: number, newValueStr: string) => {
-  const newValue = parseInt(newValueStr, 10)
-  // 只有当值发生变化时才提交修改
-  if (!isNaN(newValue) && newValue !== currentValue) {
+  const newValue = Number(newValueStr)
+  if (!/^\d+$/.test(newValueStr) || !Number.isSafeInteger(newValue)) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.max_backpack_items = currentValue
+    ElMessage.error('背包上限必须是非负安全整数')
+    return
+  }
+  if (newValue !== currentValue) {
     store.setPlayerMaxBackpack(playerId, newValue)
   }
 }
