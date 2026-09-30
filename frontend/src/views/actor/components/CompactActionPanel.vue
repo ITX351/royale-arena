@@ -6,11 +6,11 @@
     </div>
     <div class="status-item">
       <span class="status-label">生命:</span>
-      <span :class="['status-value', 'life', lifeAnimationClass]">{{ player.life }}{{ lifeCapRaised ? `/${player.max_life}` : '' }}</span>
+      <span :class="['status-value', 'life', lifeAnimationClass]">{{ player.life }}<span v-if="lifeCapRaised" class="status-cap">/{{ player.max_life }}</span></span>
     </div>
     <div class="status-item">
       <span class="status-label">体力:</span>
-      <span class="status-value strength">{{ player.strength }}{{ strengthCapRaised ? `/${player.max_strength}` : '' }}</span>
+      <span class="status-value strength">{{ player.strength }}<span v-if="strengthCapRaised" class="status-cap">/{{ player.max_strength }}</span></span>
     </div>
     <div class="status-item">
       <span class="status-label">货币:</span>
@@ -729,6 +729,13 @@ function formatDuration(durationMs: number) {
 .status-value {
   font-size: 16px;
   font-weight: bold;
+}
+
+.status-cap {
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 0.6em;
+  font-weight: normal;
+  text-shadow: none;
 }
 
 .status-value.life {

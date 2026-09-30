@@ -132,7 +132,12 @@
                 <p><strong>生命恢复：</strong>{{ parsedRules.restMode.lifeRecovery }}点</p>
                 <p><strong>体力恢复：</strong>{{ parsedRules.restMode.strengthRecovery }}点</p>
                 <p><strong>最大移动次数：</strong>{{ parsedRules.restMode.maxMoves }}次</p>
-                <p><strong>队友行为规则：</strong>{{ parsedRules.teammateBehavior }}</p>
+                <p><strong>队友行为规则：</strong>{{ [
+                  parsedRules.parsedTeammateBehaviors.noHarm ? '禁止攻击队友' : '允许攻击队友',
+                  parsedRules.parsedTeammateBehaviors.noSearch ? '搜索不会发现队友' : '搜索可以发现队友',
+                  parsedRules.parsedTeammateBehaviors.canViewStatus ? '允许查看队友状态' : '不允许查看队友状态',
+                  parsedRules.parsedTeammateBehaviors.canTransferItems ? '允许赠送队友物品' : '不允许赠送队友物品'
+                ].join('；') }}</p>
                 <p><strong>死亡后物品去向：</strong>{{ getDispositionDisplayText(parsedRules.deathItemDisposition) }}</p>
               </el-col>
             </el-row>

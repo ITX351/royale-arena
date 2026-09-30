@@ -19,7 +19,7 @@ const parser = new GameRuleParser()
 const validate = (rules) => parser.validate(rules)
 
 test('default and full-feature rules remain valid', () => {
-  for (const rules of [DEFAULT_RULES_CONFIG, JSON.parse(readFileSync(new URL('../../full-feature-rules-template.json', import.meta.url), 'utf8'))]) {
+  for (const rules of [DEFAULT_RULES_CONFIG, JSON.parse(readFileSync(new URL('../public/docs/full-feature-rules-template.json', import.meta.url), 'utf8'))]) {
     const result = validate(rules)
     assert.equal(result.isValid, true, result.errors.join('\n'))
   }
