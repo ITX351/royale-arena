@@ -52,7 +52,7 @@ impl MessageBroadcaster {
         let actor_players: Vec<JsonValue> = game_state
             .players
             .values()
-            .map(|p| p.to_player_client_json_for_other_players(player))
+            .map(|p| p.to_player_client_json_for_other_players(player, game_state))
             .collect();
 
         json!({
@@ -127,14 +127,23 @@ impl Player {
         player
     }
 
-    pub fn to_player_client_json_for_other_players(&self, viewer: &Player) -> JsonValue {
+    pub fn to_player_client_json_for_other_players(&self, viewer: &Player, game_state: &GameState) -> JsonValue {
         let is_teammate = self.team_id.is_some_and(|team_id| team_id > 0)
             && self.team_id == viewer.team_id;
+        let show_status = is_teammate && game_state.rule_engine.teammate_behavior.is_status_visible();
+        let can_receive_transfer = is_teammate
+            && game_state.rule_engine.teammate_behavior.is_transfer_enabled()
+            && self.is_alive
+            && self.strength >= 5
+            && self.get_total_item_count() < self.max_backpack_items;
         json!({
             "id": self.id,
             "name": self.name,
             "team_id": if is_teammate { self.team_id } else { None },
-            "is_alive": if is_teammate { Some(self.is_alive) } else { None },
+            "is_alive": if show_status { Some(self.is_alive) } else { None },
+            "life": if show_status { Some(self.life) } else { None },
+            "strength": if show_status { Some(self.strength) } else { None },
+            "can_receive_transfer": can_receive_transfer,
         })
     }
 }

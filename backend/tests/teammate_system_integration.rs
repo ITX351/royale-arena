@@ -723,7 +723,7 @@ fn transfer_item_via_scheduler_dispatch() {
 
 #[test]
 fn player_list_json_limits_team_details_to_teammates() {
-    let mut state = build_empty_game_state(0);
+    let mut state = build_empty_game_state(8);
     add_player_at(&mut state, "p1", 5, "loc");
     add_player_at(&mut state, "teammate", 5, "loc");
     add_player_at(&mut state, "opponent", 6, "loc");
@@ -732,15 +732,25 @@ fn player_list_json_limits_team_details_to_teammates() {
     let player = state.players.get("p1").unwrap();
     let teammate = state.players.get("teammate").unwrap();
     let opponent = state.players.get("opponent").unwrap();
-    let teammate_json = teammate.to_player_client_json_for_other_players(player);
-    let opponent_json = opponent.to_player_client_json_for_other_players(player);
+    let teammate_json = teammate.to_player_client_json_for_other_players(player, &state);
+    let opponent_json = opponent.to_player_client_json_for_other_players(player, &state);
     assert_eq!(teammate_json["team_id"].as_i64(), Some(5));
-    assert_eq!(teammate_json["is_alive"].as_bool(), Some(true));
+    assert!(teammate_json["is_alive"].is_null());
+    assert_eq!(teammate_json["can_receive_transfer"].as_bool(), Some(true));
     assert!(opponent_json["team_id"].is_null());
     assert!(opponent_json["is_alive"].is_null());
+    assert_eq!(opponent_json["can_receive_transfer"].as_bool(), Some(false));
     let solo_json = state.players["solo_b"]
-        .to_player_client_json_for_other_players(&state.players["solo_a"]);
+        .to_player_client_json_for_other_players(&state.players["solo_a"], &state);
     assert!(solo_json["team_id"].is_null());
+
+    state.rule_engine.teammate_behavior.mode = 4;
+    let visible_json = state.players["teammate"]
+        .to_player_client_json_for_other_players(&state.players["p1"], &state);
+    assert_eq!(visible_json["is_alive"].as_bool(), Some(true));
+    assert_eq!(visible_json["life"].as_i64(), Some(100));
+    assert_eq!(visible_json["strength"].as_i64(), Some(100));
+    assert_eq!(visible_json["can_receive_transfer"].as_bool(), Some(false));
 }
 
 #[test]

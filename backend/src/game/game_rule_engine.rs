@@ -180,6 +180,7 @@ pub struct TeammateBehavior {
 impl TeammateBehavior {
     pub const BIT_DAMAGE_IMMUNE: i32 = 1;
     pub const BIT_SEARCH_FILTER: i32 = 2;
+    pub const BIT_VIEW_STATUS: i32 = 4;
     pub const BIT_TRANSFER: i32 = 8;
 
     pub fn is_damage_immune(&self) -> bool {
@@ -187,6 +188,9 @@ impl TeammateBehavior {
     }
     pub fn is_search_filtered(&self) -> bool {
         self.mode & Self::BIT_SEARCH_FILTER != 0
+    }
+    pub fn is_status_visible(&self) -> bool {
+        self.mode & Self::BIT_VIEW_STATUS != 0
     }
     pub fn is_transfer_enabled(&self) -> bool {
         self.mode & Self::BIT_TRANSFER != 0

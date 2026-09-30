@@ -72,6 +72,9 @@ export interface ActorPlayer {
   name: string;
   team_id?: number | null;
   is_alive?: boolean | null;
+  life?: number | null;
+  strength?: number | null;
+  can_receive_transfer?: boolean;
 }
 
 // 导演视角的地点接口

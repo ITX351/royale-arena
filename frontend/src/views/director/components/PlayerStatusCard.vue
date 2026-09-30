@@ -725,19 +725,37 @@ const updatePlayerStrength = (playerId: string, currentValue: number, newValueSt
 }
 
 // 更新玩家生命上限
+const parseI32Input = (value: string): number | null => {
+  if (!/^-?\d+$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= -2147483648 && parsed <= 2147483647
+    ? parsed
+    : null
+}
+
 const updatePlayerMaxLife = (playerId: string, currentValue: number, newValueStr: string) => {
-  const newValue = parseInt(newValueStr, 10)
-  // 只有当值发生变化时才提交修改
-  if (!isNaN(newValue) && newValue !== currentValue) {
+  const newValue = parseI32Input(newValueStr)
+  if (newValue === null) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.max_life = currentValue
+    ElMessage.error('生命上限必须是 32 位整数')
+    return
+  }
+  if (newValue !== currentValue) {
     store.setPlayerMaxLife(playerId, newValue)
   }
 }
 
 // 更新玩家体力上限
 const updatePlayerMaxStrength = (playerId: string, currentValue: number, newValueStr: string) => {
-  const newValue = parseInt(newValueStr, 10)
-  // 只有当值发生变化时才提交修改
-  if (!isNaN(newValue) && newValue !== currentValue) {
+  const newValue = parseI32Input(newValueStr)
+  if (newValue === null) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.max_strength = currentValue
+    ElMessage.error('体力上限必须是 32 位整数')
+    return
+  }
+  if (newValue !== currentValue) {
     store.setPlayerMaxStrength(playerId, newValue)
   }
 }

@@ -10,6 +10,7 @@
     <div class="bits" :class="{ disabled: !masterOn }">
       <el-checkbox v-model="bit1" :disabled="!masterOn">禁止队友伤害 (位 1)</el-checkbox>
       <el-checkbox v-model="bit2" :disabled="!masterOn">禁止搜索到队友 (位 2)</el-checkbox>
+      <el-checkbox v-model="bit4" :disabled="!masterOn">允许查看队友状态 (位 4)</el-checkbox>
       <el-checkbox v-model="bit8" :disabled="!masterOn">允许转移物品 (位 8)</el-checkbox>
     </div>
 
@@ -58,6 +59,7 @@ const makeBit = (bit: number) =>
 
 const bit1 = makeBit(1)
 const bit2 = makeBit(2)
+const bit4 = makeBit(4)
 const bit8 = makeBit(8)
 </script>
 

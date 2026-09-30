@@ -65,6 +65,11 @@
         </div>
       </div>
     </div>
+    <div v-if="visibleTeammates.length" class="teammate-status">
+      <span v-for="teammate in visibleTeammates" :key="teammate.id">
+        {{ teammate.name }}：{{ teammate.is_alive ? `生命 ${teammate.life}，体力 ${teammate.strength}` : '已阵亡' }}
+      </span>
+    </div>
   </div>
 </template>
 
@@ -121,6 +126,10 @@ const updateViewportWidth = () => {
 const otherPlayers = computed((): ActorPlayer[] => {
   return props.players.filter(p => p.id !== props.selfId)
 })
+
+const visibleTeammates = computed(() =>
+  otherPlayers.value.filter(p => p.team_id && p.team_id > 0 && p.is_alive != null)
+)
 
 const sortedOtherPlayers = computed(() => {
   return [...otherPlayers.value].sort((a, b) => {
@@ -217,6 +226,15 @@ onUnmounted(() => {
   color: #f56c6c;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.teammate-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 
 /* 桌面版：三个组件放在同一行 */

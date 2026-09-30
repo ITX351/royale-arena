@@ -50,7 +50,7 @@ const myTeamId = computed(() => store.actorPlayer?.team_id ?? 0)
 const myId = computed(() => store.actorPlayer?.id)
 const teammates = computed<ActorPlayer[]>(() =>
   store.actorPlayerList.filter(
-    (p) => p.id !== myId.value && p.team_id && p.team_id > 0 && p.team_id === myTeamId.value && p.is_alive === true
+    (p) => p.id !== myId.value && p.team_id && p.team_id > 0 && p.team_id === myTeamId.value && p.can_receive_transfer === true
   )
 )
 
