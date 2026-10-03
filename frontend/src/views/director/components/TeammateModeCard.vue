@@ -3,15 +3,15 @@
     <template #header>
       <div class="card-header">
         <h4>队友模式</h4>
-        <el-switch v-model="masterOn" active-text="总开关" />
+        <el-switch v-model="masterOn" active-text="总开关" :disabled="isUpdating" />
       </div>
     </template>
 
     <div class="bits" :class="{ disabled: !masterOn }">
-      <el-checkbox v-model="bit1" :disabled="!masterOn">禁止队友伤害 (位 1)</el-checkbox>
-      <el-checkbox v-model="bit2" :disabled="!masterOn">禁止搜索到队友 (位 2)</el-checkbox>
-      <el-checkbox v-model="bit4" :disabled="!masterOn">允许查看队友状态 (位 4)</el-checkbox>
-      <el-checkbox v-model="bit8" :disabled="!masterOn">允许转移物品 (位 8)</el-checkbox>
+      <el-checkbox v-model="bit1" :disabled="!masterOn || isUpdating">禁止队友伤害 (位 1)</el-checkbox>
+      <el-checkbox v-model="bit2" :disabled="!masterOn || isUpdating">禁止搜索到队友 (位 2)</el-checkbox>
+      <el-checkbox v-model="bit4" :disabled="!masterOn || isUpdating">允许查看队友状态 (位 4)</el-checkbox>
+      <el-checkbox v-model="bit8" :disabled="!masterOn || isUpdating">允许转移物品 (位 8)</el-checkbox>
     </div>
 
     <div class="hint" v-if="!masterOn">未开启时，所有玩家行为与散人一致。</div>
@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useGameStateStore } from '@/stores/gameState'
 
 const store = useGameStateStore()
@@ -29,15 +29,27 @@ const serverMode = computed(() => {
   const v = (rulesConfig.value as any).teammate_behavior
   return typeof v === 'number' ? v : 0
 })
-const pendingMode = ref<number | null>(null)
-const mode = computed(() => pendingMode.value ?? serverMode.value)
-
-watch(serverMode, (value) => {
-  if (value === pendingMode.value) pendingMode.value = null
-})
+// 始终以服务器状态显示，避免发送失败后保留过期的乐观值。
+const mode = serverMode
+const isUpdating = ref(false)
+let updateTimeout: ReturnType<typeof setTimeout> | null = null
+const finishUpdate = () => {
+  isUpdating.value = false
+  if (updateTimeout !== null) clearTimeout(updateTimeout)
+  updateTimeout = null
+}
+watch(serverMode, finishUpdate)
+watch(() => store.connected, (connected) => { if (!connected) finishUpdate() })
+onUnmounted(finishUpdate)
 
 const setMode = (value: number) => {
-  pendingMode.value = value
+  if (isUpdating.value || value === serverMode.value) return
+  if (!store.connected) {
+    store.setTeammateBehavior(value)
+    return
+  }
+  isUpdating.value = true
+  updateTimeout = setTimeout(finishUpdate, 5000)
   store.setTeammateBehavior(value)
 }
 

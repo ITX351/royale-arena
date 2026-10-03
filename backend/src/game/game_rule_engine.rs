@@ -601,8 +601,6 @@ impl GameRuleEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn teammate_behavior_bit_helpers() {
         use crate::game::game_rule_engine::TeammateBehavior;
@@ -637,10 +635,11 @@ mod tests {
         assert!(!b.is_search_filtered());
         assert!(b.is_transfer_enabled());
 
-        // Bit 4 (value 4) is NOT exposed — helper methods ignore it
+        // Bit 4 only enables teammate status visibility.
         let b = TeammateBehavior { mode: 4 };
         assert!(!b.is_damage_immune());
         assert!(!b.is_search_filtered());
+        assert!(b.is_status_visible());
         assert!(!b.is_transfer_enabled());
     }
 }
