@@ -85,6 +85,7 @@
             v-model="price"
             :min="1"
             :max="9999"
+            :step-strictly="true"
             style="width: 100%"
           />
         </el-form-item>
@@ -93,6 +94,7 @@
             v-model="quantity"
             :min="1"
             :max="maxQuantity"
+            :step-strictly="true"
             style="width: 100%"
           />
         </el-form-item>
@@ -210,7 +212,8 @@ const onModeChange = (value: string | number | boolean | object | undefined) => 
 }
 
 const canSubmit = computed(() => {
-  if (price.value < 1 || quantity.value < 1 || quantity.value > maxQuantity.value) return false
+  if (!Number.isInteger(price.value) || price.value < 1 || price.value > 9999) return false
+  if (!Number.isInteger(quantity.value) || quantity.value < 1 || quantity.value > maxQuantity.value) return false
   return listMode.value === 'exact' ? !!selectedItem.value : !!selectedRarity.value
 })
 
@@ -221,7 +224,7 @@ const openListDialog = () => {
 }
 
 const handleListItem = () => {
-  if (price.value < 1 || quantity.value < 1) return
+  if (!canSubmit.value) return
   if (listMode.value === 'exact') {
     if (!selectedItem.value) return
     store.shopListItem(selectedItem.value, price.value, quantity.value)

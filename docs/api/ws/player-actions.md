@@ -4,8 +4,9 @@
 {
   "type": "player_action",
   "data": {
-    "action": "born|move|search|pick|attack|equip|use|throw|deliver|send|rest",
-    "params": {}  // 行动参数，根据具体行动类型而定
+    "action": "transfer_item",
+    "item_id": "物品 ID",
+    "target_player_id": "接收方玩家 ID"
   }
 }
 ```
@@ -68,6 +69,27 @@
   - 同时返回 `strength` / `strength_delta`（使用本身的体力消耗，默认 0）
 - 道具使用后消耗；达到硬上限后再使用，超出部分无效，道具照常消耗
 - 未知 `effect_type` 返回 Info 错误，道具退回背包
+
+**向队友转移物品 (transfer_item):**
+```json
+{
+  "action": "transfer_item",
+  "item_id": "背包中物品的 ID",
+  "target_player_id": "接收方玩家 ID"
+}
+```
+
+仅队友规则位 8 开启时可用；双方须为同一非零队伍，物品须在发起方背包中，接收方须存活、体力至少 5 且背包有空位。成功后接收方体力减少 5，发起方不消耗体力。
+
+**售出物品 (sell_item):**
+```json
+{
+  "action": "sell_item",
+  "item_ids": ["背包中物品 ID"]
+}
+```
+
+须先设置夜晚开始与结束时间，且当前处于非夜间时段。只能出售背包中已配置售出价格的武器或防具：蓝、紫、橙色每次出售 1 件；绿色每次必须出售 2 件，不可与其他稀有度混合。`item_ids` 不可重复，成功后一次性移除物品并按稀有度价格增加货币。
 
 **丢弃道具 (throw):**
 ```json

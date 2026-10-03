@@ -33,6 +33,8 @@ impl From<&Player> for TeammateViewFields {
 
 pub(crate) struct TeammateViewSnapshot {
     mode: i32,
+    night_start_time: Option<chrono::DateTime<Utc>>,
+    night_end_time: Option<chrono::DateTime<Utc>>,
     players: HashMap<String, TeammateViewFields>,
 }
 
@@ -40,6 +42,8 @@ impl TeammateViewSnapshot {
     pub(crate) fn capture(game_state: &GameState) -> Self {
         Self {
             mode: game_state.rule_engine.teammate_behavior.mode,
+            night_start_time: game_state.night_start_time,
+            night_end_time: game_state.night_end_time,
             players: game_state
                 .players
                 .iter()
@@ -49,7 +53,10 @@ impl TeammateViewSnapshot {
     }
 
     pub(crate) fn recipients_after_change(&self, game_state: &GameState) -> Vec<String> {
-        if self.mode != game_state.rule_engine.teammate_behavior.mode {
+        if self.mode != game_state.rule_engine.teammate_behavior.mode
+            || self.night_start_time != game_state.night_start_time
+            || self.night_end_time != game_state.night_end_time
+        {
             return game_state.players.keys().cloned().collect();
         }
 
@@ -361,6 +368,10 @@ mod tests {
 
         let before = TeammateViewSnapshot::capture(&state);
         state.rule_engine.teammate_behavior.mode = 0;
+        assert_eq!(before.recipients_after_change(&state).len(), 3);
+
+        let before = TeammateViewSnapshot::capture(&state);
+        state.night_start_time = Some(Utc::now());
         assert_eq!(before.recipients_after_change(&state).len(), 3);
     }
 }

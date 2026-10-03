@@ -423,3 +423,36 @@ fn legacy_exact_weapon_listing_still_buyable() {
     assert_eq!(p.inventory[0].name, "青钢剑");
     assert!((p.coins - 4.0).abs() < 1e-9);
 }
+
+#[test]
+fn mixed_legacy_weapon_and_rarity_purchase_uses_distinct_names() {
+    for exact_first in [true, false] {
+        let mut state = build_shop_rarity_state();
+        shop_add_player(&mut state, "p1", "玩家一");
+        state.players.get_mut("p1").unwrap().coins = 10.0;
+        state.shop.push(ShopListing {
+            id: "legacy-w1".to_string(),
+            item_name: "青钢剑".to_string(),
+            price: 1,
+            quantity: 1,
+            item_kind: None,
+            rarity: None,
+        });
+        let rarity_id = list_rarity(&mut state, "weapon", "common", 2, 1);
+        let purchases = if exact_first {
+            vec![("legacy-w1".to_string(), 1), (rarity_id, 1)]
+        } else {
+            vec![(rarity_id, 1), ("legacy-w1".to_string(), 1)]
+        };
+        let result = buy2(&mut state, "p1", &purchases);
+        assert_ne!(result.results[0].message_type, MessageType::Info);
+        let names: std::collections::HashSet<&str> = state.players["p1"]
+            .inventory
+            .iter()
+            .map(|item| item.name.as_str())
+            .collect();
+        assert_eq!(names.len(), 2);
+        assert!(names.contains("青钢剑"));
+        assert!(names.contains("铁刃短剑"));
+    }
+}

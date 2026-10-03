@@ -798,6 +798,18 @@ impl GameState {
         let mut created_items = Vec::new();
         let existing_names = self.collect_existing_weapons_and_armor_names();
         let mut drawn_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+        // 旧存档可能仍含按名称上架的装备；先占用整笔交易中的这些名称，
+        // 避免随机类目在任意购买顺序下抽到同名装备。
+        for (_, item_name, _, _, kind_rarity) in &purchase_plan {
+            if kind_rarity.is_none()
+                && self
+                    .rule_engine
+                    .create_item_from_name(item_name)
+                    .is_ok_and(|item| item.is_weapon_or_armor())
+            {
+                drawn_names.insert(item_name.clone());
+            }
+        }
         for (_id, item_name, _price, qty, kind_rarity) in &purchase_plan {
             for _ in 0..*qty {
                 let item = match kind_rarity {
