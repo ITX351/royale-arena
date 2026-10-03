@@ -31,6 +31,14 @@ test('optional caps may be omitted', () => {
   assert.equal(validate(rules).isValid, true)
 })
 
+for (const value of [0, 15, -1, 16, 2147483648, 1.5, null, '15']) {
+  test(`teammate_behavior validates ${String(value)} (${typeof value})`, () => {
+    const rules = structuredClone(DEFAULT_RULES_CONFIG)
+    rules.teammate_behavior = value
+    assert.equal(validate(rules).isValid, value === 0 || value === 15)
+  })
+}
+
 for (const field of ['max_life_cap', 'max_strength_cap', 'max_backpack_items_cap']) {
   const backpack = field === 'max_backpack_items_cap'
   const accepted = backpack ? [0, 2147483648, Number.MAX_SAFE_INTEGER] : [-2147483648, 0, 2147483647]

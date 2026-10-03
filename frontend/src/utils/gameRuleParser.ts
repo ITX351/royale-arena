@@ -399,8 +399,8 @@ export class GameRuleParser {
 			// 已在 requiredFields 中记录
 		} else if (typeof config.teammate_behavior !== 'number' || !Number.isFinite(config.teammate_behavior)) {
 			errors.push('teammate_behavior 必须是数字')
-		} else if (!Number.isInteger(config.teammate_behavior) || config.teammate_behavior < 0) {
-			errors.push('teammate_behavior 必须是非负整数')
+		} else if (!Number.isInteger(config.teammate_behavior) || config.teammate_behavior < 0 || config.teammate_behavior > 15) {
+			errors.push('teammate_behavior 必须是 0 到 15 的整数')
 		}
 
 		if (config.items_config !== undefined) {

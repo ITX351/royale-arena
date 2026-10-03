@@ -70,14 +70,16 @@ impl GameState {
             record_killer_id.and_then(|id| self.players.get(id).map(|p| p.name.clone()));
 
         // Validate before death mutates inventory/location. Capped loot must not cancel a kill.
-        let victim_balance = crate::websocket::currency::validate_balance(self.players[target_player_id].coins)?;
+        let victim_balance =
+            crate::websocket::currency::validate_balance(self.players[target_player_id].coins)?;
         let coin_transfer = loot_recipient_id
             .filter(|id| *id != target_player_id)
             .and_then(|id| self.players.get(id))
             .map(|killer| {
                 let balance = crate::websocket::currency::validate_balance(killer.coins)?;
                 let amount = victim_balance.min(crate::websocket::currency::MAX_COINS - balance);
-                crate::websocket::currency::checked_change(balance, amount).map(|after| (amount, after))
+                crate::websocket::currency::checked_change(balance, amount)
+                    .map(|after| (amount, after))
             })
             .transpose()?;
 
@@ -139,7 +141,9 @@ impl GameState {
             // PVP 货币入账不超过余额上限；溢出部分和无归属者货币记录为消失。
             if victim_coins > 0.0 {
                 if let Some(loot_player_id) = loot_recipient_id {
-                    if let (Some(killer), Some((amount, after))) = (self.players.get_mut(loot_player_id), coin_transfer) {
+                    if let (Some(killer), Some((amount, after))) =
+                        (self.players.get_mut(loot_player_id), coin_transfer)
+                    {
                         killer.coins = after;
                         transferred_coins = amount;
                     }

@@ -3,7 +3,7 @@
 use chrono::{Duration, Utc};
 use royale_arena_backend::game::game_rule_engine::GameRuleEngine;
 use royale_arena_backend::websocket::models::GameState;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[test]
 fn sell_prices_reject_nonfinite_oversized_and_fractional_inputs() {
@@ -13,7 +13,9 @@ fn sell_prices_reject_nonfinite_oversized_and_fractional_inputs() {
         assert_eq!(results.results[0].message_type, MessageType::Info);
         assert!(state.sell_prices.is_empty());
     }
-    state.handle_sell_set_price("common".into(), 9999.0).unwrap();
+    state
+        .handle_sell_set_price("common".into(), 9999.0)
+        .unwrap();
     assert_eq!(state.sell_prices[0].price, 9999.0);
     state.handle_sell_set_price("common".into(), 1e308).unwrap();
     assert_eq!(state.sell_prices[0].price, 9999.0);
@@ -31,7 +33,11 @@ fn sale_rejects_bad_saved_price_and_balance_overflow_atomically() {
         sell_put_weapon(&mut state, "p1", "w", Some("common"));
         sell_put_armor(&mut state, "p1", "a", Some("common"));
         sell_set_night_window(&mut state, 3600, 7200);
-        assert!(state.handle_sell_item_action("p1", &["w".into(), "a".into()]).is_err());
+        assert!(
+            state
+                .handle_sell_item_action("p1", &["w".into(), "a".into()])
+                .is_err()
+        );
         assert_eq!(state.players["p1"].coins, balance);
         assert_eq!(state.players["p1"].inventory.len(), 2);
     }
@@ -383,8 +389,8 @@ fn sell_item_via_scheduler_dispatch() {
         ActionParams, PlayerActionScheduler,
     };
     let params = ActionParams::from_json(&json!({ "item_ids": ["w1"] })).unwrap();
-    let results =
-        PlayerActionScheduler::dispatch(&mut state, "p1", "sell_item", params).expect("dispatch ok");
+    let results = PlayerActionScheduler::dispatch(&mut state, "p1", "sell_item", params)
+        .expect("dispatch ok");
     assert!((state.players["p1"].coins - 0.5).abs() < 1e-9);
     assert_eq!(results.results.len(), 2);
 }
@@ -395,7 +401,9 @@ fn client_json_includes_sell_prices() {
     sell_add_player(&mut state, "p1", "玩家一");
     sell_configure(&mut state, "common", 1.5);
     let json = state.to_player_client_json();
-    let arr = json["sell_prices"].as_array().expect("sell_prices 必须存在");
+    let arr = json["sell_prices"]
+        .as_array()
+        .expect("sell_prices 必须存在");
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["rarity"], "common");
     assert!((arr[0]["price"].as_f64().unwrap() - 1.5).abs() < 1e-9);
@@ -422,10 +430,13 @@ fn sell_green_pair_succeeds() {
     let expected_names = json!(["[W]w1", "[A]a1"]);
     assert_eq!(results.results[0].data["item_names"], expected_names);
     assert_eq!(results.results[1].data["item_names"], expected_names);
-    assert_eq!(results.results[1].data["items"], json!([
-        {"name": "[W]w1", "rarity": "common"},
-        {"name": "[A]a1", "rarity": "common"},
-    ]));
+    assert_eq!(
+        results.results[1].data["items"],
+        json!([
+            {"name": "[W]w1", "rarity": "common"},
+            {"name": "[A]a1", "rarity": "common"},
+        ])
+    );
     let seller_msg = &results.results[0].log_message;
     assert!(seller_msg.contains("、"), "名字用顿号连接: {}", seller_msg);
     assert!(seller_msg.contains("[W]w1") && seller_msg.contains("[A]a1"));
@@ -446,7 +457,11 @@ fn sell_single_green_rejected() {
         .handle_sell_item_action("p1", &["w1".to_string()])
         .unwrap();
     assert_eq!(results.results[0].message_type, MessageType::Info);
-    assert!(results.results[0].log_message.contains("绿色物品需成对售出"));
+    assert!(
+        results.results[0]
+            .log_message
+            .contains("绿色物品需成对售出")
+    );
     let p = state.players.get("p1").unwrap();
     assert_eq!(p.inventory.len(), 1, "零状态变更");
     assert!((p.coins - 0.0).abs() < 1e-9);
@@ -514,16 +529,18 @@ fn sell_invalid_length_rejected() {
         )
         .unwrap();
     assert_eq!(three.results[0].message_type, MessageType::Info);
-    assert!(three
-        .results[0]
-        .log_message
-        .contains("一次只能售出 1 件非绿色物品或 2 件绿色物品"));
+    assert!(
+        three.results[0]
+            .log_message
+            .contains("一次只能售出 1 件非绿色物品或 2 件绿色物品")
+    );
     let empty = state.handle_sell_item_action("p1", &[]).unwrap();
     assert_eq!(empty.results[0].message_type, MessageType::Info);
-    assert!(empty
-        .results[0]
-        .log_message
-        .contains("一次只能售出 1 件非绿色物品或 2 件绿色物品"));
+    assert!(
+        empty.results[0]
+            .log_message
+            .contains("一次只能售出 1 件非绿色物品或 2 件绿色物品")
+    );
     assert_eq!(state.players.get("p1").unwrap().inventory.len(), 3);
 }
 
@@ -560,7 +577,11 @@ fn sell_duplicate_item_id_rejected() {
         .handle_sell_item_action("p1", &["w1".to_string(), "w1".to_string()])
         .unwrap();
     assert_eq!(results.results[0].message_type, MessageType::Info);
-    assert!(results.results[0].log_message.contains("不能重复选择同一件物品"));
+    assert!(
+        results.results[0]
+            .log_message
+            .contains("不能重复选择同一件物品")
+    );
     let p = state.players.get("p1").unwrap();
     assert_eq!(p.inventory.len(), 1, "零状态变更");
     assert!((p.coins - 0.0).abs() < 1e-9);

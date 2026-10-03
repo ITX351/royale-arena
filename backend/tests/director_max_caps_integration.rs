@@ -8,7 +8,8 @@ fn director_backpack_json_keeps_unsigned_capacity() {
         add_test_player(&mut state, "p1", "玩家1", "位置1");
         let params = DirectorActionParams::from_json(&json!({
             "player_id": "p1", "max_backpack_items": capacity,
-        })).unwrap();
+        }))
+        .unwrap();
         DirectorActionScheduler::dispatch(&mut state, "max_backpack", params).unwrap();
         assert_eq!(state.players["p1"].max_backpack_items, capacity);
         state.handle_set_player_max_backpack("p1", 0).unwrap();
@@ -71,12 +72,7 @@ fn rules_with_caps(max_life_cap: i32, max_strength_cap: i32, backpack_cap: usize
     rules
 }
 
-fn add_test_player(
-    game_state: &mut GameState,
-    player_id: &str,
-    player_name: &str,
-    location: &str,
-) {
+fn add_test_player(game_state: &mut GameState, player_id: &str, player_name: &str, location: &str) {
     game_state
         .places
         .entry(location.to_string())
@@ -135,7 +131,10 @@ fn test_max_life_clamps_between_base_and_cap() {
     state
         .handle_set_player_max_life("p1", 50)
         .expect("set max life");
-    assert_eq!(state.players["p1"].max_life, 100, "低于基础值应收敛到 base 100");
+    assert_eq!(
+        state.players["p1"].max_life, 100,
+        "低于基础值应收敛到 base 100"
+    );
 }
 
 /// 测试：cap 配置低于 base 时，生效上限为 max(cap, base)
@@ -226,7 +225,9 @@ fn test_lower_max_backpack_keeps_items_and_blocks_pickup() {
         .unwrap();
     state.places.get_mut("位置1").unwrap().items.push(item);
     set_search_result_to_last_place_item(&mut state, "p1", "位置1");
-    state.handle_pick_action("p1").expect("pick returns info result");
+    state
+        .handle_pick_action("p1")
+        .expect("pick returns info result");
     assert_eq!(
         state.players["p1"].get_total_item_count(),
         8,
@@ -251,9 +252,7 @@ fn test_set_same_max_returns_info() {
 #[test]
 fn test_set_max_life_player_not_found() {
     let mut state = GameState::new("g1".to_string(), get_test_rules());
-    let err = state
-        .handle_set_player_max_life("nope", 150)
-        .unwrap_err();
+    let err = state.handle_set_player_max_life("nope", 150).unwrap_err();
     assert_eq!(err, "Player not found");
 }
 

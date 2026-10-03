@@ -1085,7 +1085,8 @@ impl GameState {
         quantity: i32,
     ) -> Result<ActionResults, String> {
         let info = |message: String| -> ActionResults {
-            ActionResult::new_info_message(serde_json::json!({}), vec![], message, true).as_results()
+            ActionResult::new_info_message(serde_json::json!({}), vec![], message, true)
+                .as_results()
         };
         let Some(kind_cn) = Self::item_kind_display_name(&item_kind) else {
             return Ok(info(format!(
@@ -1119,12 +1120,10 @@ impl GameState {
             )));
         }
 
-        if self
-            .shop
-            .iter()
-            .any(|l| l.item_kind.as_deref() == Some(item_kind.as_str())
-                && l.rarity.as_deref() == Some(rarity.as_str()))
-        {
+        if self.shop.iter().any(|l| {
+            l.item_kind.as_deref() == Some(item_kind.as_str())
+                && l.rarity.as_deref() == Some(rarity.as_str())
+        }) {
             return Ok(info("该类目已上架".to_string()));
         }
 
@@ -1185,7 +1184,10 @@ impl GameState {
             return Ok(ActionResult::new_info_message(
                 serde_json::json!({}),
                 vec![],
-                format!("售出价格必须为 0.5 到 9999 范围内的 0.5 的倍数，当前值为 {}", price),
+                format!(
+                    "售出价格必须为 0.5 到 9999 范围内的 0.5 的倍数，当前值为 {}",
+                    price
+                ),
                 true,
             )
             .as_results());

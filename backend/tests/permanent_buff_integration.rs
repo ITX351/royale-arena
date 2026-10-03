@@ -68,12 +68,7 @@ fn add_test_place(game_state: &mut GameState, place_name: &str) {
         .or_insert_with(|| Place::new(place_name.to_string()));
 }
 
-fn add_test_player(
-    game_state: &mut GameState,
-    player_id: &str,
-    player_name: &str,
-    location: &str,
-) {
+fn add_test_player(game_state: &mut GameState, player_id: &str, player_name: &str, location: &str) {
     add_test_place(game_state, location);
 
     let mut player = Player::new(
@@ -137,10 +132,15 @@ fn extreme_signed_buffs_clamp_without_overflow() {
             let mut state = GameState::new("boundary".to_string(), rules);
             add_test_player(&mut state, "p1", "玩家1", "位置1");
             let id = give_item(&mut state, "p1", "boundary buff");
-            let results = state.handle_use_action("p1", &id, &empty_action_params()).unwrap();
+            let results = state
+                .handle_use_action("p1", &id, &empty_action_params())
+                .unwrap();
             let expected = if effect_value > 0 { 300 } else { 100 };
             assert_eq!(results.results[0].data[field], json!(expected));
-            assert_eq!(results.results[0].data[format!("{field}_delta")], json!(expected - 100));
+            assert_eq!(
+                results.results[0].data[format!("{field}_delta")],
+                json!(expected - 100)
+            );
             assert!(state.players["p1"].inventory.is_empty());
         }
     }
@@ -152,7 +152,11 @@ fn backpack_buffs_preserve_large_capacities_and_signed_deltas() {
     for (before, effect_value, expected) in [
         (i32::MAX as usize + 10, 2, i32::MAX as usize + 12),
         (usize::MAX - 1, i32::MAX, usize::MAX),
-        (usize::MAX, i32::MIN, usize::MAX - i32::MIN.unsigned_abs() as usize),
+        (
+            usize::MAX,
+            i32::MIN,
+            usize::MAX - i32::MIN.unsigned_abs() as usize,
+        ),
         (6, i32::MIN, 6),
     ] {
         let mut rules = rules_with_caps(300, 300, usize::MAX);
@@ -164,11 +168,23 @@ fn backpack_buffs_preserve_large_capacities_and_signed_deltas() {
         add_test_player(&mut state, "p1", "玩家1", "位置1");
         state.players.get_mut("p1").unwrap().max_backpack_items = before;
         let id = give_item(&mut state, "p1", "backpack boundary");
-        let results = state.handle_use_action("p1", &id, &empty_action_params()).unwrap();
+        let results = state
+            .handle_use_action("p1", &id, &empty_action_params())
+            .unwrap();
         assert_eq!(state.players["p1"].max_backpack_items, expected);
-        assert_eq!(results.results[0].data["max_backpack_items"], json!(expected));
-        assert_eq!(results.results[0].data["max_backpack_items_delta"], json!(expected as i128 - before as i128));
-        assert!(results.results[0].log_message.contains(&expected.to_string()));
+        assert_eq!(
+            results.results[0].data["max_backpack_items"],
+            json!(expected)
+        );
+        assert_eq!(
+            results.results[0].data["max_backpack_items_delta"],
+            json!(expected as i128 - before as i128)
+        );
+        assert!(
+            results.results[0]
+                .log_message
+                .contains(&expected.to_string())
+        );
         assert!(state.players["p1"].inventory.is_empty());
     }
 }
@@ -345,7 +361,10 @@ fn test_cap_below_base_never_lowers_max() {
     state
         .handle_use_action("p1", &item_id, &empty_action_params())
         .expect("use should succeed");
-    assert_eq!(state.players["p1"].max_life, 100, "生效上限应为 max(50, 100) = 100");
+    assert_eq!(
+        state.players["p1"].max_life, 100,
+        "生效上限应为 max(50, 100) = 100"
+    );
 }
 
 /// 测试：负值道具降低生命上限，下限为规则基础值；当前生命压到新上限
@@ -404,7 +423,10 @@ fn test_negative_backpack_buff_floors_at_base() {
             .handle_use_action("p1", &id, &empty_action_params())
             .expect("use should succeed");
     }
-    assert_eq!(state.players["p1"].max_backpack_items, 6, "下限应为规则基础值 6");
+    assert_eq!(
+        state.players["p1"].max_backpack_items, 6,
+        "下限应为规则基础值 6"
+    );
 }
 
 /// 测试：未知 effect_type —— 报错提示、道具回插、不扣体力
@@ -437,7 +459,10 @@ fn test_backpack_expansion_allows_more_picks() {
 
     // 地点放 8 个物品
     for _ in 0..8 {
-        let item = state.rule_engine.create_item_from_name("[HP上限+20]养生丸").unwrap();
+        let item = state
+            .rule_engine
+            .create_item_from_name("[HP上限+20]养生丸")
+            .unwrap();
         state.places.get_mut("位置1").unwrap().items.push(item);
     }
 
@@ -450,7 +475,11 @@ fn test_backpack_expansion_allows_more_picks() {
 
     set_search_result_to_last_place_item(&mut state, "p1", "位置1");
     state.handle_pick_action("p1").expect("pick returns info");
-    assert_eq!(state.players["p1"].get_total_item_count(), 6, "容量 6 时应拒绝拾取");
+    assert_eq!(
+        state.players["p1"].get_total_item_count(),
+        6,
+        "容量 6 时应拒绝拾取"
+    );
 
     // 使用百宝袋：容量 12，道具销毁后背包 5 件
     state
@@ -462,7 +491,9 @@ fn test_backpack_expansion_allows_more_picks() {
     // 扩容后可继续拾取剩余 3 件（若容量检查仍读全局规则 6，第二件起会被拦截）
     for _ in 0..3 {
         set_search_result_to_last_place_item(&mut state, "p1", "位置1");
-        state.handle_pick_action("p1").expect("pick after expansion");
+        state
+            .handle_pick_action("p1")
+            .expect("pick after expansion");
     }
     assert_eq!(state.players["p1"].get_total_item_count(), 8);
 }

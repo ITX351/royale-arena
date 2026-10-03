@@ -434,11 +434,22 @@ impl GameRuleEngine {
         .map_err(|e| format!("Failed to parse items config: {}", e))?;
 
         // 解析队友行为配置
+        let teammate_mode = match rules_value.get("teammate_behavior") {
+            None => 0,
+            Some(value) => {
+                let value = value
+                    .as_u64()
+                    .ok_or("teammate_behavior must be an integer from 0 to 15")?;
+                let mode = i32::try_from(value)
+                    .map_err(|_| "teammate_behavior must be an integer from 0 to 15")?;
+                if mode > 15 {
+                    return Err("teammate_behavior must be an integer from 0 to 15".to_string());
+                }
+                mode
+            }
+        };
         let teammate_behavior = TeammateBehavior {
-            mode: rules_value
-                .get("teammate_behavior")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0) as i32,
+            mode: teammate_mode,
         };
 
         // 解析死亡物品处置配置

@@ -286,7 +286,14 @@ impl GameState {
         strength_before: i32,
         use_cost: i32,
     ) -> Result<ItemUseOutcome, String> {
-        let (max_life_cap, base_max_life, max_strength_cap, base_max_strength, backpack_cap, base_backpack) = {
+        let (
+            max_life_cap,
+            base_max_life,
+            max_strength_cap,
+            base_max_strength,
+            backpack_cap,
+            base_backpack,
+        ) = {
             let pc = &self.rule_engine.player_config;
             (
                 pc.max_life_cap,
@@ -303,7 +310,8 @@ impl GameState {
                 let cap = max_life_cap.max(base_max_life);
                 let player = self.players.get_mut(player_id).unwrap();
                 let before = player.max_life;
-                player.max_life = player.max_life
+                player.max_life = player
+                    .max_life
                     .saturating_add(effect.effect_value)
                     .clamp(base_max_life, cap);
                 // 降低上限时当前生命不超过新上限
@@ -316,7 +324,8 @@ impl GameState {
                 let cap = max_strength_cap.max(base_max_strength);
                 let player = self.players.get_mut(player_id).unwrap();
                 let before = player.max_strength;
-                player.max_strength = player.max_strength
+                player.max_strength = player
+                    .max_strength
                     .saturating_add(effect.effect_value)
                     .clamp(base_max_strength, cap);
                 // 降低上限时当前体力不超过新上限
@@ -336,7 +345,11 @@ impl GameState {
                     before.saturating_sub(amount)
                 };
                 player.max_backpack_items = target.clamp(base_backpack, cap);
-                ("背包容量", before as i128, player.max_backpack_items as i128)
+                (
+                    "背包容量",
+                    before as i128,
+                    player.max_backpack_items as i128,
+                )
             }
             _ => return Err(format!("永久增益道具 {} 没有定义效果", item_display_name)),
         };
@@ -394,7 +407,8 @@ impl GameState {
     ) -> Result<ItemUseOutcome, String> {
         {
             let player = self.players.get_mut(player_id).unwrap();
-            player.coins = crate::websocket::currency::checked_change(player.coins, properties.value as f64)?;
+            player.coins =
+                crate::websocket::currency::checked_change(player.coins, properties.value as f64)?;
         }
 
         let coins_after = self.players.get(player_id).unwrap().coins;

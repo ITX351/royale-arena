@@ -772,7 +772,8 @@ impl GameState {
             .as_results());
         }
 
-        let remaining_coins = crate::websocket::currency::checked_change(player.coins, -(total_cost as f64))?;
+        let remaining_coins =
+            crate::websocket::currency::checked_change(player.coins, -(total_cost as f64))?;
 
         // 检查背包空间
         let max_inventory_size = player.max_backpack_items;
@@ -828,7 +829,10 @@ impl GameState {
                             return Ok(ActionResult::new_info_message(
                                 data,
                                 vec![player_id.to_string()],
-                                format!("{}类{}可抽选的名称已全部在场，购买失败", rarity_cn, kind_cn),
+                                format!(
+                                    "{}类{}可抽选的名称已全部在场，购买失败",
+                                    rarity_cn, kind_cn
+                                ),
                                 false,
                             )
                             .as_results());
@@ -954,14 +958,20 @@ impl GameState {
             .map(|p| p.strength)
             .unwrap_or(0);
         if target_strength < 5 {
-            return Ok(info_message("对方体力不足，无法接收".to_string(), sender_id));
+            return Ok(info_message(
+                "对方体力不足，无法接收".to_string(),
+                sender_id,
+            ));
         }
         // 6. 接收方背包未满
         let target = self.players.get(target_player_id);
         let max = target.map(|p| p.max_backpack_items).unwrap_or(0);
         let target_count = target.map(|p| p.get_total_item_count()).unwrap_or(0);
         if target_count >= max {
-            return Ok(info_message("对方背包已满，无法接收".to_string(), sender_id));
+            return Ok(info_message(
+                "对方背包已满，无法接收".to_string(),
+                sender_id,
+            ));
         }
 
         // 应用：sender 移除、target 加入并扣体力
@@ -1017,12 +1027,7 @@ impl GameState {
                     target_msg,
                     false,
                 ),
-                ActionResult::new_system_message(
-                    director_data,
-                    vec![],
-                    director_msg,
-                    true,
-                ),
+                ActionResult::new_system_message(director_data, vec![], director_msg, true),
             ],
         })
     }
@@ -1092,7 +1097,10 @@ impl GameState {
                 return Ok(info_message(format!("物品 {} 不在背包中", id), player_id));
             };
             if !crate::game::game_rule_engine::Item::is_weapon_or_armor(&item) {
-                return Ok(info_message("只有武器和防具可以售出".to_string(), player_id));
+                return Ok(info_message(
+                    "只有武器和防具可以售出".to_string(),
+                    player_id,
+                ));
             }
             let Some(rarity) = item.rarity.as_deref() else {
                 return Ok(info_message(
@@ -1127,7 +1135,8 @@ impl GameState {
             .iter()
             .map(|i| {
                 let rarity = i.rarity.as_deref().unwrap();
-                let price = self.sell_prices
+                let price = self
+                    .sell_prices
                     .iter()
                     .find(|e| e.rarity == rarity)
                     .unwrap()
@@ -1138,9 +1147,12 @@ impl GameState {
                     Err("售出价格无效，请导演重新配置".to_string())
                 }
             })
-            .try_fold(0.0, |total, price| crate::websocket::currency::checked_change(total, price?))?;
+            .try_fold(0.0, |total, price| {
+                crate::websocket::currency::checked_change(total, price?)
+            })?;
         let coins_after = crate::websocket::currency::checked_change(
-            self.players.get(player_id).unwrap().coins, total_price,
+            self.players.get(player_id).unwrap().coins,
+            total_price,
         )?;
         let player_name = self.players.get(player_id).unwrap().name.clone();
         let item_names = items.iter().map(|i| i.name.clone()).collect::<Vec<_>>();

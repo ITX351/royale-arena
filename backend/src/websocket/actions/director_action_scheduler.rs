@@ -22,11 +22,11 @@ pub struct DirectorActionParams {
 
     /// 玩家操作
     pub player_id: Option<String>,
-    pub life: Option<i32>,     // 玩家生命值
-    pub strength: Option<i32>, // 玩家体力值
-    pub coins: Option<f64>,    // 玩家货币
-    pub max_life: Option<i32>,           // 玩家生命上限
-    pub max_strength: Option<i32>,       // 玩家体力上限
+    pub life: Option<i32>,                 // 玩家生命值
+    pub strength: Option<i32>,             // 玩家体力值
+    pub coins: Option<f64>,                // 玩家货币
+    pub max_life: Option<i32>,             // 玩家生命上限
+    pub max_strength: Option<i32>,         // 玩家体力上限
     pub max_backpack_items: Option<usize>, // serde performs checked unsigned conversion at the JSON boundary
     pub target_place: Option<String>,
     pub action_type: Option<String>, // rope/unrope

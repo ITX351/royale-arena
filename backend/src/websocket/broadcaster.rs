@@ -127,12 +127,20 @@ impl Player {
         player
     }
 
-    pub fn to_player_client_json_for_other_players(&self, viewer: &Player, game_state: &GameState) -> JsonValue {
-        let is_teammate = self.team_id.is_some_and(|team_id| team_id > 0)
-            && self.team_id == viewer.team_id;
-        let show_status = is_teammate && game_state.rule_engine.teammate_behavior.is_status_visible();
+    pub fn to_player_client_json_for_other_players(
+        &self,
+        viewer: &Player,
+        game_state: &GameState,
+    ) -> JsonValue {
+        let is_teammate =
+            self.team_id.is_some_and(|team_id| team_id > 0) && self.team_id == viewer.team_id;
+        let show_status =
+            is_teammate && game_state.rule_engine.teammate_behavior.is_status_visible();
         let can_receive_transfer = is_teammate
-            && game_state.rule_engine.teammate_behavior.is_transfer_enabled()
+            && game_state
+                .rule_engine
+                .teammate_behavior
+                .is_transfer_enabled()
             && self.is_alive
             && self.strength >= 5
             && self.get_total_item_count() < self.max_backpack_items;

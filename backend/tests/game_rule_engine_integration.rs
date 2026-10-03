@@ -288,6 +288,31 @@ fn test_game_rule_engine_json_parsing() {
     );
 }
 
+#[test]
+fn test_teammate_behavior_rejects_out_of_range_rule_values() {
+    for (value, valid) in [
+        ("0", true),
+        ("15", true),
+        ("-1", false),
+        ("16", false),
+        ("2147483648", false),
+        ("1.5", false),
+        ("null", false),
+        ("\"15\"", false),
+    ] {
+        let rules = TEST_RULES_JSON.replace(
+            "\"teammate_behavior\": 15",
+            &format!("\"teammate_behavior\": {value}"),
+        );
+        let result = GameRuleEngine::from_json(&rules);
+        assert_eq!(
+            result.is_ok(),
+            valid,
+            "teammate_behavior={value}: {result:?}"
+        );
+    }
+}
+
 /// 测试物品系统解析
 #[test]
 fn test_items_config_parsing() {

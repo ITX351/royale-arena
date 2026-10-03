@@ -769,6 +769,11 @@ fn unspawned_player_cannot_transfer_item() {
     .expect("dispatch ok");
 
     assert_eq!(results.results[0].message_type, MessageType::Info);
-    assert!(state.players["sender"].inventory.iter().any(|i| i.id == "i1"));
+    assert!(
+        state.players["sender"]
+            .inventory
+            .iter()
+            .any(|i| i.id == "i1")
+    );
     assert!(state.players["receiver"].inventory.is_empty());
 }

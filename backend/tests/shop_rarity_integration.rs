@@ -6,7 +6,7 @@ use royale_arena_backend::websocket::actions::director_action_scheduler::{
     DirectorActionParams, DirectorActionScheduler,
 };
 use royale_arena_backend::websocket::models::{GameState, ShopListing};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const SHOP_RARITY_RULES: &str = r#"{
     "map": { "places": ["码头"], "safe_places": [] },
@@ -75,11 +75,15 @@ fn director_dispatch(
 fn shop_list_rarity_succeeds() {
     let mut state = build_shop_rarity_state();
     shop_add_player(&mut state, "p1", "玩家一");
-    let results = director_dispatch(&mut state, json!({
-        "action_type": "shop_list_rarity",
-        "shop_item_kind": "weapon", "shop_rarity": "common",
-        "price": 2, "quantity": 2
-    })).expect("dispatch ok");
+    let results = director_dispatch(
+        &mut state,
+        json!({
+            "action_type": "shop_list_rarity",
+            "shop_item_kind": "weapon", "shop_rarity": "common",
+            "price": 2, "quantity": 2
+        }),
+    )
+    .expect("dispatch ok");
     assert_eq!(results.results[0].message_type, MessageType::SystemNotice);
     assert_eq!(state.shop.len(), 1);
     let l = &state.shop[0];
@@ -101,19 +105,34 @@ fn shop_list_rarity_rejects_invalid_inputs() {
         ("weapon", "common", 0, 1, "上架价格必须 >= 1"),
         ("weapon", "legendary", 1, 1, "道具库中没有橙类武器"),
         ("armor", "legendary", 1, 1, "道具库中没有橙类防具"),
-        ("weapon", "common", 1, 3, "名称总数"),      // common 武器池只有 2 个名字
-        ("armor", "common", 1, 5, "名称总数"),        // common 防具池只有 2 个名字
+        ("weapon", "common", 1, 3, "名称总数"), // common 武器池只有 2 个名字
+        ("armor", "common", 1, 5, "名称总数"),  // common 防具池只有 2 个名字
     ];
     for (kind, rarity, price, quantity, fragment) in cases {
-        let results = director_dispatch(&mut state, json!({
-            "action_type": "shop_list_rarity",
-            "shop_item_kind": kind, "shop_rarity": rarity,
-            "price": price, "quantity": quantity
-        })).expect("dispatch ok");
-        assert_eq!(results.results[0].message_type, MessageType::Info,
-            "{}@{}@{}@{} 应被拒绝", kind, rarity, price, quantity);
-        assert!(results.results[0].log_message.contains(fragment),
-            "消息 {:?} 应包含 {:?}", results.results[0].log_message, fragment);
+        let results = director_dispatch(
+            &mut state,
+            json!({
+                "action_type": "shop_list_rarity",
+                "shop_item_kind": kind, "shop_rarity": rarity,
+                "price": price, "quantity": quantity
+            }),
+        )
+        .expect("dispatch ok");
+        assert_eq!(
+            results.results[0].message_type,
+            MessageType::Info,
+            "{}@{}@{}@{} 应被拒绝",
+            kind,
+            rarity,
+            price,
+            quantity
+        );
+        assert!(
+            results.results[0].log_message.contains(fragment),
+            "消息 {:?} 应包含 {:?}",
+            results.results[0].log_message,
+            fragment
+        );
     }
     assert!(state.shop.is_empty(), "拒绝时不产生条目");
 }
@@ -122,22 +141,34 @@ fn shop_list_rarity_rejects_invalid_inputs() {
 fn shop_list_rarity_rejects_duplicate_category() {
     let mut state = build_shop_rarity_state();
     shop_add_player(&mut state, "p1", "玩家一");
-    director_dispatch(&mut state, json!({
-        "action_type": "shop_list_rarity",
-        "shop_item_kind": "weapon", "shop_rarity": "common", "price": 2, "quantity": 1
-    })).unwrap();
-    let results = director_dispatch(&mut state, json!({
-        "action_type": "shop_list_rarity",
-        "shop_item_kind": "weapon", "shop_rarity": "common", "price": 3, "quantity": 1
-    })).unwrap();
+    director_dispatch(
+        &mut state,
+        json!({
+            "action_type": "shop_list_rarity",
+            "shop_item_kind": "weapon", "shop_rarity": "common", "price": 2, "quantity": 1
+        }),
+    )
+    .unwrap();
+    let results = director_dispatch(
+        &mut state,
+        json!({
+            "action_type": "shop_list_rarity",
+            "shop_item_kind": "weapon", "shop_rarity": "common", "price": 3, "quantity": 1
+        }),
+    )
+    .unwrap();
     assert_eq!(results.results[0].message_type, MessageType::Info);
     assert!(results.results[0].log_message.contains("该类目已上架"));
     assert_eq!(state.shop.len(), 1, "同稀有度只有一条");
     // 不同稀有度可再上架
-    director_dispatch(&mut state, json!({
-        "action_type": "shop_list_rarity",
-        "shop_item_kind": "weapon", "shop_rarity": "rare", "price": 4, "quantity": 1
-    })).unwrap();
+    director_dispatch(
+        &mut state,
+        json!({
+            "action_type": "shop_list_rarity",
+            "shop_item_kind": "weapon", "shop_rarity": "rare", "price": 4, "quantity": 1
+        }),
+    )
+    .unwrap();
     assert_eq!(state.shop.len(), 2);
 }
 
@@ -146,10 +177,19 @@ fn shop_list_item_rejects_weapon_and_armor_but_allows_consumable() {
     let mut state = build_shop_rarity_state();
     shop_add_player(&mut state, "p1", "玩家一");
     for name in ["青钢剑", "旧皮甲"] {
-        let results = director_dispatch(&mut state, json!({
-            "action_type": "shop_list_item", "item_name": name, "price": 1, "quantity": 1
-        })).expect("dispatch ok");
-        assert_eq!(results.results[0].message_type, MessageType::Info, "{} 应被拒绝", name);
+        let results = director_dispatch(
+            &mut state,
+            json!({
+                "action_type": "shop_list_item", "item_name": name, "price": 1, "quantity": 1
+            }),
+        )
+        .expect("dispatch ok");
+        assert_eq!(
+            results.results[0].message_type,
+            MessageType::Info,
+            "{} 应被拒绝",
+            name
+        );
         assert!(results.results[0].log_message.contains("按稀有度类目上架"));
     }
     assert!(state.shop.is_empty());
@@ -162,10 +202,9 @@ fn shop_list_item_rejects_weapon_and_armor_but_allows_consumable() {
 
 #[test]
 fn shop_listing_deserializes_without_new_fields() {
-    let l: ShopListing = serde_json::from_str(
-        r#"{"id":"l1","item_name":"青钢剑","price":2,"quantity":1}"#,
-    )
-    .expect("旧存档条目必须能反序列化");
+    let l: ShopListing =
+        serde_json::from_str(r#"{"id":"l1","item_name":"青钢剑","price":2,"quantity":1}"#)
+            .expect("旧存档条目必须能反序列化");
     assert!(l.item_kind.is_none());
     assert!(l.rarity.is_none());
 }
@@ -174,10 +213,14 @@ fn shop_listing_deserializes_without_new_fields() {
 fn client_json_carries_rarity_listing_fields() {
     let mut state = build_shop_rarity_state();
     shop_add_player(&mut state, "p1", "玩家一");
-    director_dispatch(&mut state, json!({
-        "action_type": "shop_list_rarity",
-        "shop_item_kind": "armor", "shop_rarity": "common", "price": 1, "quantity": 2
-    })).unwrap();
+    director_dispatch(
+        &mut state,
+        json!({
+            "action_type": "shop_list_rarity",
+            "shop_item_kind": "armor", "shop_rarity": "common", "price": 1, "quantity": 2
+        }),
+    )
+    .unwrap();
     let json = state.to_player_client_json();
     let arr = json["shop"].as_array().expect("shop 数组存在");
     assert_eq!(arr[0]["item_kind"], "armor");
@@ -187,8 +230,12 @@ fn client_json_carries_rarity_listing_fields() {
         "action_type": "shop_list_item", "item_name": "[HP10]测试药水", "price": 1, "quantity": 1
     })).unwrap();
     let json = state.to_player_client_json();
-    let exact = json["shop"].as_array().unwrap().iter()
-        .find(|e| e["item_name"] == "[HP10]测试药水").unwrap();
+    let exact = json["shop"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["item_name"] == "[HP10]测试药水")
+        .unwrap();
     assert!(exact.get("item_kind").is_none());
     assert!(exact.get("rarity").is_none());
 }
@@ -203,16 +250,32 @@ fn buy(
     qty: i32,
 ) -> royale_arena_backend::websocket::models::ActionResults {
     state
-        .handle_shop_buy_action(player_id, &[ShopBuyItem { listing_id: listing_id.to_string(), quantity: qty }])
+        .handle_shop_buy_action(
+            player_id,
+            &[ShopBuyItem {
+                listing_id: listing_id.to_string(),
+                quantity: qty,
+            }],
+        )
         .expect("buy dispatch ok")
 }
 
 fn list_rarity(state: &mut GameState, kind: &str, rarity: &str, price: i32, qty: i32) -> String {
-    director_dispatch(state, json!({
-        "action_type": "shop_list_rarity",
-        "shop_item_kind": kind, "shop_rarity": rarity, "price": price, "quantity": qty
-    })).unwrap();
-    state.shop.iter().find(|l| l.item_kind.as_deref() == Some(kind)).unwrap().id.clone()
+    director_dispatch(
+        state,
+        json!({
+            "action_type": "shop_list_rarity",
+            "shop_item_kind": kind, "shop_rarity": rarity, "price": price, "quantity": qty
+        }),
+    )
+    .unwrap();
+    state
+        .shop
+        .iter()
+        .find(|l| l.item_kind.as_deref() == Some(kind))
+        .unwrap()
+        .id
+        .clone()
 }
 
 fn build_weapon_by_name(state: &GameState, name: &str) -> Item {
@@ -226,9 +289,14 @@ fn buy2(
 ) -> royale_arena_backend::websocket::models::ActionResults {
     let buys: Vec<ShopBuyItem> = items
         .iter()
-        .map(|(id, q)| ShopBuyItem { listing_id: id.clone(), quantity: *q })
+        .map(|(id, q)| ShopBuyItem {
+            listing_id: id.clone(),
+            quantity: *q,
+        })
         .collect();
-    state.handle_shop_buy_action(player_id, &buys).expect("buy ok")
+    state
+        .handle_shop_buy_action(player_id, &buys)
+        .expect("buy ok")
 }
 
 #[test]
@@ -242,7 +310,10 @@ fn buy_rarity_listing_success() {
     let p = state.players.get("p1").unwrap();
     assert_eq!(p.inventory.len(), 1);
     let item = &p.inventory[0];
-    assert!(matches!(item.item_type, royale_arena_backend::game::game_rule_engine::ItemType::Weapon(_)));
+    assert!(matches!(
+        item.item_type,
+        royale_arena_backend::game::game_rule_engine::ItemType::Weapon(_)
+    ));
     assert_eq!(item.rarity.as_deref(), Some("common"));
     assert!(["青钢剑", "铁刃短剑"].contains(&item.name.as_str()));
     assert!((p.coins - 8.0).abs() < 1e-9, "扣款 2，实际 {}", p.coins);
@@ -260,7 +331,10 @@ fn buy_multiple_units_draw_distinct_names() {
     let _ = buy(&mut state, "p1", &listing_id, 2);
     let p = state.players.get("p1").unwrap();
     assert_eq!(p.inventory.len(), 2);
-    assert_ne!(p.inventory[0].name, p.inventory[1].name, "同批购买名字互不相同");
+    assert_ne!(
+        p.inventory[0].name, p.inventory[1].name,
+        "同批购买名字互不相同"
+    );
     assert!((p.coins - 6.0).abs() < 1e-9);
     assert!(state.shop.is_empty(), "库存归零自动移除");
 }
@@ -295,14 +369,39 @@ fn mixed_exact_and_rarity_purchase() {
         "action_type": "shop_list_item", "item_name": "[HP10]测试药水", "price": 1, "quantity": 3
     })).unwrap();
     let rarity_id = list_rarity(&mut state, "armor", "common", 2, 1);
-    let exact_id = state.shop.iter().find(|l| l.item_kind.is_none()).unwrap().id.clone();
+    let exact_id = state
+        .shop
+        .iter()
+        .find(|l| l.item_kind.is_none())
+        .unwrap()
+        .id
+        .clone();
 
     let _ = buy2(&mut state, "p1", &[(rarity_id, 1), (exact_id, 2)]);
     let p = state.players.get("p1").unwrap();
     assert_eq!(p.inventory.len(), 3, "1 件随机防具 + 2 瓶药水");
-    assert_eq!(p.inventory.iter().filter(|i| matches!(i.item_type, royale_arena_backend::game::game_rule_engine::ItemType::Armor(_))).count(), 1);
-    assert_eq!(p.inventory.iter().filter(|i| i.name == "[HP10]测试药水").count(), 2);
-    assert!((p.coins - 6.0).abs() < 1e-9, "2 + 1×2 = 4，实际 {}", p.coins);
+    assert_eq!(
+        p.inventory
+            .iter()
+            .filter(|i| matches!(
+                i.item_type,
+                royale_arena_backend::game::game_rule_engine::ItemType::Armor(_)
+            ))
+            .count(),
+        1
+    );
+    assert_eq!(
+        p.inventory
+            .iter()
+            .filter(|i| i.name == "[HP10]测试药水")
+            .count(),
+        2
+    );
+    assert!(
+        (p.coins - 6.0).abs() < 1e-9,
+        "2 + 1×2 = 4，实际 {}",
+        p.coins
+    );
 }
 
 #[test]
