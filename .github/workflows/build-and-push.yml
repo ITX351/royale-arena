@@ -49,6 +49,7 @@ jobs:
         context: ${{ env.BUILD_CONTEXT }}
         file: ${{ env.DOCKERFILE_PATH }}
         push: true
+        provenance: false
         tags: |
           ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ steps.detect_release.outputs.release_tag }}
         cache-from: type=gha
