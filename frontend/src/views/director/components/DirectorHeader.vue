@@ -89,7 +89,7 @@
           v-if="canPreviewRules"
           type="primary"
           link
-          @click="showRulesPreview = true"
+          @click="openRulesPreview"
           :disabled="!game.rules_config"
           class="rules-preview-button"
         >
@@ -178,6 +178,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'status-updated'): void
 }>()
+
+const openRulesPreview = () => {
+  showRulesPreview.value = true
+}
 
 // Router
 const router = useRouter()

@@ -33,7 +33,10 @@ export const DEFAULT_RULES_CONFIG = {
     "daily_strength_recovery": 40,
     "search_cooldown": 30,
     "max_backpack_items": 6,
-    "unarmed_damage": 5
+    "unarmed_damage": 5,
+    "max_life_cap": 300,
+    "max_strength_cap": 300,
+    "max_backpack_items_cap": 12
   },
   "action_costs": {
     "move": 5,
@@ -386,6 +389,17 @@ export const DEFAULT_RULES_CONFIG = {
             "value": 10
           }
         }
+      ],
+      "permanent_buffs": [
+        {"name": "[HP上限+20]养生丸", "properties": {"effect_type": "max_life", "effect_value": 20}},
+        {"name": "[HP上限+50]壮骨丹", "properties": {"effect_type": "max_life", "effect_value": 50}},
+        {"name": "[HP上限+100]金钟罩", "properties": {"effect_type": "max_life", "effect_value": 100}},
+        {"name": "[MP上限+20]干粮", "properties": {"effect_type": "max_strength", "effect_value": 20}},
+        {"name": "[MP上限+50]行军丹", "properties": {"effect_type": "max_strength", "effect_value": 50}},
+        {"name": "[MP上限+100]龙力丸", "properties": {"effect_type": "max_strength", "effect_value": 100}},
+        {"name": "[背包+2]腰包", "properties": {"effect_type": "max_backpack", "effect_value": 2}},
+        {"name": "[背包+4]行囊", "properties": {"effect_type": "max_backpack", "effect_value": 4}},
+        {"name": "[背包+6]百宝袋", "properties": {"effect_type": "max_backpack", "effect_value": 6}}
       ]
     },
     "upgrade_recipes": {

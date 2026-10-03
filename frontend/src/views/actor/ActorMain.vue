@@ -72,6 +72,16 @@
             @show-kill-records="showKillRecordsDialog"
             @load-all-messages="handleLoadAllPlayerMessages"
           />
+
+          <!-- 传音/联络区域（移动端：三行布局，放置在日志消息下方；桌面版由 InGameState 放置在背包管理下方） -->
+          <div v-if="showCommunicationPanel" class="communication-section communication-section--mobile">
+            <CommunicationPanel
+              :players="actorPlayerList"
+              :self-id="gameStateStore.actorPlayer!.id"
+              layout="column"
+              @action="handlePlayerAction"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -107,6 +117,7 @@ import { authenticateGame } from '@/services/authService'
 import ActorHeader from '@/views/actor/components/ActorHeader.vue'
 import LogMessage from '@/components/LogMessage.vue'
 import KillRecordDisplay from '@/components/KillRecordDisplay.vue'
+import CommunicationPanel from '@/views/actor/components/CommunicationPanel.vue'
 import PreGameState from './states/PreGameState.vue'
 import InGameState from './states/InGameState.vue'
 import OtherState from './states/OtherState.vue'
@@ -199,6 +210,16 @@ const shouldShowLogMessage = computed(() => {
   if (!game.value) return false
   return game.value.status !== GameStatus.WAITING;
 })
+
+// 判断是否应该显示传音/联络区域（移动端，放置在日志消息下方）
+const showCommunicationPanel = computed(() => {
+  return currentStateComponent.value === InGameState && !!gameStateStore.actorPlayer
+})
+
+// 处理玩家操作（供移动端传音/联络区域使用）
+const handlePlayerAction = (action: string, params: Record<string, any> = {}) => {
+  gameStateStore.sendPlayerAction(action, params)
+}
 
 // 生命周期
 onMounted(() => {
@@ -418,4 +439,20 @@ const showKillRecordsDialog = async () => {
 
 <style scoped>
 /* 移除了共享样式，现在使用公用CSS文件中的样式 */
+
+.communication-section--mobile {
+  display: none;
+}
+
+/* 移动端左右增加一些留白，避免内容贴边 */
+@media (max-width: 768px) {
+  .shared-main {
+    padding: 8px 12px;
+  }
+
+  .communication-section--mobile {
+    display: block;
+    margin-top: 16px;
+  }
+}
 </style>

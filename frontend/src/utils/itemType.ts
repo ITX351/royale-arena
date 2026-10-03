@@ -7,6 +7,7 @@ const LABEL_MAP: Record<ItemCategory, string> = {
   utility: '工具',
   upgrader: '升级器',
   currency: '货币',
+  permanent_buff: '永久增益',
 }
 
 const TAG_TYPE_MAP: Record<ItemCategory, string> = {
@@ -16,6 +17,7 @@ const TAG_TYPE_MAP: Record<ItemCategory, string> = {
   utility: 'warning',
   upgrader: 'info',
   currency: 'warning',
+  permanent_buff: 'success',
 }
 
 export const getItemTypeLabel = (itemType?: ItemCategory | null): string => {

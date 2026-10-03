@@ -39,7 +39,7 @@
           max-height="400"
           :fit="false"
         >
-          <el-table-column label="玩家" min-width="100">
+          <el-table-column label="玩家" min-width="100" fixed="left">
             <template #header>
               <div
                 class="sortable-header"
@@ -179,6 +179,84 @@
               </div>
             </template>
           </el-table-column>
+          <el-table-column label="生命上限" min-width="70">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('max_life')"
+                @keydown.enter.prevent="toggleSort('max_life')"
+                @keydown.space.prevent="toggleSort('max_life')"
+              >
+                生命上限
+                <ArrowUp v-if="sortKey === 'max_life' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'max_life' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
+            <template #default="scope">
+              <div class="status-value">
+                <el-input
+                  v-model="scope.row.max_life"
+                  @focus="() => handleEditableFieldFocus(scope.row, 'max_life')"
+                  @blur="(event: FocusEvent) => handleMaxLifeBlur(scope.row, event)"
+                  size="small"
+                />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="体力上限" min-width="70">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('max_strength')"
+                @keydown.enter.prevent="toggleSort('max_strength')"
+                @keydown.space.prevent="toggleSort('max_strength')"
+              >
+                体力上限
+                <ArrowUp v-if="sortKey === 'max_strength' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'max_strength' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
+            <template #default="scope">
+              <div class="status-value">
+                <el-input
+                  v-model="scope.row.max_strength"
+                  @focus="() => handleEditableFieldFocus(scope.row, 'max_strength')"
+                  @blur="(event: FocusEvent) => handleMaxStrengthBlur(scope.row, event)"
+                  size="small"
+                />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="背包上限" min-width="70">
+            <template #header>
+              <div
+                class="sortable-header"
+                role="button"
+                tabindex="0"
+                @click="toggleSort('max_backpack_items')"
+                @keydown.enter.prevent="toggleSort('max_backpack_items')"
+                @keydown.space.prevent="toggleSort('max_backpack_items')"
+              >
+                背包上限
+                <ArrowUp v-if="sortKey === 'max_backpack_items' && sortOrder === 'asc'" class="sort-icon" />
+                <ArrowDown v-else-if="sortKey === 'max_backpack_items' && sortOrder === 'desc'" class="sort-icon" />
+              </div>
+            </template>
+            <template #default="scope">
+              <div class="status-value">
+                <el-input
+                  v-model="scope.row.max_backpack_items"
+                  @focus="() => handleEditableFieldFocus(scope.row, 'max_backpack_items')"
+                  @blur="(event: FocusEvent) => handleMaxBackpackBlur(scope.row, event)"
+                  size="small"
+                />
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="货币" min-width="60">
             <template #header>
               <div
@@ -198,6 +276,9 @@
               <div class="status-value">
                 <el-input-number
                   :model-value="Number(scope.row.coins)"
+                  :min="0"
+                  :max="MAX_COINS"
+                  :step="0.5"
                   :controls="false"
                   @update:model-value="(val: number | undefined) => handleCoinsInput(scope.row, val)"
                   @focus="() => handleEditableFieldFocus(scope.row, 'coins')"
@@ -313,6 +394,7 @@ import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
 import { calculatePlayerVotes } from '@/utils/playerUtils'
 import { getItemDisplayName } from '@/utils/itemDisplay'
 import type { Player } from '@/types/gameStateTypes'
+import { isValidBalance, MAX_COINS } from '@/utils/currency'
 
 // 定义组件属性
 const props = defineProps<{
@@ -355,7 +437,16 @@ const availablePlaces = computed<string[]>(() => {
   return store.directorPlaceList.filter(place => !place.is_destroyed).map(place => place.name)
 })
 
-type SortKey = 'name' | 'votes' | 'location' | 'life' | 'strength' | 'coins'
+type SortKey =
+  | 'name'
+  | 'votes'
+  | 'location'
+  | 'life'
+  | 'strength'
+  | 'max_life'
+  | 'max_strength'
+  | 'max_backpack_items'
+  | 'coins'
 type SortOrder = 'asc' | 'desc'
 
 const sortKey = ref<SortKey>('name')
@@ -407,6 +498,12 @@ const getSortValue = (player: Player, key: SortKey): string | number => {
       return player.life
     case 'strength':
       return player.strength
+    case 'max_life':
+      return player.max_life
+    case 'max_strength':
+      return player.max_strength
+    case 'max_backpack_items':
+      return player.max_backpack_items
     case 'coins':
       return player.coins
     case 'name':
@@ -511,6 +608,12 @@ const handleEditableFieldFocus = (player: Player, key: SortKey) => {
     originalValue = player.life
   } else if (key === 'strength') {
     originalValue = player.strength
+  } else if (key === 'max_life') {
+    originalValue = player.max_life
+  } else if (key === 'max_strength') {
+    originalValue = player.max_strength
+  } else if (key === 'max_backpack_items') {
+    originalValue = player.max_backpack_items
   } else if (key === 'coins') {
     originalValue = player.coins
   } else {
@@ -547,6 +650,36 @@ const handleStrengthBlur = (player: Player, event: FocusEvent) => {
     : player.strength
 
   updatePlayerStrength(player.id, currentValue, newValueStr)
+  finishEditing()
+}
+
+const handleMaxLifeBlur = (player: Player, event: FocusEvent) => {
+  const newValueStr = (event.target as HTMLInputElement).value
+  const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'max_life'
+    ? editingState.value.originalValue
+    : player.max_life
+
+  updatePlayerMaxLife(player.id, currentValue, newValueStr)
+  finishEditing()
+}
+
+const handleMaxStrengthBlur = (player: Player, event: FocusEvent) => {
+  const newValueStr = (event.target as HTMLInputElement).value
+  const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'max_strength'
+    ? editingState.value.originalValue
+    : player.max_strength
+
+  updatePlayerMaxStrength(player.id, currentValue, newValueStr)
+  finishEditing()
+}
+
+const handleMaxBackpackBlur = (player: Player, event: FocusEvent) => {
+  const newValueStr = (event.target as HTMLInputElement).value
+  const currentValue = editingState.value && editingState.value.playerId === player.id && editingState.value.key === 'max_backpack_items'
+    ? editingState.value.originalValue
+    : player.max_backpack_items
+
+  updatePlayerMaxBackpack(player.id, currentValue, newValueStr)
   finishEditing()
 }
 
@@ -591,10 +724,66 @@ const updatePlayerStrength = (playerId: string, currentValue: number, newValueSt
   }
 }
 
+// 更新玩家生命上限
+const parseI32Input = (value: string): number | null => {
+  if (!/^-?\d+$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= -2147483648 && parsed <= 2147483647
+    ? parsed
+    : null
+}
+
+const updatePlayerMaxLife = (playerId: string, currentValue: number, newValueStr: string) => {
+  const newValue = parseI32Input(newValueStr)
+  if (newValue === null) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.max_life = currentValue
+    ElMessage.error('生命上限必须是 32 位整数')
+    return
+  }
+  if (newValue !== currentValue) {
+    store.setPlayerMaxLife(playerId, newValue)
+  }
+}
+
+// 更新玩家体力上限
+const updatePlayerMaxStrength = (playerId: string, currentValue: number, newValueStr: string) => {
+  const newValue = parseI32Input(newValueStr)
+  if (newValue === null) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.max_strength = currentValue
+    ElMessage.error('体力上限必须是 32 位整数')
+    return
+  }
+  if (newValue !== currentValue) {
+    store.setPlayerMaxStrength(playerId, newValue)
+  }
+}
+
+// 更新玩家背包上限
+const updatePlayerMaxBackpack = (playerId: string, currentValue: number, newValueStr: string) => {
+  const newValue = Number(newValueStr)
+  if (!/^\d+$/.test(newValueStr) || !Number.isSafeInteger(newValue)) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.max_backpack_items = currentValue
+    ElMessage.error('背包上限必须是非负安全整数')
+    return
+  }
+  if (newValue !== currentValue) {
+    store.setPlayerMaxBackpack(playerId, newValue)
+  }
+}
+
 // 更新玩家货币
 const updatePlayerCoins = (playerId: string, currentValue: number, newValue: number) => {
-  if (Number.isFinite(newValue) && newValue !== currentValue) {
-    store.setPlayerCoins(playerId, Math.trunc(newValue))
+  if (!isValidBalance(newValue)) {
+    const player = playerList.value.find(p => p.id === playerId)
+    if (player) player.coins = currentValue
+    ElMessage.error(`货币必须是 0 到 ${MAX_COINS} 范围内的 0.5 的倍数`)
+    return
+  }
+  if (newValue !== currentValue) {
+    store.setPlayerCoins(playerId, newValue)
   }
 }
 

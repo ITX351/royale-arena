@@ -7,7 +7,6 @@
       :players="actorPlayerList"
       :global-state="globalState"
       :shop-listings="shopListings"
-      :communication-visible="showInventoryDetails"
       @action="handlePlayerAction"
       @shop-buy="handleShopBuy"
     />
@@ -40,7 +39,7 @@
             @click="toggleInventorySection"
           />
           <div class="section-controls">
-            <el-tag v-if="player" type="info">总物品数: {{ totalItemCount }}</el-tag>
+            <el-tag v-if="player" type="info">总物品数: {{ totalItemCount }}/{{ player.max_backpack_items }}</el-tag>
           </div>
         </div>
         <InventoryPanel
@@ -53,6 +52,16 @@
           @unequip-weapon="handleUnequipWeapon"
           @unequip-armor="handleUnequipArmor"
           @upgrade-equip="handleUpgradeEquip"
+        />
+      </div>
+
+      <!-- 传音/联络区域（桌面版：单行布局，放置在背包管理下方；移动端由 ActorMain 放置在日志消息下方） -->
+      <div class="communication-section communication-section--desktop">
+        <CommunicationPanel
+          :players="actorPlayerList"
+          :self-id="player.id"
+          layout="row"
+          @action="handlePlayerAction"
         />
       </div>
     </div>
@@ -68,6 +77,7 @@ import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 
 import CompactActionPanel from '@/views/actor/components/CompactActionPanel.vue'
 import InventoryPanel from '@/views/actor/components/InventoryPanel.vue'
+import CommunicationPanel from '@/views/actor/components/CommunicationPanel.vue'
 
 defineProps<{
   game: GameWithRules | null
@@ -220,6 +230,16 @@ const handleShopBuy = (items: ShopBuyItem[]) => {
 .inventory-section.collapsed {
   min-height: auto;
   padding-bottom: 12px;
+}
+
+.communication-section--desktop {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .communication-section--desktop {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {

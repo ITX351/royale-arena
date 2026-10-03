@@ -62,6 +62,18 @@ export interface ConsumableConfig {
   properties: ConsumableProperties
 }
 
+export interface PermanentBuffProperties {
+  effectType: string
+  effectValue: number
+}
+
+export interface PermanentBuffConfig {
+  name: string
+  internalName?: string
+  rarity?: string
+  properties: PermanentBuffProperties
+}
+
 export interface CurrencyProperties {
   value: number
 }
@@ -91,6 +103,7 @@ export interface ItemsByCategoryConfig {
   consumables: ConsumableConfig[]
   currencies: CurrencyConfig[]
   upgraders: UpgraderConfig[]
+  permanentBuffs: PermanentBuffConfig[]
 }
 
 export interface NormalizedItemsConfig {
@@ -112,7 +125,8 @@ const createEmptyItemsConfig = (): NormalizedItemsConfig => ({
     utilities: [],
     consumables: [],
     currencies: [],
-    upgraders: []
+    upgraders: [],
+    permanentBuffs: []
   },
   upgradeRecipes: {}
 })
@@ -162,7 +176,7 @@ export function parseItemsConfig(rawItemsConfig: any): ItemsConfigParseResult {
       issues.push('items_config.items 应为对象')
     }
   } else {
-    const { weapons, armors, utilities, consumables, currencies, upgraders } = itemsSection
+    const { weapons, armors, utilities, consumables, currencies, upgraders, permanent_buffs } = itemsSection
 
     if (Array.isArray(weapons)) {
       parsed.items.weapons = weapons.map((weapon: any) => {
@@ -327,6 +341,29 @@ export function parseItemsConfig(rawItemsConfig: any): ItemsConfigParseResult {
       issues.push('items_config.items.currencies 应为数组')
     }
 
+    if (Array.isArray(permanent_buffs)) {
+      parsed.items.permanentBuffs = permanent_buffs.map((buff: any) => {
+        const buffProperties = buff?.properties ?? {}
+        const properties: PermanentBuffProperties = {
+          effectType: typeof buffProperties.effect_type === 'string' ? buffProperties.effect_type : '',
+          effectValue: toNumberWithDefault(buffProperties.effect_value, 0)
+        }
+
+        const rarity = typeof buff?.rarity === 'string' && buff.rarity.length > 0
+          ? buff.rarity
+          : undefined
+
+        return {
+          name: typeof buff?.name === 'string' ? buff.name : '',
+          internalName: typeof buff?.internal_name === 'string' ? buff.internal_name : undefined,
+          rarity,
+          properties
+        }
+      })
+    } else if (permanent_buffs !== undefined) {
+      issues.push('items_config.items.permanent_buffs 应为数组')
+    }
+
     if (Array.isArray(upgraders)) {
       parsed.items.upgraders = upgraders.map((upgrader: any) => {
         const rarity = typeof upgrader?.rarity === 'string' && upgrader.rarity.length > 0
@@ -409,6 +446,10 @@ export function findDuplicateItemNames(itemsConfig: NormalizedItemsConfig): stri
     for (const displayName of upgrader.displayNames) {
       trackName(displayName)
     }
+  }
+
+  for (const buff of itemsConfig.items.permanentBuffs) {
+    trackName(buff.name)
   }
 
   return [...duplicates]

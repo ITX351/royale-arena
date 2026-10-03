@@ -147,10 +147,21 @@
             升级防具
           </el-button>
           
+          <!-- 转移按钮（队友模式位 8 开启时显示） -->
+          <el-button
+            v-if="transferAvailable"
+            type="warning"
+            size="small"
+            @click="openTransferDialog(item)"
+            :loading="loadingItems.includes(item.id)"
+          >
+            转移
+          </el-button>
+
           <!-- 丢弃按钮 -->
-          <el-button 
-            type="danger" 
-            size="small" 
+          <el-button
+            type="danger"
+            size="small"
             @click="discardItem(item.id)"
             :loading="loadingItems.includes(item.id)"
           >
@@ -181,6 +192,13 @@
       @confirm="handlePlayerSelectionConfirm"
       @cancel="handlePlayerSelectionCancel"
     />
+
+    <TransferTeammateDialog
+      v-if="transferTargetItem"
+      v-model="transferDialogVisible"
+      :item-name="transferTargetItem.name"
+      :item-id="transferTargetItem.id"
+    />
   </div>
 </template>
 
@@ -192,6 +210,8 @@ import { getItemTypeLabel, getItemTypeTagType } from '@/utils/itemType'
 import { getItemDisplayProperties, type ItemDisplayProperty, formatItemProperty } from '@/utils/itemDisplay'
 import ItemSelectionDialog from '@/components/common/ItemSelectionDialog.vue'
 import PlayerSelectionDialog from '@/components/common/PlayerSelectionDialog.vue'
+import TransferTeammateDialog from './TransferTeammateDialog.vue'
+import { useGameStateStore } from '@/stores/gameState'
 
 const props = withDefaults(defineProps<{
   player: Player | null
@@ -209,6 +229,8 @@ const emit = defineEmits<{
   (e: 'upgrade-equip', payload: { itemId: string; slotType: 'weapon' | 'armor' }): void
 }>()
 
+const store = useGameStateStore()
+
 // 响应式数据
 const loadingItems = ref<string[]>([])
 const unequippingWeapon = ref(false)
@@ -225,6 +247,25 @@ interface UtilityPendingContext {
 const pendingUtilityContext = ref<UtilityPendingContext | null>(null)
 
 const playerOptions = computed(() => props.players || [])
+
+// 队友转移相关
+const teammateMode = computed(() => {
+  const v = (store.globalState as any)?.rules_config?.teammate_behavior
+  return typeof v === 'number' ? v : 0
+})
+const transferAvailable = computed(() => {
+  const masterOn = teammateMode.value !== 0
+  const transferBitOn = (teammateMode.value & 8) !== 0
+  return masterOn && transferBitOn
+})
+
+const transferDialogVisible = ref(false)
+const transferTargetItem = ref<{ id: string; name: string } | null>(null)
+
+const openTransferDialog = (item: { id: string; name: string }) => {
+  transferTargetItem.value = { id: item.id, name: item.name }
+  transferDialogVisible.value = true
+}
 
 const getConsumableEffectType = (item: Item): string | null => {
   const properties = item.item_type?.properties as Record<string, any> | undefined
@@ -264,6 +305,7 @@ const sortedInventoryItems = computed<Item[]>(() => {
   const weaponItems: Item[] = []
   const armorItems: Item[] = []
   const upgraders: Item[] = []
+  const permanentBuffs: Item[] = []
   const others: Item[] = []
 
   inventory.forEach(item => {
@@ -317,6 +359,11 @@ const sortedInventoryItems = computed<Item[]>(() => {
       return
     }
 
+    if (category === 'permanent_buff') {
+      permanentBuffs.push(item)
+      return
+    }
+
     others.push(item)
   })
 
@@ -328,6 +375,7 @@ const sortedInventoryItems = computed<Item[]>(() => {
     ...weaponItems,
     ...armorItems,
     ...upgraders,
+    ...permanentBuffs,
     ...others
   ]
 })
@@ -337,6 +385,7 @@ const canUseItem = (item: Item) => {
   if (type === 'consumable') return true
   if (type === 'utility') return true
   if (type === 'currency') return true
+  if (type === 'permanent_buff') return true
   return false
 }
 

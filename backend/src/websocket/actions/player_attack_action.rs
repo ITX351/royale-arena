@@ -78,6 +78,19 @@ impl GameState {
             return Ok(action_result.as_results());
         }
 
+        // 队友伤害免疫（位 1）：同队队友之间不能造成伤害
+        if self.rule_engine.teammate_behavior.is_damage_immune()
+            && self.are_teammates(player_id, &target_player_id)
+        {
+            let action_result = ActionResult::new_info_message(
+                serde_json::json!({}),
+                vec![player_id.to_string()],
+                "队友伤害免疫已开启，无法攻击队友".to_string(),
+                false,
+            );
+            return Ok(action_result.as_results());
+        }
+
         // 根据是否装备武器计算伤害及附加效果
         let (base_damage, attack_method, weapon_aoe_damage, weapon_bleed_damage) = {
             let attacker = self.players.get(player_id).unwrap();
@@ -114,6 +127,12 @@ impl GameState {
                     .iter()
                     .filter_map(|other_id| {
                         if other_id.as_str() == player_id || other_id == &target_player_id {
+                            return None;
+                        }
+                        // 队友溅射免疫（位 1）
+                        if self.rule_engine.teammate_behavior.is_damage_immune()
+                            && self.are_teammates(player_id, other_id)
+                        {
                             return None;
                         }
                         let is_alive = self

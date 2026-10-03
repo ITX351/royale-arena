@@ -301,12 +301,15 @@ const loadRulesExamples = async () => {
     documentationError.value = ''
     
     // 使用统一的函数获取带 base 路径的 URL
-    const response = await fetch(getBasePathUrl('docs/game-rules-examples.md'))
+    const response = await fetch(getBasePathUrl('docs/full-feature-rules-template.json'))
     if (!response.ok) {
       throw new Error('无法加载使用示例')
     }
     
-    examples.value = await response.text()
+    const template = await response.json()
+    examples.value = '# Royale Arena 游戏规则配置示例\n\n## 完整功能配置模板\n\n```json\n'
+      + JSON.stringify(template, null, 2)
+      + '\n```'
   } catch (error: any) {
     documentationError.value = error.message || '加载使用示例失败'
     console.error('加载使用示例失败:', error)

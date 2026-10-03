@@ -14,7 +14,8 @@ import type {
   ActorPlace,
   ActionResult,
   ShopListing,
-  ShopBuyItem
+  ShopBuyItem,
+  SellPriceEntry
 } from '@/types/gameStateTypes'
 import { webSocketService, type WebSocketEvent } from '@/services/webSocketService'
 
@@ -97,6 +98,10 @@ export const useGameStateStore = defineStore('gameState', () => {
 
   const shopListings = computed<ShopListing[]>(() => {
     return globalState.value?.shop || []
+  })
+
+  const sellPrices = computed<SellPriceEntry[]>(() => {
+    return globalState.value?.sell_prices || []
   })
 
   // 操作
@@ -252,6 +257,21 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('coins', { player_id: playerId, coins: coins })
   }
 
+  // 设置玩家生命上限（绝对值）
+  const setPlayerMaxLife = (playerId: string, maxLife: number) => {
+    sendDirectorAction('max_life', { player_id: playerId, max_life: maxLife })
+  }
+
+  // 设置玩家体力上限（绝对值）
+  const setPlayerMaxStrength = (playerId: string, maxStrength: number) => {
+    sendDirectorAction('max_strength', { player_id: playerId, max_strength: maxStrength })
+  }
+
+  // 设置玩家背包上限（绝对值）
+  const setPlayerMaxBackpack = (playerId: string, maxBackpackItems: number) => {
+    sendDirectorAction('max_backpack', { player_id: playerId, max_backpack_items: maxBackpackItems })
+  }
+
   // 移动玩家到指定地点
   const movePlayer = (playerId: string, targetPlace: string) => {
     sendDirectorAction('move_player', { player_id: playerId, target_place: targetPlace })
@@ -313,9 +333,29 @@ export const useGameStateStore = defineStore('gameState', () => {
     sendDirectorAction('night_settlement', { rest_enabled: restEnabled })
   }
 
+  // 设置队友行为位掩码（0..=15）
+  const setTeammateBehavior = (mode: number) => {
+    sendDirectorAction('set_teammate_behavior', { teammate_behavior: mode })
+  }
+
   // 商店上架物品
   const shopListItem = (itemName: string, price: number, quantity: number = 1) => {
     sendDirectorAction('shop_list_item', { item_name: itemName, price, quantity })
+  }
+
+  // 商店上架稀有度类目（武器/防具随机）
+  const shopListRarity = (
+    itemKind: 'weapon' | 'armor',
+    rarity: string,
+    price: number,
+    quantity: number = 1
+  ) => {
+    sendDirectorAction('shop_list_rarity', {
+      shop_item_kind: itemKind,
+      shop_rarity: rarity,
+      price,
+      quantity
+    })
   }
 
   // 商店下架物品
@@ -326,6 +366,21 @@ export const useGameStateStore = defineStore('gameState', () => {
   // 玩家购买商品
   const shopBuy = (items: ShopBuyItem[]) => {
     sendPlayerAction('shop_buy', { shop_buy_items: items })
+  }
+
+  // 导演设置售出价格（新增或改价）
+  const sellSetPrice = (rarity: string, price: number) => {
+    sendDirectorAction('sell_set_price', { sell_rarity: rarity, sell_price: price })
+  }
+
+  // 导演删除售出价格
+  const sellRemovePrice = (rarity: string) => {
+    sendDirectorAction('sell_remove_price', { sell_rarity: rarity })
+  }
+
+  // 玩家售出道具
+  const sellItem = (itemIds: string[]) => {
+    sendPlayerAction('sell_item', { item_ids: itemIds })
   }
 
   const handleWebSocketEvent = (event: WebSocketEvent) => {
@@ -425,6 +480,9 @@ export const useGameStateStore = defineStore('gameState', () => {
     setPlayerLife,
     setPlayerStrength,
     setPlayerCoins,
+    setPlayerMaxLife,
+    setPlayerMaxStrength,
+    setPlayerMaxBackpack,
     movePlayer,
     togglePlayerBinding,
     destroyPlace,
@@ -436,8 +494,14 @@ export const useGameStateStore = defineStore('gameState', () => {
     removePlayerItem, // 新增导出
     triggerNightSettlement,
     shopListItem,
+    shopListRarity,
     shopDelistItem,
     shopBuy,
+    sellPrices,
+    sellSetPrice,
+    sellRemovePrice,
+    sellItem,
+    setTeammateBehavior,
     clearError
   }
 })

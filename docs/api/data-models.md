@@ -2,6 +2,17 @@
 
 WebSocket 消息格式、数据结构和错误处理的完整定义。
 
+## 货币约束
+
+玩家 `coins` 保持 JSON 数字格式，兼容旧存档中的整数和新增的半币金额。
+有效范围为 `0..=4503599627370495.5`，且必须为 `0.5` 的倍数；两倍余额不超过 JavaScript 最大安全整数。
+服务端统一校验导演设置、道具入账、购买扣款、售出入账和存档读写，拒绝负数、非有限值、超限金额及非半币金额。
+JSON 解析启用精确浮点往返，确保上限附近的半币存盘后不会丢失。
+
+售出单价范围为 `0.5..=9999`，步长 `0.5`。余额超限时，售出/道具使用失败并保留物品与原余额。
+击杀缴获最多填满击杀者的余额上限，剩余货币消失；死亡结算照常完成，返回 `transferred_coins` 和 `vanished_coins`，日志记录两者。
+不符合这些约束的旧余额需要先修正后才能加载，系统不会静默截断或舍入存档。
+
 ## 服务端推送消息类型
 
 ### 1. 游戏状态更新
@@ -117,7 +128,10 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
   "vote": "integer",      // 持有的票数
   "ts": "number",         // 上次搜索时间戳
   "deliver": "integer",   // 传音次数标记
-  "rest": "integer"       // 静养模式标记
+  "rest": "integer",      // 静养模式标记
+  "max_life": "integer",           // 生命上限（可被永久增益道具提升）
+  "max_strength": "integer",       // 体力上限（可被永久增益道具提升）
+  "max_backpack_items": "integer"  // 背包容量上限（初始来自规则，可被永久增益道具提升）
 }
 ```
 
@@ -144,7 +158,11 @@ WebSocket 消息格式、数据结构和错误处理的完整定义。
   "player": {
     "max_life": "integer",        // 最大生命值
     "max_strength": "integer",    // 最大体力值
-    "daily_strength_recovery": "integer"  // 每日体力恢复值
+    "daily_strength_recovery": "integer",  // 每日体力恢复值
+    "max_backpack_items": "integer",       // 背包容量基础值
+    "max_life_cap": "integer",             // 生命上限的硬上限（默认 300）
+    "max_strength_cap": "integer",         // 体力上限的硬上限（默认 300）
+    "max_backpack_items_cap": "integer"    // 背包容量的硬上限（默认 12）
   },
   "action": {
     "move_cost": "integer",       // 移动消耗体力
