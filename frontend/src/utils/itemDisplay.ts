@@ -56,6 +56,12 @@ const UPGRADE_TYPE_LABELS: Record<string, string> = {
   artificial_upgrader: '人造升级',
 }
 
+const PERMANENT_BUFF_EFFECT_LABELS: Record<string, string> = {
+  max_life: '生命上限',
+  max_strength: '体力上限',
+  max_backpack: '背包容量',
+}
+
 export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
   const entries: ItemDisplayProperty[] = []
   const itemType = item.item_type?.type
@@ -135,6 +141,18 @@ export const getItemDisplayProperties = (item: Item): ItemDisplayProperty[] => {
     case 'currency':
       if (properties.value != null) {
         entries.push({ label: '面值', value: properties.value })
+      }
+      break
+    case 'permanent_buff':
+      if (properties.effect_type) {
+        entries.push({
+          label: '',
+          value: PERMANENT_BUFF_EFFECT_LABELS[properties.effect_type] ?? properties.effect_type,
+        })
+      }
+      if (properties.effect_value != null) {
+        const effectValue = properties.effect_value
+        entries.push({ label: '效果', value: `${effectValue >= 0 ? '+' : ''}${effectValue}` })
       }
       break
   }

@@ -36,6 +36,8 @@ export interface ParsedItemInfo {
   consumables: string[]
   currencies: string[]
   upgraders: string[]
+  // 永久增益道具
+  permanentBuffs: string[]
   // 稀有度配置
   rarityLevels: RarityLevelConfig[]
 }
@@ -77,7 +79,8 @@ export class ItemParser {
       config.items.utilities.length > 0 ||
       config.items.consumables.length > 0 ||
       config.items.currencies.length > 0 ||
-      config.items.upgraders.length > 0
+      config.items.upgraders.length > 0 ||
+      config.items.permanentBuffs.length > 0
 
     if (!hasAnyItem) {
       throw new Error('无法从规则JSON中解析物品配置，请检查 items_config.items 字段内容是否正确')
@@ -139,6 +142,10 @@ export class ItemParser {
     const upgraders = this.itemConfig.items.upgraders.flatMap(upgrader => upgrader.displayNames)
     allItems.push(...upgraders)
 
+    // 永久增益道具
+    const permanentBuffs = this.itemConfig.items.permanentBuffs.map(item => item.name)
+    allItems.push(...permanentBuffs)
+
     return {
       allItems,
       rarityItems: {
@@ -149,6 +156,7 @@ export class ItemParser {
       consumables,
       currencies,
       upgraders,
+      permanentBuffs,
       rarityLevels: this.itemConfig.rarityLevels
     }
   }

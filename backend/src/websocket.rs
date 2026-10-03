@@ -3,6 +3,7 @@
 
 pub mod actions;
 pub mod broadcaster;
+pub mod currency;
 pub mod game_connection_manager;
 pub mod global_connection_manager;
 pub mod message_formatter;

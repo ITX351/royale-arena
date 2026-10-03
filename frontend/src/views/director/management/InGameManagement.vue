@@ -99,9 +99,19 @@
           />
         </div>
 
+        <!-- 队友模式 -->
+        <div class="full-width-section">
+          <TeammateModeCard />
+        </div>
+
         <!-- 商店管理 -->
         <div class="full-width-section">
           <ShopManagement />
+        </div>
+
+        <!-- 售出系统 -->
+        <div class="full-width-section">
+          <SellSystemCard />
         </div>
 
         <!-- 广播消息面板 -->
@@ -126,6 +136,8 @@ import PlaceStatusCard from '../components/PlaceStatusCard.vue'
 import PlayerStatusCard from '../components/PlayerStatusCard.vue'
 import BroadcastMessage from '../components/BroadcastMessage.vue'
 import ShopManagement from '../components/ShopManagement.vue'
+import SellSystemCard from '../components/SellSystemCard.vue'
+import TeammateModeCard from '../components/TeammateModeCard.vue'
 import { useManualSaveGame } from '../composables/useManualSaveGame'
 import { areStringArraysEqual } from '@/utils/commonUtils'
 

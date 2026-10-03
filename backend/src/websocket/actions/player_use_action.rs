@@ -1,7 +1,8 @@
 //! 玩家使用道具行动处理（重构版）
 
 use crate::game::game_rule_engine::{
-    ConsumableProperties, CurrencyProperties, Item, ItemType, UtilityProperties,
+    ConsumableProperties, CurrencyProperties, Item, ItemType, PermanentBuffProperties,
+    UtilityProperties,
 };
 use crate::websocket::actions::player_action_scheduler::ActionParams;
 use crate::websocket::actions::utils::{
@@ -116,6 +117,14 @@ impl GameState {
                 &item.name,
                 properties,
                 action_params,
+                strength_before,
+                use_cost,
+            ),
+            ItemType::PermanentBuff(effect) => self.handle_permanent_buff_use(
+                player_id,
+                &player_name,
+                &item.name,
+                effect,
                 strength_before,
                 use_cost,
             ),
@@ -268,6 +277,125 @@ impl GameState {
         }
     }
 
+    fn handle_permanent_buff_use(
+        &mut self,
+        player_id: &str,
+        player_name: &str,
+        item_display_name: &str,
+        effect: &PermanentBuffProperties,
+        strength_before: i32,
+        use_cost: i32,
+    ) -> Result<ItemUseOutcome, String> {
+        let (
+            max_life_cap,
+            base_max_life,
+            max_strength_cap,
+            base_max_strength,
+            backpack_cap,
+            base_backpack,
+        ) = {
+            let pc = &self.rule_engine.player_config;
+            (
+                pc.max_life_cap,
+                pc.max_life,
+                pc.max_strength_cap,
+                pc.max_strength,
+                pc.max_backpack_items_cap,
+                pc.max_backpack_items,
+            )
+        };
+
+        let (label, before, after) = match effect.effect_type.as_str() {
+            "max_life" => {
+                let cap = max_life_cap.max(base_max_life);
+                let player = self.players.get_mut(player_id).unwrap();
+                let before = player.max_life;
+                player.max_life = player
+                    .max_life
+                    .saturating_add(effect.effect_value)
+                    .clamp(base_max_life, cap);
+                // 降低上限时当前生命不超过新上限
+                if player.life > player.max_life {
+                    player.life = player.max_life;
+                }
+                ("生命上限", before as i128, player.max_life as i128)
+            }
+            "max_strength" => {
+                let cap = max_strength_cap.max(base_max_strength);
+                let player = self.players.get_mut(player_id).unwrap();
+                let before = player.max_strength;
+                player.max_strength = player
+                    .max_strength
+                    .saturating_add(effect.effect_value)
+                    .clamp(base_max_strength, cap);
+                // 降低上限时当前体力不超过新上限
+                if player.strength > player.max_strength {
+                    player.strength = player.max_strength;
+                }
+                ("体力上限", before as i128, player.max_strength as i128)
+            }
+            "max_backpack" => {
+                let cap = backpack_cap.max(base_backpack);
+                let player = self.players.get_mut(player_id).unwrap();
+                let before = player.max_backpack_items;
+                let amount = effect.effect_value.unsigned_abs() as usize;
+                let target = if effect.effect_value >= 0 {
+                    before.saturating_add(amount)
+                } else {
+                    before.saturating_sub(amount)
+                };
+                player.max_backpack_items = target.clamp(base_backpack, cap);
+                (
+                    "背包容量",
+                    before as i128,
+                    player.max_backpack_items as i128,
+                )
+            }
+            _ => return Err(format!("永久增益道具 {} 没有定义效果", item_display_name)),
+        };
+
+        let delta = after - before;
+        let strength_after = self.predict_strength_after_use(player_id, use_cost);
+        let strength_delta = strength_after - strength_before;
+
+        let log_message = format!(
+            "{} 使用了 {}，{}: {} ({})，体力: {} ({})",
+            player_name,
+            item_display_name,
+            label,
+            after,
+            format!("{delta:+}"),
+            strength_after,
+            format_delta(strength_delta)
+        );
+
+        let data = match effect.effect_type.as_str() {
+            "max_life" => json!({
+                "max_life": after,
+                "max_life_delta": delta,
+                "strength": strength_after,
+                "strength_delta": strength_delta,
+            }),
+            "max_strength" => json!({
+                "max_strength": after,
+                "max_strength_delta": delta,
+                "strength": strength_after,
+                "strength_delta": strength_delta,
+            }),
+            _ => json!({
+                "max_backpack_items": after,
+                "max_backpack_items_delta": delta,
+                "strength": strength_after,
+                "strength_delta": strength_delta,
+            }),
+        };
+
+        let result =
+            ActionResult::new_system_message(data, vec![player_id.to_string()], log_message, true);
+
+        Ok(ItemUseOutcome::new(vec![result]).with_reinsert(false))
+    }
+
     fn handle_currency_use(
         &mut self,
         player_id: &str,
@@ -279,10 +407,8 @@ impl GameState {
     ) -> Result<ItemUseOutcome, String> {
         {
             let player = self.players.get_mut(player_id).unwrap();
-            player.coins = player
-                .coins
-                .checked_add(properties.value)
-                .ok_or_else(|| format!("使用 {} 会导致货币总数溢出", item_display_name))?;
+            player.coins =
+                crate::websocket::currency::checked_change(player.coins, properties.value as f64)?;
         }
 
         let coins_after = self.players.get(player_id).unwrap().coins;
@@ -684,11 +810,25 @@ impl GameState {
             return Err("该遥控地雷未配置伤害，无法使用".to_string());
         }
 
-        let occupant_ids = self
+        let occupant_ids: Vec<String> = self
             .places
             .get(player_location)
             .map(|place| place.players.clone())
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|target_id| {
+                if target_id == player_id {
+                    return false;
+                }
+                // 队友免疫（位 1）
+                if self.rule_engine.teammate_behavior.is_damage_immune()
+                    && self.are_teammates(player_id, target_id)
+                {
+                    return false;
+                }
+                true
+            })
+            .collect();
 
         let mut results: Vec<ActionResult> = Vec::new();
         let mut impact_records: Vec<(String, String, i32, i32, bool)> = Vec::new();

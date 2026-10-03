@@ -20,7 +20,7 @@ use crate::websocket::actions::director_action_scheduler::{
     DirectorActionParams, DirectorActionScheduler,
 };
 use crate::websocket::actions::player_action_scheduler::{ActionParams, PlayerActionScheduler};
-use crate::websocket::broadcaster::MessageBroadcaster;
+use crate::websocket::broadcaster::{MessageBroadcaster, TeammateViewSnapshot};
 use crate::websocket::game_connection_manager::GameConnectionManager;
 
 /// WebSocket服务
@@ -432,19 +432,21 @@ impl WebSocketService {
         let action_params = ActionParams::from_json(&action_data)
             .map_err(|e| format!("Failed to parse action params: {}", e))?;
 
-        let (result, updated_game_state) = {
+        let (result, updated_game_state, previous_teammate_view) = {
             // 获取可写的游戏状态锁
             let mut game_state = game_state_ref.write().await;
+            let previous_teammate_view = TeammateViewSnapshot::capture(&game_state);
 
             // 使用调度器处理行动
             let result =
                 PlayerActionScheduler::dispatch(&mut game_state, player_id, action, action_params);
             let updated_game_state = game_state.clone();
-            (result, updated_game_state)
+            (result, updated_game_state, previous_teammate_view)
         };
 
         // 统一处理动作结果
-        self.handle_action_results(result, updated_game_state).await
+        self.handle_action_results(result, updated_game_state, previous_teammate_view)
+            .await
     }
 
     /// 处理导演控制
@@ -469,17 +471,19 @@ impl WebSocketService {
         let action_params = DirectorActionParams::from_json(&action_data)
             .map_err(|e| format!("Failed to parse director action params: {}", e))?;
 
-        let (result, updated_game_state) = {
+        let (result, updated_game_state, previous_teammate_view) = {
             let mut game_state = game_state_ref.write().await;
+            let previous_teammate_view = TeammateViewSnapshot::capture(&game_state);
 
             // 使用调度器处理导演行动
             let result = DirectorActionScheduler::dispatch(&mut game_state, action, action_params);
             let updated_game_state = game_state.clone();
-            (result, updated_game_state)
+            (result, updated_game_state, previous_teammate_view)
         };
 
         // 统一处理动作结果
-        self.handle_action_results(result, updated_game_state).await
+        self.handle_action_results(result, updated_game_state, previous_teammate_view)
+            .await
     }
 
     /// 统一处理ActionResults结果（完全破坏性修改，不保持向后兼容）
@@ -487,9 +491,15 @@ impl WebSocketService {
         &self,
         result: Result<ActionResults, String>,
         updated_game_state: GameState,
+        previous_teammate_view: TeammateViewSnapshot,
     ) -> Result<String, String> {
         match result {
             Ok(action_results) => {
+                let already_notified: std::collections::HashSet<&str> = action_results
+                    .results
+                    .iter()
+                    .flat_map(|result| result.broadcast_players.iter().map(String::as_str))
+                    .collect();
                 // 处理所有ActionResult
                 for action_result in &action_results.results {
                     // 使用新的广播器广播消息给相关玩家
@@ -515,38 +525,61 @@ impl WebSocketService {
 
                     // 仅在非Info类型消息时创建日志记录
                     if message_type != crate::game::MessageType::Info {
-                        let mut first_message = true;
-                        // 为每个相关玩家创建日志记录
-                        for broadcast_player_id in &action_result.broadcast_players {
-                            let player_id_option = if action_result.broadcast_to_all {
-                                None
-                            } else {
-                                Some(broadcast_player_id.clone())
-                            };
-
+                        // 导演专属消息（无目标玩家）也写入日志，仅导演可见
+                        if action_result.broadcast_players.is_empty()
+                            && action_result.broadcast_to_director
+                        {
                             let log_result = self
                                 .app_state
                                 .game_log_service
                                 .create_log(
                                     &updated_game_state.game_id,
-                                    player_id_option,
+                                    None,
                                     &action_result.log_message,
                                     message_type.clone(),
-                                    action_result.timestamp, // 传递ActionResult中的时间戳
-                                    action_result.broadcast_to_all, // 传递broadcast_to_all作为visible_to_all_players
-                                    action_result.broadcast_to_director && first_message, // 传递broadcast_to_director作为visible_to_director
+                                    action_result.timestamp,
+                                    false,
+                                    true,
                                 )
                                 .await;
 
-                            // 忽略日志记录错误，但记录日志
                             if let Err(e) = log_result {
                                 eprintln!("Failed to create log record: {}", e);
                             }
+                        } else {
+                            let mut first_message = true;
+                            // 为每个相关玩家创建日志记录
+                            for broadcast_player_id in &action_result.broadcast_players {
+                                let player_id_option = if action_result.broadcast_to_all {
+                                    None
+                                } else {
+                                    Some(broadcast_player_id.clone())
+                                };
 
-                            if action_result.broadcast_to_all {
-                                break;
+                                let log_result = self
+                                    .app_state
+                                    .game_log_service
+                                    .create_log(
+                                        &updated_game_state.game_id,
+                                        player_id_option,
+                                        &action_result.log_message,
+                                        message_type.clone(),
+                                        action_result.timestamp, // 传递ActionResult中的时间戳
+                                        action_result.broadcast_to_all, // 传递broadcast_to_all作为visible_to_all_players
+                                        action_result.broadcast_to_director && first_message, // 传递broadcast_to_director作为visible_to_director
+                                    )
+                                    .await;
+
+                                // 忽略日志记录错误，但记录日志
+                                if let Err(e) = log_result {
+                                    eprintln!("Failed to create log record: {}", e);
+                                }
+
+                                if action_result.broadcast_to_all {
+                                    break;
+                                }
+                                first_message = false;
                             }
-                            first_message = false;
                         }
                     }
 
@@ -564,6 +597,16 @@ impl WebSocketService {
                         }
                     }
                 }
+
+                let refresh_players: Vec<String> = previous_teammate_view
+                    .recipients_after_change(&updated_game_state)
+                    .into_iter()
+                    .filter(|id| !already_notified.contains(id.as_str()))
+                    .collect();
+                let _ = self
+                    .message_broadcaster
+                    .broadcast_player_snapshots(&updated_game_state, &refresh_players)
+                    .await;
 
                 // 完全破坏性修改：返回所有ActionResult的响应，而不是只返回第一个
                 let responses: Vec<serde_json::Value> = action_results

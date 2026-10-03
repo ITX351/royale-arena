@@ -11,6 +11,15 @@ pub fn format_delta(value: i32) -> String {
     }
 }
 
+/// Formats fractional currency deltas (0.5 steps) with a leading sign when non-negative.
+pub fn format_delta_f64(value: f64) -> String {
+    if value >= 0.0 {
+        format!("+{}", value)
+    } else {
+        value.to_string()
+    }
+}
+
 /// Outcome when decrementing a utility's use counters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UseOutcome {
